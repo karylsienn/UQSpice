@@ -16,12 +16,40 @@ class PCArchitect:
         """
         self.DISTR_KEY = 'distribution'
         self.PARAM_KEY = 'parameters'
-        self.variables = {k: self.__recognize_distr(v) for k,v in variables.items()}
+        self.variables = {k: self._recognize_distr(v) for k,v in variables.items()}
         self.distribution = ot.ComposedDistribution([v for v in self.variables.values()])
-        self.dimension = self.distribution.getDimension()
-    
+        self.input_dimension = self.distribution.getDimension()
+        
+        # Create the family of polynomials for this task
+        polyColl = ot.PolynomialFamilyCollection(self.input_dimension)
+        for i in range(self.input_dimension):
+            marginal = self.distribution.getMarginal(i)
+            polyColl[i] = ot.StandardDistributionPolynomialFactory(marginal)
+        q = 0.5
+        enumerateFunction = ot.HyperbolicAnisotropicEnumerateFunction(self.input_dimension, q)
+        # Create the basis for the polynomials.
+        self.multivariate_basis = ot.OrthogonalProductPolynomialFactory(polyColl, enumerateFunction)
 
-    def __recognize_distr(self, var: dict):
+        # Maximum number of polynomials to preserve.
+        max_degree = 5
+        max_polys = enumerateFunction.getStrataCumulatedCardinal(max_degree)
+
+        # Truncature basis strategy
+        significance_factor = 1e-4
+        most_significant = 120
+        truncature_basis_strategy = ot.CleaningStrategy(
+            self.multivariate_basis, max_polys, most_significant, significance_factor, True)
+        self.truncature_basis_strategy = truncature_basis_strategy
+
+    def _get_experimental_design(self, sample_size):
+        # Return the sampling points as pandas dataframe.
+        # 
+        experiment = ot.LHSExperiment(self.distribution, sample_size)
+        samples, weights = experiment.generateWithWeights()
+        return samples, weights
+
+
+    def _recognize_distr(self, var: dict):
         distr = var[self.DISTR_KEY]
         parameters = var[self.PARAM_KEY]
         if distr.upper() == 'NORMAL':
@@ -34,6 +62,7 @@ class PCArchitect:
         else:
             raise NotImplementedError('Other distribution are not implemented yet.')
 
+    
 
 
 
@@ -44,8 +73,8 @@ if __name__=='__main__':
         'v1': {
             'distribution': 'normal',
             'parameters': {
-                'mu': 0.1,
-                'var': 4
+                'mu': 2,
+                'var': 0.1
             }
         },
         
@@ -58,5 +87,4 @@ if __name__=='__main__':
         }
     })
 
-    print(pcarc.variables)
-    print(pcarc.distribution)
+    print(pcarc._get_experimental_design(5))
