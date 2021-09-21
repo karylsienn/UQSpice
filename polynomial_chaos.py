@@ -1,7 +1,6 @@
 import openturns as ot
-from openturns.dist_bundle2 import LogNormal
-from openturns.dist_bundle3 import Uniform
-
+import numpy as np
+import pandas as pd
 
 
 class PCArchitect:
@@ -28,7 +27,8 @@ class PCArchitect:
         q = 0.5
         enumerateFunction = ot.HyperbolicAnisotropicEnumerateFunction(self.input_dimension, q)
         # Create the basis for the polynomials.
-        self.multivariate_basis = ot.OrthogonalProductPolynomialFactory(polyColl, enumerateFunction)
+        self.multivariate_basis = ot.OrthogonalProductPolynomialFactory(
+            polyColl, enumerateFunction)
 
         # Maximum number of polynomials to preserve.
         max_degree = 5
@@ -43,10 +43,15 @@ class PCArchitect:
 
     def _get_experimental_design(self, sample_size):
         # Return the sampling points as pandas dataframe.
-        # 
         experiment = ot.LHSExperiment(self.distribution, sample_size)
         samples, weights = experiment.generateWithWeights()
+        samples = pd.DataFrame(np.asarray(samples), columns=self.variables.keys())
+        weights = np.asarray(weights)
         return samples, weights
+    
+
+    def _create_pc_expansion(self, input_samples, output_samples):
+        pass
 
 
     def _recognize_distr(self, var: dict):
@@ -61,6 +66,7 @@ class PCArchitect:
             return ot.LogNormal(parameters['muLog'], parameters['sigmaLog'], parameters['gamma'] if 'gamma' in parameters else 0.0)
         else:
             raise NotImplementedError('Other distribution are not implemented yet.')
+
 
     
 
