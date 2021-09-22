@@ -195,7 +195,7 @@ class LTSpiceReader:
         return lines
 
 
-    def _parse_data(self, file, header_dict, add_step_info=False):
+    def _parse_data(self, file, header_dict, add_step_info=True):
         # This assumes that we are reading binary -- not compressed verions for now.
         # and that the current position of the file is just on it.
         # We are also assuming that there is an existing header, 
@@ -226,9 +226,13 @@ class LTSpiceReader:
 
         # Append the information about the number of steps if needed
         if add_step_info and self._is_stepped(header_dict):
-            no_steps = self._get_steps(num_only=True)
+            # no_steps = self._get_steps(num_only=True)
             # The information about the start of the step should be given by the column `time`
-            data_df.insert(len(data_df.columns), 'Step_no', np.repeat(range(no_steps), no_points // no_steps)) 
+            offset = header_dict['Offset']
+            x = data_df[data_df['time'] == offset].index.values.tolist()
+            x.append(len(data_df))
+            x = np.diff(x)
+            data_df.insert(len(data_df.columns), 'Step_no', np.repeat(range(len(x)), x)) 
         return data_df
 
     def _get_steps(self, num_only=False):
