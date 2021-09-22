@@ -1,8 +1,10 @@
-import enum
 import os, subprocess, sys, re
+import numpy as np
 import pandas as pd
 from parse_utils import parse_netlist, write_netlist
 import re
+from datetime import datetime
+from struct import unpack
 
 """
 LTspiceRunner is responsible for a given netlist, cir or asc file.
@@ -87,7 +89,7 @@ class LTSpiceRunner:
             raise e
 
 
-    def _run(self, timeout=20, ascii=True):
+    def run(self, timeout=20, ascii=True):
         try:
             if self._ltspice is not None:
                 cmd =  self._cmd_separator.join([
@@ -111,7 +113,7 @@ class LTSpiceReader:
         self.runner = runner
 
 
-    def _parse_log(self, print_encoding=False):
+    def parse_log(self, print_encoding=False):
         log_path = re.sub(r'.asc$|.cir$|.net$', r'.log', self.runner.get_fullname())
         if os.path.exists(log_path):
             # Guess encoding
@@ -140,7 +142,7 @@ class LTSpiceReader:
             raise FileNotFoundError(f'Log file {log_path} does not exist.')
     
 
-    def _parse_raw(self):
+    def parse_raw(self):
         # Find if it's ascii or not -- need to find a flag with Binary or Data
         # Assume that the encoding is utf-16 le. Read 2 bytes at a time. -- assume that it is not ascii for now.
         # For now, simply append the string chain. We will think about the rest and optimizatoin later.
@@ -158,29 +160,162 @@ class LTSpiceReader:
                 raise Exception("Couldn't find encoding of the raw file.")
         file.close()
 
-        print(encoding)
-        if encoding == 'utf8':
+        if self._is_enc8(encoding):
             raise NotImplementedError('UTF-8 is not implemented yet')
-        elif encoding == 'utf-16 le':
+        elif self._is_enc16le(encoding):
             # Parse the header and then the binary data
-            lines = []
-            sep = "\n"
-            data_line = 'Binary:'
             with open(raw_path, 'rb') as file:
-                buffer = ''
-                while True:
-                    next_bytes = file.read(2)
-                    decoded = next_bytes.decode(encoding)
-                    print(buffer)
-                    if decoded == sep:
-                        lines.append(buffer)
-                        if buffer == data_line:
-                            break
-                        buffer = ''
-                    else:
-                        buffer += decoded
-                return lines
+                header_lines = self._parse_until_data(file, encoding)
+                header_dict = self._header_to_dict(header_lines)
+                # Now parse the binary data
+                parsed_data = self._parse_data(file, header_dict)
+            return header_dict, parsed_data
+                
+    
+    def _parse_until_data(self, file, encoding):
+        # Intizalize the variables
+        lines, sep, data_line = [], "\n", 'Binary:'
+        # Buffer to append
+        buffer = ''
+        while True:
+            if self._is_enc16le(encoding):
+                decoded = self._read_byte16(file)
+            elif self._is_enc8(encoding):
+                decoded = self._read_byte8(file)
+            else: 
+                raise Exception('Unknown encoding.')
 
+            if decoded == sep:
+                lines.append(buffer)
+                if buffer == data_line:
+                    break
+                buffer = ''
+            else:
+                buffer += decoded
+        return lines
+
+
+    def _parse_data(self, file, header_dict, add_step_info=False):
+        # This assumes that we are reading binary -- not compressed verions for now.
+        # and that the current position of the file is just on it.
+        # We are also assuming that there is an existing header, 
+        # to get the names of the variables and the flag (real or complex)
+        # We need to get the number of steps as well.
+        # TODO: Define which columns we'd like to read (?)
+        no_points = int(header_dict['No. Points'])
+
+        # Preallocate the dataframe
+        data_df = pd.DataFrame({
+            name: range(no_points) for name in header_dict['Variables']['Variable']},
+            dtype='complex128' if self._is_ac_analysis(header_dict) else 'float64')
+
+        if self._is_transient_analysis(header_dict):
+            for i in range(int(no_points)):
+                # If there are any steps, the number of point has to be divided by the number of steps.
+                # The information about the number of steps is present in the log file.
+                # However, this infomation can be added in the end to the dataframe as additional column.
+                for idx, name in enumerate(data_df.columns):
+                    if idx == 0:
+                        real_num = self._read8(file)
+                    else:
+                        real_num = self._read4(file)
+                    data_df.at[i, name] = real_num
+
+        elif self._is_ac_analysis(header_dict):
+            raise NotImplementedError('AC analysis is not implemented yet')
+
+        # Append the information about the number of steps if needed
+        if add_step_info and self._is_stepped(header_dict):
+            no_steps = self._get_steps(num_only=True)
+            # The information about the start of the step should be given by the column `time`
+            data_df.insert(len(data_df.columns), 'Step_no', np.repeat(range(no_steps), no_points // no_steps)) 
+        return data_df
+
+    def _get_steps(self, num_only=False):
+        """
+        Creates a dictionary of steps with appropriate information
+        """
+        log_lines = self.parse_log(print_encoding=False)
+        # Filter lines with .step command
+        step_lines = [line for line in log_lines if re.match('^.step', line, re.IGNORECASE)]
+        if num_only:
+            return len(step_lines)
+        
+        # Split the steps to find the information about the stepped data
+        
+
+    def _is_stepped(self, header_dict):
+        return any(re.match('stepped', line, re.IGNORECASE) for line in header_dict['Flags'])
+
+    def _read4(self, file):
+        return unpack('f', file.read(4))[0]
+    
+    def _read8(self, file):
+        return unpack('d', file.read(8))[0]
+
+    def _read16(self, file):
+        return unpack('dd', file.read(16))
+
+    def _is_complex(self, header_dict):
+        return any(re.match('complex', line, re.IGNORECASE) for line in header_dict['Flags'])
+
+    def _is_real(self, header_dict):
+        return any(re.match('real', line, re.IGNORECASE) for line in header_dict['Flags'])
+
+    def _is_transient_analysis(self, header_dict):
+        return re.match('Transient', header_dict['Plotname'], re.IGNORECASE)
+
+    def _is_ac_analysis(self, header_dict):
+        return re.match('AC', header_dict['Plotname'], re.IGNORECASE)
+
+    def _header_to_dict(self, header_lines):
+        # Create a dictionary of results
+        # Stop at the flag "Binary".
+        header_dict = {}
+        variables_idx = None
+        for idx, line in enumerate(header_lines):
+            searched = re.search(r'([A-Za-z\. ]+):(.*)$', line)
+            key, value = searched.group(1).strip(), searched.group(2).strip()
+            # Some values are numerical, such no. points, no. variables etc.
+            if re.match(r'No. Variables|No. Points|Offset', key, re.IGNORECASE):
+                # Cast to number
+                value = float(value)
+            elif re.match(r'Date', key, re.IGNORECASE):
+                # Create a datetime object
+                value = datetime.strptime(value, "%a %b %d %H:%M:%S %Y")
+            elif re.match(r'Flags', key, re.IGNORECASE):
+                # Flags should be separated
+                value = value.split(" ")
+            elif re.match(r'^VARIABLES', key.upper()):
+                # The rest until `Data` flag should be the variable description
+                variables_idx = idx+1
+                break
+            
+            # Append the dictionary
+            header_dict[key] = value
+        
+        if variables_idx is not None:
+            # Variables should be the last thing before `Data` flag
+            # and `Data` flag is the last thing in `header_lines`
+            # Key should be 'variables'
+            header_dict[key] = pd.DataFrame([
+                line.strip().split('\t')[1:] for line in header_lines[variables_idx:(len(header_lines)-1)]],
+                columns=['Variable', 'Description'])
+        
+        return header_dict
+
+
+    def _is_enc16le(self, encoding):
+        return re.match(r"UTF( |-){0,1}16( |-){0,1}LE", encoding.upper())
+
+    def _is_enc8(self, encoding):
+        return re.match(r"UTF( |-){0,1}8", encoding.upper())
+
+    def _read_byte16(self, file):
+        return file.read(2).decode('utf-16 le')
+    
+    def _read_byte8(self, file):
+        return file.read(1).decode('utf8')
 
                 
 
@@ -189,17 +324,8 @@ class LTSpiceReader:
 if __name__=='__main__':
     netlist_path = 'ltspice_files/Lisn_sym_copy.net'
     ltrunner = LTSpiceRunner(netlist_path)
-    # dd = pd.DataFrame({'Ts': [1/20e3, 1/30e3, 1/20e3, 1/30e3], 'dV': [0.1, 0.1, 0.8, 0.8]})
-    dd = pd.DataFrame({'Ts': [1/20e3, 1/30e3], 'dV': [0.1, 0.8]})
-    added = ltrunner.add_sweep(dd, 'Ry')
-    if added:
-        print("I am running the netlist")
-        ltrunner._run(ascii=False)
-        print("I finished simulating.")
-        ltreader = LTSpiceReader(ltrunner)
-        lines = ltreader._parse_raw()
-        for line in lines:
-            print(line)
-        
+    ltreader = LTSpiceReader(ltrunner)
+    header_dict, parsed_data = ltreader.parse_raw()
+    print(parsed_data)
 
 
