@@ -148,8 +148,24 @@ class LTSpiceReader:
         # Assume that the encoding is utf-16 le. Read 2 bytes at a time. -- assume that it is not ascii for now.
         # For now, simply append the string chain. We will think about the rest and optimizatoin later.
         raw_path = re.sub(r'.net$', '.raw', self.runner.get_fullname())
-        
-        # Guess encoding 
+        encoding = self._guess_encoding(raw_path)
+        with open(raw_path, 'rb') as file:
+            header_lines = self._parse_until_data(file, encoding)
+            header_dict = self._header_to_dict(header_lines)
+            # Now parse the binary data
+            parsed_data = self._parse_data(file, header_dict, columns)
+        return header_dict, parsed_data
+
+    def parse_header(self):
+        raw_path = re.sub(r'.net$', '.raw', self.runner.get_fullname())
+        encoding = self._guess_encoding(raw_path)
+        with open(raw_path, 'rb') as file:
+            header_lines = self._parse_until_data(file, encoding)
+            header_dict = self._header_to_dict(header_lines)
+        file.close()
+        return header_dict
+    
+    def _guess_encoding(self, raw_path):
         with open(raw_path, 'rb') as file:
             first_6_bytes = file.read(6)
             if first_6_bytes.decode('utf8') == 'Title:':
@@ -160,19 +176,8 @@ class LTSpiceReader:
                 encoding = None
                 raise Exception("Couldn't find encoding of the raw file.")
         file.close()
+        return encoding
 
-        if self._is_enc8(encoding):
-            raise NotImplementedError('UTF-8 is not implemented yet')
-        elif self._is_enc16le(encoding):
-            # Parse the header and then the binary data
-            with open(raw_path, 'rb') as file:
-                header_lines = self._parse_until_data(file, encoding)
-                header_dict = self._header_to_dict(header_lines)
-                # Now parse the binary data
-                parsed_data = self._parse_data(file, header_dict, columns)
-            return header_dict, parsed_data
-                
-    
     def _parse_until_data(self, file, encoding):
         # Intizalize the variables
         lines, sep, data_line = [], "\n", 'Binary:'
@@ -246,7 +251,9 @@ class LTSpiceReader:
             x = data_df[data_df['time'] == offset].index.values.tolist()
             x.append(len(data_df))
             x = np.diff(x)
-            data_df.insert(len(data_df.columns), 'step_no', np.repeat(range(len(x)), x)) 
+            data_df.insert(len(data_df.columns),
+                           'step_no',
+                           np.repeat(range(len(x)), x)) 
         return data_df
 
     def _get_steps(self, num_only=False):
@@ -304,7 +311,7 @@ class LTSpiceReader:
             elif re.match(r'Flags', key, re.IGNORECASE):
                 # Flags should be separated
                 value = value.split(" ")
-            elif re.match(r'^VARIABLES', key.upper()):
+            elif re.match(r'^Variable', key, re.IGNORECASE):
                 # The rest until `Data` flag should be the variable description
                 variables_idx = idx+1
                 break
