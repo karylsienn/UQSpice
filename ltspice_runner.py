@@ -5,6 +5,7 @@ from parse_utils import parse_netlist, write_netlist
 import re
 from datetime import datetime
 from struct import unpack
+import matplotlib.pyplot as plt
 
 """
 LTspiceRunner is responsible for a given netlist, cir or asc file.
@@ -142,7 +143,7 @@ class LTSpiceReader:
             raise FileNotFoundError(f'Log file {log_path} does not exist.')
     
 
-    def parse_raw(self):
+    def parse_raw(self, columns=None):
         # Find if it's ascii or not -- need to find a flag with Binary or Data
         # Assume that the encoding is utf-16 le. Read 2 bytes at a time. -- assume that it is not ascii for now.
         # For now, simply append the string chain. We will think about the rest and optimizatoin later.
@@ -168,7 +169,7 @@ class LTSpiceReader:
                 header_lines = self._parse_until_data(file, encoding)
                 header_dict = self._header_to_dict(header_lines)
                 # Now parse the binary data
-                parsed_data = self._parse_data(file, header_dict)
+                parsed_data = self._parse_data(file, header_dict, columns)
             return header_dict, parsed_data
                 
     
@@ -195,7 +196,7 @@ class LTSpiceReader:
         return lines
 
 
-    def _parse_data(self, file, header_dict, add_step_info=True):
+    def _parse_data(self, file, header_dict, columns=None, add_step_info=True):
         # This assumes that we are reading binary -- not compressed verions for now.
         # and that the current position of the file is just on it.
         # We are also assuming that there is an existing header, 
@@ -204,9 +205,20 @@ class LTSpiceReader:
         # TODO: Define which columns we'd like to read (?)
         no_points = int(header_dict['No. Points'])
 
-        # Preallocate the dataframe
+        # Variables
+        variables = header_dict['Variables']
+        if columns:
+            funcol = lambda column: variables[variables['Variable'].str.match(re.escape(column))]['Variable'].tolist()[0]
+            if type(columns) is list:
+                variables = [funcol(column) for column in columns]
+            else:
+                variables = funcol(columns)
+        else:
+            variables = variables['Variable'].tolist()
+        
+        # Preallocate the datafrane
         data_df = pd.DataFrame({
-            name: range(no_points) for name in header_dict['Variables']['Variable']},
+            name: range(no_points) for name in variables},
             dtype='complex128' if self._is_ac_analysis(header_dict) else 'float64')
 
         if self._is_transient_analysis(header_dict):
@@ -214,12 +226,14 @@ class LTSpiceReader:
                 # If there are any steps, the number of point has to be divided by the number of steps.
                 # The information about the number of steps is present in the log file.
                 # However, this infomation can be added in the end to the dataframe as additional column.
-                for idx, name in enumerate(data_df.columns):
+                for idx, name in enumerate(header_dict['Variables']['Variable']):
                     if idx == 0:
-                        real_num = self._read8(file)
+                        data_df.at[i, name] = self._read8(file)
+                    elif name in variables:
+                        data_df.at[i, name] = self._read4(file)
                     else:
-                        real_num = self._read4(file)
-                    data_df.at[i, name] = real_num
+                        self._read4(file)
+                        pass
 
         elif self._is_ac_analysis(header_dict):
             raise NotImplementedError('AC analysis is not implemented yet')
@@ -232,7 +246,7 @@ class LTSpiceReader:
             x = data_df[data_df['time'] == offset].index.values.tolist()
             x.append(len(data_df))
             x = np.diff(x)
-            data_df.insert(len(data_df.columns), 'Step_no', np.repeat(range(len(x)), x)) 
+            data_df.insert(len(data_df.columns), 'step_no', np.repeat(range(len(x)), x)) 
         return data_df
 
     def _get_steps(self, num_only=False):
@@ -328,8 +342,12 @@ class LTSpiceReader:
 if __name__=='__main__':
     netlist_path = 'ltspice_files/Lisn_sym_copy.net'
     ltrunner = LTSpiceRunner(netlist_path)
+    # ltrunner.run(ascii=False)
     ltreader = LTSpiceReader(ltrunner)
-    header_dict, parsed_data = ltreader.parse_raw()
+    header_dict, parsed_data = ltreader.parse_raw(columns=['V(n006)', 'Ix(u1:LOUT)'])
     print(parsed_data)
-
+    
+    ax = parsed_data[parsed_data['step_no']==0].plot(x='time', y = 'V(n006)', c='magenta')
+    parsed_data[parsed_data['step_no']==1].plot(x='time', y = 'V(n006)', c='cyan', ax=ax)
+    plt.show()
 
