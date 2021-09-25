@@ -1,5 +1,4 @@
 
-
 def parse_netlist(netlist_path):
     try:
         with open(netlist_path, 'r', encoding='utf-16 le') as file:

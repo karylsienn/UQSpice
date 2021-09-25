@@ -1,6 +1,5 @@
 import openturns as ot
 import numpy as np
-from openturns.statistics import CovarianceBlockAssemblyFunction
 import pandas as pd
 from scipy import interpolate
 
@@ -14,6 +13,8 @@ class PCArchitect:
             "name1": {distribution: "normal", parameters: {"mu": 342, "var": 4453}},
             "name2": {distribution: "uniform", parameters: {"min": 432, "max": 4324}}
         }
+
+        The initialization creates the composed input distribution and the corresponding basis.
         """
         self.DISTR_KEY = 'distribution'
         self.PARAM_KEY = 'parameters'
@@ -26,24 +27,15 @@ class PCArchitect:
         for i in range(self.input_dimension):
             marginal = self.distribution.getMarginal(i)
             polyColl[i] = ot.StandardDistributionPolynomialFactory(marginal)
+
         q = 0.5
         enumerateFunction = ot.HyperbolicAnisotropicEnumerateFunction(self.input_dimension, q)
         # Create the basis for the polynomials.
         self.multivariate_basis = ot.OrthogonalProductPolynomialFactory(
             polyColl, enumerateFunction)
 
-        # Maximum number of polynomials to preserve.
-        max_degree = 5
-        max_polys = enumerateFunction.getStrataCumulatedCardinal(max_degree)
 
-        # Truncature basis strategy
-        significance_factor = 1e-4
-        most_significant = 120
-        truncature_basis_strategy = ot.CleaningStrategy(
-            self.multivariate_basis, max_polys, most_significant, significance_factor, True)
-        self.truncature_basis_strategy = truncature_basis_strategy
-
-    def _get_experimental_design(self, sample_size):
+    def get_experimental_design(self, sample_size):
         # Return the sampling points as pandas dataframe.
         experiment = ot.LHSExperiment(self.distribution, sample_size)
         samples, weights = experiment.generateWithWeights()
@@ -51,6 +43,7 @@ class PCArchitect:
         weights = np.asarray(weights)
         return samples, samples_df, weights
     
+
     def _interpolate_df(self, df: pd.DataFrame, sweep_col, x_col):
         """
         In cases `df` has different lengths of the data between different factors
@@ -66,6 +59,8 @@ class PCArchitect:
             ).sort_values(
                 by='no_samples', ascending=False
             )
+        # TODO: Another possiblity is to take the range and 
+        #       explicitly provide the number of elements that is allowed for interpolation.
         interpolant    = aggregated.index[0]
         interpolatable = aggregated.index[1:]
         # Base column for performing the interpolation
@@ -81,7 +76,7 @@ class PCArchitect:
         dfs.insert(0, base_df)
         return pd.concat(dfs)
             
-                
+    # Helper function           
     def _interpolate_batch_df(self, df, i1, sweep_col, x_col, xnew, columns, index, params):
         batch_df = df[df[sweep_col] == i1]
             # Loop through the columns and perform interpolation to each of them.
@@ -94,15 +89,26 @@ class PCArchitect:
         batch_df[sweep_col] = i1
         return batch_df
     
-
+    # Helper function
     def _interpolate(self, xold, yold, xnew, params):
         tck = interpolate.splrep(xold, yold, s=params['s'], k=params['k'])
         ynew = interpolate.splev(xnew, tck, der=params['der'])
         return ynew
 
 
-    def _create_pc_expansion(self, input_samples, output_samples):
-        pass
+    def compute_sparse_pc_expansion(self, input_samples, output_samples, max_total_degree):
+        """
+        Computes the sparse expansion given `input_samples`
+        """
+        selection_algorithm = ot.LeastSquaresMetaModelSelectionFactory()
+        least_squares = ot.LeastSquaresStrategy(input_samples, output_samples, selection_algorithm)
+        enumfunc = self.multivariate_basis.getEnumerateFunction()
+        degree = enumfunc.getStrataCumulatedCardinal(max_total_degree)
+        basis_strategy = ot.FixedStrategy(self.multivariate_basis, degree)
+        pc_algo = ot.FunctionalChaosAlgorithm(input_samples, output_samples, self.distribution, basis_strategy, least_squares)
+        pc_algo.run()
+        pc_expansion = pc_algo.getResult()
+        return pc_expansion
 
 
     def _recognize_distr(self, var: dict):
@@ -120,9 +126,6 @@ class PCArchitect:
 
 
     
-
-
-
 
 if __name__=='__main__':
     
