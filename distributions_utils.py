@@ -1,6 +1,3 @@
-from user import ACCEPTED_DISTRIBUTIONS
-
-
 ACCEPTED_DISTRIBUTIONS = ["Normal", "Uniform"]
 
 def specify_parameters(distr_name):
