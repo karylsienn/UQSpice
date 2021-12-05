@@ -75,6 +75,13 @@ class PCArchitect:
             for idx, i1 in enumerate(interpolatable)]
         dfs.insert(0, base_df)
         return pd.concat(dfs)
+
+    def _interpolate_df_n(self, df: pd.DataFrame, sweep_col, x_col, values_range, no_interpolated):
+        # `values_range` provide the range of the values for which the inerpolation will take place
+        assert type(values_range) is list and len(values_range)==2
+        # We can allocate the dataframe to interpolate their values in place.
+        # Get each value from the `sweep_col` and interpolate for each sweep.
+        pass
             
     # Helper function           
     def _interpolate_batch_df(self, df, i1, sweep_col, x_col, xnew, columns, index, params):
@@ -95,10 +102,13 @@ class PCArchitect:
         ynew = interpolate.splev(xnew, tck, der=params['der'])
         return ynew
 
+    def _numpy_interpolate(self, xold, yold, xnew):
+        return np.interp(xnew, xold, yold)
+
 
     def compute_sparse_pc_expansion(self, input_samples, output_samples, max_total_degree):
         """
-        Computes the sparse expansion given `input_samples`
+        Computes the sparse expansion given `input_samples` and `output_samples`
         """
         selection_algorithm = ot.LeastSquaresMetaModelSelectionFactory()
         least_squares = ot.LeastSquaresStrategy(input_samples, output_samples, selection_algorithm)

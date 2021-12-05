@@ -27,7 +27,7 @@ class LTSpiceRunner:
                 self._cmd_separator = " && "
             else:
                 self._ltspice = None
-                raise NotImplementedError("Platforms other than Mac are not implemented yet")
+                raise NotImplementedError("Platforms other than Mac and Windows are not implemented yet")
         except Exception as e:
             raise e
 
@@ -208,6 +208,7 @@ class LTSpiceReader:
         # to get the names of the variables and the flag (real or complex)
         # We need to get the number of steps as well.
         # TODO: Define which columns we'd like to read (?)
+        # TODO: Interpolate on reading? This way all columns will have the same length.
         no_points = int(header_dict['No. Points'])
 
         # Variables
@@ -233,15 +234,31 @@ class LTSpiceReader:
                 # However, this infomation can be added in the end to the dataframe as additional column.
                 for idx, name in enumerate(header_dict['Variables']['Variable']):
                     if idx == 0:
+                        # Read the `timestamp`
                         data_df.at[i, name] = self._read8(file)
                     elif name in variables:
+                        # Read the real data and append to the table
                         data_df.at[i, name] = self._read4(file)
                     else:
+                        # Pass the data, don't append to the dataframe.
                         self._read4(file)
                         pass
 
         elif self._is_ac_analysis(header_dict):
-            raise NotImplementedError('AC analysis is not implemented yet')
+            for i in range(int(no_points)):
+                for idx, name in enumerate(header_dict['Variables']['Variable']):
+                    if idx==0:
+                        # Read the `frequency`
+                        data_df.at[i, name] = self._read8(file)
+                    elif name in variables:
+                        # Read complex values
+                        data_df.at[i, name] = self._read16(file)
+                    else:
+                        # Pass the data, don't append to the dataframe.
+                        self._read16(file)
+        else:
+            # DC sweep, DC operating point, DC transfer function analyses not yet.
+            raise NotImplementedError("Other types of analyses are not implemented yet.")
 
         # Append the information about the number of steps if needed
         if add_step_info and self._is_stepped(header_dict):
@@ -273,12 +290,21 @@ class LTSpiceReader:
         return any(re.match('stepped', line, re.IGNORECASE) for line in header_dict['Flags'])
 
     def _read4(self, file):
+        """
+        Read the real data saved in 4 bytes.
+        """
         return unpack('f', file.read(4))[0]
     
     def _read8(self, file):
+        """
+        Read the timestamp or the frequency, saved as 8 bytes.
+        """
         return unpack('d', file.read(8))[0]
 
     def _read16(self, file):
+        """
+        Read the complex data, saved in two 8-bytes chunks (for real and imaginary parts)
+        """
         return unpack('dd', file.read(16))
 
     def _is_complex(self, header_dict):
@@ -330,6 +356,7 @@ class LTSpiceReader:
         return header_dict
 
 
+    # Helpers with encodings.
     def _is_enc16le(self, encoding):
         return re.match(r"UTF( |-){0,1}16( |-){0,1}LE", encoding.upper())
 
@@ -343,8 +370,6 @@ class LTSpiceReader:
         return file.read(1).decode('utf8')
 
                 
-
-
 
 if __name__=='__main__':
     netlist_path = 'ltspice_files/Lisn_sym_copy.net'
