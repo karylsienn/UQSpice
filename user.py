@@ -4,7 +4,8 @@ User commands
 import tkinter as tk
 from tkinter import filedialog
 import os.path
-from distributions_utils import specify_parameters, ACCEPTED_DISTRIBUTIONS
+from facade import PCSpice, specify_parameters
+from polynomial_chaos import ACCEPTED_DISTRIBUTIONS
 
 class UserBehaviour:
     
@@ -16,9 +17,25 @@ class UserBehaviour:
                 if uinput == "1":
                     file_path = self._menu_one()
                     if file_path is not None:
+                        # Create the PCSpice instance
+                        self.pcspice = PCSpice(file_path)
                         # Open file and ask about random variables
                         vars = self._random_vars_selection(file_path)
-                        print(vars)
+                        # Ask if the user wants more control
+                        print("Do you want to specify the PC model manually?")
+                        while True:
+                            pc_manual = input("You answer (y/n): ")
+                            if pc_manual.strip()[0].lower() == "y":
+                                print("Proceeding with manual PC creation.")
+                                self._pc_manual_creation(vars)
+                                break
+                            elif pc_manual.strip()[0].lower() == "n":
+                                print("Proceeding with automatic PC creation.")
+                                self._pc_automatic_creation(vars)
+                                break
+                            else:
+                                print("Please answer.")
+
                 elif uinput == "2":
                     print("Not Implemented yet\n\n")
                 elif uinput == "3":
@@ -92,14 +109,15 @@ class UserBehaviour:
             while True:
                 print(f"Variable: {var}")
                 print("Select distribution from the following choices:")
-                for i, distribution in enumerate(ACCEPTED_DISTRIBUTIONS):
+                accepted_distributions = self.pcspice.get_accepted_distributions()
+                for i, distribution in enumerate(accepted_distributions):
                     print(f"{i+1}. {distribution}")
                 selected_distr_no = input("Your choice: ")
                 selected_distr = None
                 try:
                     selected_distr_no = int(selected_distr_no)
-                    if selected_distr_no <= len(ACCEPTED_DISTRIBUTIONS):
-                        selected_distr = ACCEPTED_DISTRIBUTIONS[selected_distr_no-1]
+                    if selected_distr_no <= len(accepted_distributions):
+                        selected_distr = accepted_distributions[selected_distr_no-1]
                         break
                     else:
                         print("Please select an option.\n")
@@ -122,15 +140,21 @@ class UserBehaviour:
                 print("\n")
                         
         return vars_dict
-            
-
-
-
-
         
+    def _pc_automatic_creation(self, vars: dict):
+        while True:
+            print("How many simulations do you want to conduct at most?")
+            no_simulations = input("Enter an integer: ")
+            try:
+                no_simulations = int(no_simulations)
+                self.pcspice.automatic_pc_model(no_simulations, vars)
+                break
+            except ValueError:
+                print("Please enter an integer.")
 
-
-    
+    def _pc_manual_creation(self, vars: dict):
+        print("Not implemented yet.")
+        pass
 
 
 if __name__=="__main__":
