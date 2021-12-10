@@ -2,11 +2,12 @@ import os, subprocess, sys, re
 import numpy as np
 from numpy.core.numeric import full
 import pandas as pd
-from parse_utils import parse_binary, parse_header, parse_netlist, write_netlist, parse_log
+from parse_utils import ENC_UTF16LE, ENC_UTF8, parse_binary, parse_header, parse_netlist, write_netlist, parse_log
 import re
 from datetime import datetime
 from struct import unpack
 import matplotlib.pyplot as plt
+import random
 
 """
 LTspiceRunner is responsible for a given netlist, cir or asc file.
@@ -18,6 +19,7 @@ class LTSpiceRunner:
         # See whether it;s a netlist, asc or cir file.
         # If it's a asc file, create a netlist from it.
         # Detect the os.
+        self.hash = random.randint()
         try: 
             self.dirname, self.basename = os.path.dirname(path), os.path.basename(path)
             if sys.platform == 'darwin':
@@ -31,6 +33,9 @@ class LTSpiceRunner:
                 raise NotImplementedError("Platforms other than Mac and Windows are not implemented yet")
         except Exception as e:
             raise e
+
+    def __hash__(self):
+        return self.hash
 
     def get_basename(self):
         return self.basename
@@ -75,13 +80,13 @@ class LTSpiceRunner:
         # Should also add some kind of marker.
         for idx, command in enumerate(netlist):
             if re.match('.backanno', command):
-                netlist.insert(idx, "* Sweep added by me")
+                netlist.insert(idx, f"* Sweep added by LTSpiceRunner {self.hash}")
                 netlist.insert(idx + 1, param)
                 end_idx = idx + 2
                 for idy, value in enumerate(values):
                     netlist.insert(idx+idy+2, value)
                     end_idx = idx+idy+3
-                netlist.insert(end_idx, '* Finished adding')
+                netlist.insert(end_idx, f'* Finished sweep by LTSpiceRunner {self.hash}')
                 break
         try: 
             write_netlist(netlist, self.get_fullname())
@@ -160,7 +165,7 @@ class LTSpiceReader:
             index_start=index_start, col_idx=col_idx, col_names=columns,
             dtype=dtype, header_encoding=header_encoding)
         
-        print(self.data_df[self.data_df['time'] == offset])
+        # print(self.data_df[self.data_df['time'] == offset])
 
         # Add information about step
         if add_step:
@@ -172,9 +177,8 @@ class LTSpiceReader:
                 len(self.data_df.columns),
                 'step_no',
                 np.repeat(range(len(x)), x))
-        
         # TODO: interpolate data frames
-        # Return straigthaway   
+        # Return straightaway   
         return self.data_df
 
 
@@ -182,40 +186,62 @@ class LTSpiceReader:
         """
         Creates a dictionary of steps with appropriate information
         """
-        log_lines = self.parse_log(print_encoding=False)
+        if self.log is None:
+            self.parse_log()
         # Filter lines with .step command
-        step_lines = [line for line in log_lines if re.match('^.step', line, re.IGNORECASE)]
+        step_lines = [line for line in self.log if re.match('^.step', line, re.IGNORECASE)]
+        no_steps = len(step_lines)
         if num_only:
-            return len(step_lines)
-        
+            return no_steps
         # Split the steps to find the information about the stepped data
+        # Have to read the steps from the netlist and from the log simultaneously.
+        # Find sweep added by this ltrunner instance and get it.
+        runnerhash = self.runner.hash()
+        # Read line by line and find only those, which have the hash of this runner
+        netlist_lines = parse_netlist(self.runner.get_fullname(),
+                                      encoding=ENC_UTF16LE)
+        found_sweep, step_info = False, []
+        for line in netlist_lines:
+            if re.match(f"* Sweep added by LTSpiceRunner {runnerhash}", line):
+                found_sweep = True
+            elif found_sweep:
+                step_info.append(line)
+            elif re.match(f"* Finished sweep by LTSpiceRunner {runnerhash}", line):
+                break
+        # Next line should correspond to .step
+        # Get the stepping variable name from it
+        stepname = re.search("param (.*) ", step_info[0], re.IGNORECASE)
+        if stepname:
+            stepname = stepname.group(1)
+
+        namefun = lambda line: re.search('.param (.*) table', line, re.IGNORECASE).group(1)
+        step_df = pd.DataFrame({
+            namefun(line): range(no_steps) for line in step_info[1:]
+            }, dtype='float64')
+        # Create a dataframe with as many columns as variables
+        for name, line in zip(step_df.keys(),step_info[1:]):
+            # Get all the variables in this given line
+            inline = re.search(f"table\({stepname},(.*)\)")
+            if inline:
+                inline = inline.group(1).strip().split(",")
+                # Take only the odd parts
+                values = [float(value.strip())
+                          for idx, value in enumerate(inline) if idx % 2 == 1]
+                step_df[name] = values
+        # Put `step` as the first column
+        step_df.insert(0, 'step', range(no_steps))
+        self.step_df = step_df
+        return self.step_df
+            
     
     def get_variable_names(self):
         return self.header['Variables']['Variable']
 
     def any_meas(self, header_dict):
-        return any(re.match('meas', line, re.IGNORECASE) for line in header_dict['Flags'])
+        return any(re.match('meas', line, re.IGNORECASE) for line in self.header['Flags'])
 
     def _is_stepped(self, header_dict):
-        return any(re.match('stepped', line, re.IGNORECASE) for line in header_dict['Flags'])
-
-    def _read4(self, file):
-        """
-        Read the real data saved in 4 bytes.
-        """
-        return unpack('f', file.read(4))[0]
-    
-    def _read8(self, file):
-        """
-        Read the timestamp or the frequency, saved as 8 bytes.
-        """
-        return unpack('d', file.read(8))[0]
-
-    def _read16(self, file):
-        """
-        Read the complex data, saved in two 8-bytes chunks (for real and imaginary parts)
-        """
-        return unpack('dd', file.read(16))
+        return any(re.match('stepped', line, re.IGNORECASE) for line in self.header['Flags'])
 
     def _is_complex(self):
         return any(re.match('complex', line, re.IGNORECASE) for line in self.header['Flags'])
