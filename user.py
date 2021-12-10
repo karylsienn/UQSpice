@@ -11,6 +11,11 @@ class UserBehaviour:
     
     def __init__(self) -> None:
         print("Welcome to UQSpice!")
+        self.run_menu()
+        
+
+
+    def run_menu(self):
         while True:
             try:
                 uinput = self._print_welcome_menu()
@@ -32,9 +37,31 @@ class UserBehaviour:
                             elif pc_manual.strip()[0].lower() == "n":
                                 print("Proceeding with automatic PC creation.")
                                 self._pc_automatic_creation(vars)
+                                # Runs LTSpice and asks for the available 
                                 break
                             else:
                                 print("Please answer.")
+                        
+                        # After running LTSpice ask for the columns that the user
+                        # wants to see in the output
+                        # If there any .meas commands we might want to look at those.
+                        # This is then equivalent to selecting the .log file.
+                        if self._any_meas():
+                            print("Found .meas commands. Do you want to use those?")
+                            while True:
+                                use_meas = input("Your choice (y/n): ")
+                                if use_meas.strip()[0].lower() == "y":
+                                    # Go to .log
+                                    pass
+                                elif use_meas.strip()[0].lower() == "n":
+                                    # Go to .raw directly.
+                                    pass
+                                else:
+                                    print("Please answer.")
+
+                        # Got to .raw 
+                        print("From the columns, select those that you want to look at:") 
+                        self._get_columns()
 
                 elif uinput == "2":
                     print("Not Implemented yet\n\n")
@@ -51,7 +78,6 @@ class UserBehaviour:
             except KeyboardInterrupt:
                 print("\nSo soon? Ok, see you later.\n")
                 break
-
 
     def _print_welcome_menu(self):
         print("Menu:")
@@ -156,6 +182,15 @@ class UserBehaviour:
         print("Not implemented yet.")
         pass
 
+    def _any_meas(self):
+        return self.pcspice.check_meas()
+
+
+    def _get_columns(self):
+        columns = self.pcspice.get_columns()
+        for col in columns:
+            print(col)
+
 
 if __name__=="__main__":
     print("Select a .cir or .net file:") # If the selected file is .cir, copy the file and create .net out of it.
@@ -192,5 +227,5 @@ if __name__=="__main__":
     # 2. Create PC from .log file
     # 3. Create PC from .raw file
     # 4. Analyze existing PC models.
-
     userBehaviour = UserBehaviour()
+    
