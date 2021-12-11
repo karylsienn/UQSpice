@@ -36,12 +36,11 @@ class PCSpice:
     
     def sparse_pc(self, no_simulations, vars):
         pcmodel = PCArchitect(vars)
-        experimental_design = pcmodel.get_experimental_design(no_simulations)
+        experimental_design = pcmodel.get_experimental_design(no_simulations, dataframe_only=True)
         # Add sweep, run LTSpice, get output and create PC model.
         self.run_spice(experimental_design)
         # TODO: Running LTSpice is ok, but then decide what the actual output is!
         
-
         pass
 
     def total_trunc_pc(max_deg, vars):

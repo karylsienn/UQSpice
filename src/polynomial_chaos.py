@@ -36,12 +36,14 @@ class PCArchitect:
             polyColl, enumerateFunction)
 
 
-    def get_experimental_design(self, sample_size):
+    def get_experimental_design(self, sample_size, dataframe_only=False):
         # Return the sampling points as pandas dataframe.
         experiment = ot.LHSExperiment(self.distribution, sample_size)
         samples, weights = experiment.generateWithWeights()
         samples_df = pd.DataFrame(np.asarray(samples), columns=self.variables.keys())
         weights = np.asarray(weights)
+        if dataframe_only:
+            return samples_df
         return samples, samples_df, weights
     
 

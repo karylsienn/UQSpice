@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 from struct import unpack
 import matplotlib.pyplot as plt
-import random
+from random import random
 
 """
 LTspiceRunner is responsible for a given netlist, cir or asc file.
@@ -19,7 +19,7 @@ class LTSpiceRunner:
         # See whether it;s a netlist, asc or cir file.
         # If it's a asc file, create a netlist from it.
         # Detect the os.
-        self.hash = random.randint()
+        self.hash = hash(random())
         try: 
             self.dirname, self.basename = os.path.dirname(path), os.path.basename(path)
             if sys.platform == 'darwin':
@@ -118,8 +118,10 @@ class LTSpiceReader:
     def __init__(self, runner: LTSpiceRunner) -> None:
         self.runner = runner
         # The assumption that the runner has already run the program.
+        # Handle creation if the runner has not been called yet. Especially
+        # that the Reader does not have to be used only with conjuction with a specific runner.
         self.parse_header()
-        self.parse_log()
+        self.parse_log()  
 
 
     def parse_log(self):
@@ -159,17 +161,16 @@ class LTSpiceReader:
         else:
             raise ValueError("Unknown data type.")
 
-        # Data frame of the LTSpice datas
+        # Data frame of the LTSpice data
         self.data_df = parse_binary(
             raw_path, no_points, no_variables,
             index_start=index_start, col_idx=col_idx, col_names=columns,
             dtype=dtype, header_encoding=header_encoding)
         
-        # print(self.data_df[self.data_df['time'] == offset])
-
         # Add information about step
         if add_step:
             # LTSpice can produce different number of points between different steps
+            # Since we need to find the first element which is greater or equal to the offset.
             x = self.data_df[self.data_df['time'] == offset].index.values.tolist()
             x.append(len(self.data_df))
             x = np.diff(x)
@@ -178,11 +179,12 @@ class LTSpiceReader:
                 'step_no',
                 np.repeat(range(len(x)), x))
         # TODO: interpolate data frames
+        # TODO: Depending on the type of analysis we should have either first column `time` of `frequency`
         # Return straightaway   
         return self.data_df
 
 
-    def _get_steps(self, num_only=False):
+    def get_steps(self, num_only=False):
         """
         Creates a dictionary of steps with appropriate information
         """
@@ -210,17 +212,26 @@ class LTSpiceReader:
                 break
         # Next line should correspond to .step
         # Get the stepping variable name from it
-        stepname = re.search("param (.*) ", step_info[0], re.IGNORECASE)
+        stepname = re.search(".step param (.*) ", step_info[0], re.IGNORECASE)
         if stepname:
             stepname = stepname.group(1)
+        else:
+            raise ValueError("I don't see the stepname.")
 
-        namefun = lambda line: re.search('.param (.*) table', line, re.IGNORECASE).group(1)
+        # Define instead of one-liner to handle errors as well.
+        def namefun(line):
+            searched = re.search('.param (.*) table', line, re.IGNORECASE)
+            if searched:
+                return searched.group(1)
+            else:
+                raise ValueError("I don't see the parameter.")
+
         step_df = pd.DataFrame({
             namefun(line): range(no_steps) for line in step_info[1:]
             }, dtype='float64')
         # Create a dataframe with as many columns as variables
         for name, line in zip(step_df.keys(),step_info[1:]):
-            # Get all the variables in this given line
+            # Get all the variables in this line
             inline = re.search(f"table\({stepname},(.*)\)")
             if inline:
                 inline = inline.group(1).strip().split(",")

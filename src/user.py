@@ -60,7 +60,7 @@ class UserBehaviour:
                                     print("Please answer.")
 
                         # Got to .raw 
-                        print("From the columns, select those that you want to look at:") 
+                        print("From the columns, select those that you want to look at: ") 
                         self._get_columns()
 
                 elif uinput == "2":
@@ -173,10 +173,11 @@ class UserBehaviour:
             no_simulations = input("Enter an integer: ")
             try:
                 no_simulations = int(no_simulations)
-                self.pcspice.automatic_pc_model(no_simulations, vars)
                 break
             except ValueError:
                 print("Please enter an integer.")
+        if type(no_simulations) is int and no_simulations > 0:
+            self.pcspice.automatic_pc_model(no_simulations, vars)
 
     def _pc_manual_creation(self, vars: dict):
         print("Not implemented yet.")
@@ -228,4 +229,7 @@ if __name__=="__main__":
     # 3. Create PC from .raw file
     # 4. Analyze existing PC models.
     userBehaviour = UserBehaviour()
+
+
+    
     

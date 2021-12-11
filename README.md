@@ -1,4 +1,4 @@
-# UQSpice_0.02
+# UQSpice
 
 
 Uncertainty Quantification toolbox based on openturns and LTspice.

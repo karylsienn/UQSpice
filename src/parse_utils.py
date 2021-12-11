@@ -15,6 +15,7 @@ def parse_netlist(netlist_path, encoding=None):
     if os.path.exists(netlist_path):
         if encoding is None:
             with open(netlist_path, 'rb') as file:
+                file.read(2) # Pass first two bytes.
                 first_byte = file.read(2)
                 if first_byte.decode(ENC_UTF8) == "* ":
                     encoding = ENC_UTF8
