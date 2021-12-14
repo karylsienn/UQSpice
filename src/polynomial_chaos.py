@@ -1,9 +1,14 @@
 import openturns as ot
 import numpy as np
 import pandas as pd
-from scipy import interpolate
+import  openturns.viewer as viewer
+from matplotlib import pylab as plt
+
 
 ACCEPTED_DISTRIBUTIONS = ["Normal", "Uniform"]
+DISTR_KEY = 'distribution'
+PARAM_KEY = 'parameters'
+
 
 class PCArchitect:
     
@@ -36,6 +41,9 @@ class PCArchitect:
             polyColl, enumerateFunction)
 
 
+    def __eq__(self, __o: object) -> bool:
+        return type(__o) is PCArchitect and __o.distribution == self.distribution
+
     def get_experimental_design(self, sample_size, dataframe_only=False):
         # Return the sampling points as pandas dataframe.
         experiment = ot.LHSExperiment(self.distribution, sample_size)
@@ -45,74 +53,13 @@ class PCArchitect:
         if dataframe_only:
             return samples_df
         return samples, samples_df, weights
-    
-
-    def _interpolate_df(self, df: pd.DataFrame, sweep_col, x_col):
-        """
-        In cases `df` has different lengths of the data between different factors
-        an interpolation is required to be able to perform PC on the data.
-        `sweep_col` is the factor column
-        `x_col` is the axis column (for instance time or frequency)
-        """
-        assert isinstance(sweep_col, str) and sweep_col in df.columns
-        aggregated = df.groupby(
-                sweep_col
-            ).agg(
-                no_samples=pd.NamedAgg(column=sweep_col, aggfunc=len)
-            ).sort_values(
-                by='no_samples', ascending=False
-            )
-        # TODO: Another possiblity is to take the range and 
-        #       explicitly provide the number of elements that is allowed for interpolation.
-        interpolant    = aggregated.index[0]
-        interpolatable = aggregated.index[1:]
-        # Base column for performing the interpolation
-        base_df = df[df[sweep_col] == interpolant]
-        blen = len(base_df)
-        dfs = [self._interpolate_batch_df(
-            df, i1, sweep_col, x_col,
-            base_df[x_col].values,
-            df.columns[~df.columns.isin([sweep_col, x_col])],
-            range((idx+1)*blen, (idx+2)*blen),
-            {"s": 0, "k":1, "der":0})
-            for idx, i1 in enumerate(interpolatable)]
-        dfs.insert(0, base_df)
-        return pd.concat(dfs)
-
-    def _interpolate_df_n(self, df: pd.DataFrame, sweep_col, x_col, values_range, no_interpolated):
-        # `values_range` provide the range of the values for which the inerpolation will take place
-        assert type(values_range) is list and len(values_range)==2
-        # We can allocate the dataframe to interpolate their values in place.
-        # Get each value from the `sweep_col` and interpolate for each sweep.
-        pass
-            
-    # Helper function           
-    def _interpolate_batch_df(self, df, i1, sweep_col, x_col, xnew, columns, index, params):
-        batch_df = df[df[sweep_col] == i1]
-            # Loop through the columns and perform interpolation to each of them.
-        batch_df = pd.DataFrame({
-            column: self._interpolate(
-                batch_df[x_col].values, batch_df[column].values, xnew, params) 
-            for column in columns},
-            index=index)
-        batch_df[x_col] = xnew
-        batch_df[sweep_col] = i1
-        return batch_df
-    
-    # Helper function
-    def _interpolate(self, xold, yold, xnew, params):
-        tck = interpolate.splrep(xold, yold, s=params['s'], k=params['k'])
-        ynew = interpolate.splev(xnew, tck, der=params['der'])
-        return ynew
-
-    def _numpy_interpolate(self, xold, yold, xnew):
-        return np.interp(xnew, xold, yold)
 
 
     def compute_sparse_pc_expansion(self, input_samples, output_samples, max_total_degree):
         """
         Computes the sparse expansion given `input_samples` and `output_samples`
         """
+        output_samples = ot.Sample.BuildFromPoint(np.asarray(output_samples))
         selection_algorithm = ot.LeastSquaresMetaModelSelectionFactory()
         least_squares = ot.LeastSquaresStrategy(input_samples, output_samples, selection_algorithm)
         enumfunc = self.multivariate_basis.getEnumerateFunction()
@@ -123,10 +70,44 @@ class PCArchitect:
         pc_expansion = pc_algo.getResult()
         return pc_expansion
 
+    @staticmethod
+    def interpolate_df_n(df: pd.DataFrame, sweep_col, x_col, values_range, no_interpolated, indexed=False):
+        # TODO: Optimize
+        assert type(values_range) is list and len(values_range)==2
+        no_interpolated = int(no_interpolated) # Cast to integer
+        knots = np.linspace(values_range[0], values_range[1], no_interpolated) # Knots for interpolations
+        
+        # Set index to `sweep_col` of not done already
+        if df.index.name is None:
+            df = df.set_index(sweep_col)
+        elif df.index.name != sweep_col:
+            df = df.reset_index().set_index(sweep_col) 
+        chosen_cols = df.columns[df.columns != x_col] # Get names of all columns except the x column
+        no_sweeps = df.index.unique()
+        
+        dflist = [] # Empty list which will hold df's
+        for sweep_no in no_sweeps:
+            try:
+                xp = df.loc[sweep_no, x_col].reset_index()[x_col].values
+                xp = xp.values
+                newdf = df.loc[sweep_no, chosen_cols].agg(
+                    func=lambda yp: np.interp(knots, xp, yp))
+                newdf[x_col] = xp # Add the x column 
+                dflist.append(newdf)
+            except Exception as e:
+                print(e)
+                pass
+        
+        interpdf = pd.concat(dflist)
+        if not indexed:
+            interpdf = interpdf.reset_index()
+            
+        return interpdf
 
-    def _recognize_distr(self, var: dict):
-        distr = var[self.DISTR_KEY]
-        parameters = var[self.PARAM_KEY]
+    @staticmethod
+    def _recognize_distr(var: dict):
+        distr = var[DISTR_KEY]
+        parameters = var[PARAM_KEY]
         if distr.upper() == 'NORMAL':
             # For now let's assume that the parameters are given in a correct way.
             return ot.Normal(parameters['mu'], parameters['var'])
@@ -138,7 +119,6 @@ class PCArchitect:
             raise NotImplementedError('Other distribution are not implemented yet.')
 
 
-    
 
 if __name__=='__main__':
     
@@ -160,15 +140,39 @@ if __name__=='__main__':
         }
     })
 
-    # Test for the interpolation
-    df = pd.DataFrame({
-        'time': [1, 2, 3, 4, 1, 2, 3, 2, 3, 4],
-        'value1': [1, 2, 3, 4, 1, 2, 3, 2, 3, 4],
-        'value2': [1.5, 2.5, 3.5, 4.5, 1.5, 2.5, 3.5, 2.5, 3.5, 4.5],
-        'sweep': [0, 0, 0, 0, 1, 1, 1, 2, 2, 2]
-    })
+    N = 20
+    points, df, weights = pcarc.get_experimental_design(N)
 
-    interpolated = pcarc._interpolate_df(df, sweep_col='sweep', x_col='time')
-    print(interpolated)
-    print('\n')
-    print(interpolated.loc[0:2, 'value1':'sweep'])
+    # Create an inline function 
+    fun1 = lambda x, y: x**2 + 3*y**2
+    fun2 = lambda x, y: 1.2*x**2 + 3*y**3
+
+
+    # Create a new output. This corresponds to one `sweep`
+    new = fun1(df['v1'], df['v2'])
+    # new.values should be numpy array
+    pcalgo = pcarc.compute_sparse_pc_expansion(points, new.values, 3)
+    metamodel = pcalgo.getMetaModel()
+
+    points, _, _ = pcarc.get_experimental_design(1000)
+    metaresult = metamodel(points)
+    graph = ot.HistogramFactory().build(metaresult).drawPDF()
+    view = viewer.View(graph)
+    plt.show()
+
+
+    # There also has to be some kind of validation metrics.
+
+
+    # # Test for the interpolation
+    # df = pd.DataFrame({
+    #     'time': [1, 2, 3, 4, 1, 2, 3, 2, 3, 4],
+    #     'value1': [1, 2, 3, 4, 1, 2, 3, 2, 3, 4],
+    #     'value2': [1.5, 2.5, 3.5, 4.5, 1.5, 2.5, 3.5, 2.5, 3.5, 4.5],
+    #     'sweep': [0, 0, 0, 0, 1, 1, 1, 2, 2, 2]
+    # })
+
+    # interpolated = pcarc._interpolate_df(df, sweep_col='sweep', x_col='time')
+    # print(interpolated)
+    # print('\n')
+    # print(interpolated.loc[0:2, 'value1':'sweep'])

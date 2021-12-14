@@ -40,7 +40,6 @@ class PCSpice:
         # Add sweep, run LTSpice, get output and create PC model.
         self.run_spice(experimental_design)
         # TODO: Running LTSpice is ok, but then decide what the actual output is!
-        
         pass
 
     def total_trunc_pc(max_deg, vars):
