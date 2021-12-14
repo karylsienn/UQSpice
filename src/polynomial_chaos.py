@@ -84,23 +84,27 @@ class PCArchitect:
             df = df.reset_index().set_index(sweep_col) 
         chosen_cols = df.columns[df.columns != x_col] # Get names of all columns except the x column
         no_sweeps = df.index.unique()
+        xpdf = df[x_col]
         
         dflist = [] # Empty list which will hold df's
         for sweep_no in no_sweeps:
             try:
-                xp = df.loc[sweep_no, x_col].reset_index()[x_col].values
-                xp = xp.values
-                newdf = df.loc[sweep_no, chosen_cols].agg(
-                    func=lambda yp: np.interp(knots, xp, yp))
-                newdf[x_col] = xp # Add the x column 
+                xp = np.asarray(xpdf.loc[sweep_no].values) # Make sure this converts to array
+                func = lambda yp: np.interp(knots, xp, yp)
+                newdf = df.loc[sweep_no, chosen_cols].reset_index()[chosen_cols]
+                newdf = pd.DataFrame({
+                    name: func(np.asarray(newdf[name].values)) for name in newdf.columns
+                })
+                newdf[x_col] = knots # Add the new x-axis column 
+                newdf[sweep_col] = sweep_no # Add the sweep to the column
                 dflist.append(newdf)
             except Exception as e:
                 print(e)
                 pass
         
         interpdf = pd.concat(dflist)
-        if not indexed:
-            interpdf = interpdf.reset_index()
+        if indexed:
+            interpdf = interpdf.set_index(sweep_col)
             
         return interpdf
 
@@ -121,44 +125,102 @@ class PCArchitect:
 
 
 if __name__=='__main__':
-    
-    pcarc = PCArchitect({
-        'v1': {
-            'distribution': 'normal',
-            'parameters': {
-                'mu': 2,
-                'var': 0.1
+
+
+
+    vars = {
+        "Ts": {
+            "distribution": "normal",
+            "parameters": {
+                "mu": 3,
+                "var": 0.3
             }
         },
-        
-        'v2': {
-            'distribution': 'uniform',
-            'parameters': {
-                'min': 0,
-                'max': 3
+        "dV": {
+            "distribution": "uniform",
+            "parameters": {
+                "min": 0.5,
+                "max": 1.2
             }
         }
-    })
+    } 
 
-    N = 20
-    points, df, weights = pcarc.get_experimental_design(N)
+    # Create pc instance
+    pcarch = PCArchitect(vars)
 
-    # Create an inline function 
-    fun1 = lambda x, y: x**2 + 3*y**2
-    fun2 = lambda x, y: 1.2*x**2 + 3*y**3
+    sample_size = 3
+    pts, varsdf, w = pcarch.get_experimental_design(sample_size=sample_size)
+    print(varsdf)
+    # To the same points apply two different functions
+    fun1 = lambda t, x, y: t**2 + 0.2*x**2 + 0.4*y**3
+    fun2 = lambda t, x, y: t**2 + np.sin(x) - 0.4*y**3
+
+    # I need to simulate the `sample_size` times I am getting a result. The time vector for each of these results can be different.
+    start, stop = 0.1, 0.3 # Time vector bounds.
+    low, high = 3, 5 # number of possible lengths of the time vector
+    ntime = np.random.randint(low, high+1, sample_size)
+    dflist = []
+    for i, ind in enumerate(varsdf.index):
+        time = np.linspace(start, stop, ntime[i])
+        partdf = varsdf.loc[ind]
+        partdf = pd.DataFrame({
+            'time': time,
+            'fun1': fun1(time, partdf['Ts'], partdf['dV']),
+            'fun2': fun2(time, partdf['Ts'], partdf['dV']),
+            'sweep': i
+        })
+        dflist.append(partdf)
+
+    df = pd.concat(dflist)
+
+    aggdf = df[['time', 'sweep']].groupby('sweep').agg(
+        func = ['count', 'min', 'max'],axis=0
+        )['time']
+
+    maxtime = np.max(aggdf['max'])
+    mintime = np.min(aggdf['min'])
+    meancount  = np.int64(np.ceil(np.mean(aggdf['count']))) # Cast to integer
+
+    interpolated = PCArchitect.interpolate_df_n(df, 'sweep', 'time', [mintime, maxtime], meancount, indexed=True)
+    print(interpolated)
+
+    # pcarc = PCArchitect({
+    #     'v1': {
+    #         'distribution': 'normal',
+    #         'parameters': {
+    #             'mu': 2,
+    #             'var': 0.1
+    #         }
+    #     },
+        
+    #     'v2': {
+    #         'distribution': 'uniform',
+    #         'parameters': {
+    #             'min': 0,
+    #             'max': 3
+    #         }
+    #     }
+    # })
+
+    # N = 20
+    # points, df, weights = pcarc.get_experimental_design(N)
+
+    # # Create an inline function 
+    # fun1 = lambda x, y: x**2 + 3*y**2
+    # fun2 = lambda x, y: 1.2*x**2 + 3*y**3
 
 
-    # Create a new output. This corresponds to one `sweep`
-    new = fun1(df['v1'], df['v2'])
-    # new.values should be numpy array
-    pcalgo = pcarc.compute_sparse_pc_expansion(points, new.values, 3)
-    metamodel = pcalgo.getMetaModel()
+    # # Create a new output. This corresponds to one `sweep`
+    # new = fun1(df['v1'], df['v2'])
+    # # new.values should be numpy array
+    # pcalgo = pcarc.compute_sparse_pc_expansion(points, new.values, 3)
+    # metamodel = pcalgo.getMetaModel()
 
-    points, _, _ = pcarc.get_experimental_design(1000)
-    metaresult = metamodel(points)
-    graph = ot.HistogramFactory().build(metaresult).drawPDF()
-    view = viewer.View(graph)
-    plt.show()
+    # points, _, _ = pcarc.get_experimental_design(1000)
+    # metaresult = metamodel(points)
+    # graph = ot.HistogramFactory().build(metaresult).drawPDF()
+    # view = viewer.View(graph)
+    # plt.show()
 
 
     # There also has to be some kind of validation metrics.
