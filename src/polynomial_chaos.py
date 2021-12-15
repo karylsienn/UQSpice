@@ -54,12 +54,46 @@ class PCArchitect:
             return samples_df
         return samples, samples_df, weights
 
+    def predict(self, input_samples: pd.DataFrame, x_col: str, sweep_col: str):
+        # Random variable names are in `self.variables`. 
+        # `x_col` represents a name for a deterministic variable
+        # We need to search in available models for the value of `x_col` as close as possible
+        # to the values that we have in the available models.
+        pass
+
+    def compute_pc_expansion(self, input_samples: pd.DataFrame, output_samples: pd.DataFrame, max_total_degree, x_col, sweep_col):
+        if np.any(np.isin(sweep_col, input_samples.columns)):
+            if input_samples.index.name is None:
+                input_samples = input_samples.set_index(sweep_col).sort_index()
+            elif input_samples.index.name != sweep_col:
+                input_samples = input_samples.reset_index().set_index(sweep_col).sort_index()
+            input_samples = np.asarray(input_samples)
+        else:
+            # Assume that `input_samples` are sorted correctly.
+            input_samples = np.asarray(input_samples)
+            pass
+
+        if output_samples.index.name is None:
+            output_samples = output_samples.set_index(sweep_col).sort_index()
+        elif output_samples.index.name != sweep_col:
+            output_samples = output_samples.reset_index().set_index(sweep_col).sort_index()
+        elif output_samples.index.name == sweep_col:
+            output_samples = output_samples.sort_index()
+        output_samples = output_samples.set_index(x_col).sort_index()
+        
+        unique_indices = output_samples.index.unique()
+        pclist = [ot.metamodel.FunctionalChaosResult()] * len(unique_indices)
+        for i, t in enumerate(unique_indices):
+            partdf = np.asarray(output_samples.loc[t])
+            pc_expansion = self.compute_sparse_pc_expansion(input_samples, partdf, max_total_degree)
+            pclist[i] = pc_expansion
+        return pclist
 
     def compute_sparse_pc_expansion(self, input_samples, output_samples, max_total_degree):
         """
         Computes the sparse expansion given `input_samples` and `output_samples`
         """
-        output_samples = ot.Sample.BuildFromPoint(np.asarray(output_samples))
+        output_samples = np.asarray(output_samples)
         selection_algorithm = ot.LeastSquaresMetaModelSelectionFactory()
         least_squares = ot.LeastSquaresStrategy(input_samples, output_samples, selection_algorithm)
         enumfunc = self.multivariate_basis.getEnumerateFunction()
