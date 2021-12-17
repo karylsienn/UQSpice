@@ -71,7 +71,6 @@ class PCArchitect:
         else:
             # Assume that `input_samples` are sorted correctly.
             input_samples = np.asarray(input_samples)
-            pass
 
         if output_samples.index.name is None:
             output_samples = output_samples.set_index(sweep_col).sort_index()

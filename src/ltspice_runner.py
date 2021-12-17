@@ -93,6 +93,30 @@ class LTSpiceRunner:
             return True
         except Exception as e:
             raise e
+    
+    def clean_sweeps(self):
+        netlist = parse_netlist(self.get_fullname())
+        en = enumerate(netlist)
+        for idx, command in en:
+            if re.match(re.escape(f"* Sweep added by LTSpiceRunner {self.hash}"), command):
+                start_idx = idx
+            elif re.match(re.escape(f"* Finished sweep by LTSpiceRunner {self.hash}"), command):
+                end_idx = idx
+                break
+            else:
+                pass            
+
+        while start_idx <= end_idx:
+            netlist.pop(start_idx)
+            end_idx -= 1
+
+        try:
+            write_netlist(netlist, self.get_fullname())
+            return True
+        except Exception as e:
+            raise e
+            
+
 
 
     def run(self, timeout=20, ascii=False):
@@ -105,6 +129,10 @@ class LTSpiceRunner:
                             shell=True, check=True,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
                 assert isinstance(A, subprocess.CompletedProcess)
+                if isinstance(A, subprocess.CompletedProcess):
+                    return True
+                else:
+                    return False
 
         except Exception as e:
             raise e
@@ -122,6 +150,16 @@ class LTSpiceReader:
         # that the Reader does not have to be used only with conjuction with a specific runner.
         self.parse_header()
         self.parse_log()  
+        # Are there any meas or four commands?
+        fullname = self.runner.get_fullname()
+        netlist = parse_netlist(fullname)
+        self.no_measurements = 0
+        self.no_four = False
+        for command in netlist:
+            if re.match('.meas', command, re.IGNORECASE):
+                self.no_measurements += 1
+            elif re.match('.four', command, re.IGNORECASE):
+                self.no_four +=1
 
 
     def parse_log(self):
@@ -183,6 +221,11 @@ class LTSpiceReader:
         # Return straightaway   
         return self.data_df
 
+    def get_four_table(self):
+        if not self.four:
+            raise ValueError("There is no .four statements")
+        else:
+            pass
 
     def get_steps(self, num_only=False):
         """
@@ -198,7 +241,7 @@ class LTSpiceReader:
         # Split the steps to find the information about the stepped data
         # Have to read the steps from the netlist and from the log simultaneously.
         # Find sweep added by this ltrunner instance and get it.
-        runnerhash = self.runner.hash()
+        runnerhash = self.runner.hash
         # Read line by line and find only those, which have the hash of this runner
         netlist_lines = parse_netlist(self.runner.get_fullname(),
                                       encoding=ENC_UTF16LE)
@@ -248,8 +291,11 @@ class LTSpiceReader:
     def get_variable_names(self):
         return self.header['Variables']['Variable']
 
-    def any_meas(self, header_dict):
-        return any(re.match('meas', line, re.IGNORECASE) for line in self.header['Flags'])
+    def any_four(self):
+        return self.no_four > 0
+
+    def any_meas(self):
+        return self.no_measurements > 0
 
     def _is_stepped(self, header_dict):
         return any(re.match('stepped', line, re.IGNORECASE) for line in self.header['Flags'])
@@ -269,12 +315,22 @@ class LTSpiceReader:
                 
 
 if __name__=='__main__':
-    netlist_path = 'ltspice_files/Lisn_sym_copy.net'
+
+    netlist_path = '/Users/karolniewiadomski/Documents/SCENT/Research/Toolbox/UQSpice_0.02/ltspice_files/raport01/Lisn_sym_copy.net'
     ltrunner = LTSpiceRunner(netlist_path)
+    # sweepdf = pd.DataFrame({
+    #     'C1': [1,2],
+    #     'R1': [2,3]
+    # })
+    # ltrunner.add_sweep(sweepdf)
+    # ltrunner.run(timeout=10)
+    # removed = ltrunner.clean_sweeps()
+
     # ltrunner.run(ascii=False)
     ltreader = LTSpiceReader(ltrunner)
-    parsed_data = ltreader.parse_raw(columns=['time','V(n006)','Ix(u1:LOUT)'], add_step=False)
-    print(parsed_data)
+    print(ltreader.any_four())
+    # parsed_data = ltreader.parse_raw(columns=['time','V(n006)','Ix(u1:LOUT)'], add_step=False)
+    # print(parsed_data)
     
     # ax = parsed_data[parsed_data['step_no']==0].plot(x='time', y = 'V(n006)', c='magenta')
     # parsed_data[parsed_data['step_no']==1].plot(x='time', y = 'V(n006)', c='cyan', ax=ax)
