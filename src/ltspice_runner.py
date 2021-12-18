@@ -1,3 +1,4 @@
+import enum
 import os, subprocess, sys, re
 import numpy as np
 from numpy.core.numeric import full
@@ -150,6 +151,8 @@ class LTSpiceReader:
         # that the Reader does not have to be used only with conjuction with a specific runner.
         self.parse_header()
         self.parse_log()  
+        # How many and what are the steps?
+        # self.get_steps() 
         # Are there any meas or four commands?
         fullname = self.runner.get_fullname()
         netlist = parse_netlist(fullname)
@@ -221,11 +224,108 @@ class LTSpiceReader:
         # Return straightaway   
         return self.data_df
 
-    def get_four_table(self):
-        if not self.four:
-            raise ValueError("There is no .four statements")
+    def get_measurements(self):
+        # TODO: Put which measurements you want to read.
+        start_idx, end_idx, dflist = 0, 0, []
+        names = []
+        found_meas, no_meas = False, 0
+        for idx, line in enumerate(self.log):
+            if re.match("Measurement", line):
+                found_meas = True
+                searched = re.search("Measurement:(.*)$", line)
+                if searched:
+                    name = searched.group(1).strip()
+                    names.append(name)
+            elif found_meas and re.search('step', line):
+                # Line with names
+                start_idx = idx
+            elif found_meas and line == "":
+                # Finished table
+                end_idx = idx
+                df = self._extract_meas_table(start_idx, end_idx)
+                found_meas = False
+                dflist.append(df)
+                no_meas += 1
+            elif not found_meas and no_meas == self.no_measurements:
+                break
+        
+        dd = {name: df for name, df in zip(names, dflist)}
+        self.dfmeas = dd
+        return dd
+            
+
+    def _extract_meas_table(self, start_idx, end_idx):
+        df_lines = self.log[start_idx:end_idx]
+        col_header = [x.strip() for x in df_lines[0].split("\t")]
+        col_types = ['int', 'float', 'float', 'float']
+        dtype = list(zip(col_header, col_types))
+        fl = lambda x: self.__find_float(x)
+        arr = np.array([tuple(fl(y.strip()) for y in x.split("\t")) for x in df_lines[1:]],
+                dtype=dtype)
+        return pd.DataFrame.from_records(arr)
+
+    def get_four(self):
+        # TODO: make fourier dictionary - maybe the user doesn't want to read everything?
+        dflist, step, four_past = [], 0, 0
+        for idx, line in enumerate(self.log):
+            if re.match(".step", line):
+                step += 1
+            elif re.match("Fourier components of ", line):
+                searched = re.search("Fourier components of (.*)$", line)
+                node = searched.group(1).strip()
+            elif re.match("N-Period", line):
+                searched = re.search("N-Period=([0-9]+)", line)
+                period = int(searched.group(1).strip())
+            elif re.match("DC component", line):
+                searched = re.search("DC component:(.*)$", line)
+                dc_component = float(searched.group(1).strip())
+            elif re.match("Harmonic\tFrequency", line):
+                start_idx = idx
+            elif re.match("Total Harmonic Distortion", line):
+                four_past += 1
+                # put end_idx and extract the THD
+                end_idx = idx
+                df = self._extract_four_df(start_idx, end_idx)
+                searched = re.search("Total Harmonic Distortion: (.*)\%\((.*)\%\)", line)
+                thd1 = float(searched.group(1))
+                thd2 = float(searched.group(2))
+
+                # Append the table on exit
+                df['node'] = node
+                df['no. periods'] = period
+                df['dc'] = dc_component
+                df["thd1"] = thd1/1e2
+                df["thd2"] = thd2/1e2
+                df["step"] = step 
+
+                if four_past <= self.no_four:
+                    dflist.append(df)
+                    four_past = 0
+        
+        df = pd.concat(dflist)
+        self.dffour = df
+        return df
+                
+
+    def _extract_four_df(self, start_idx, end_idx):
+        df_lines = self.log[start_idx:end_idx]
+        col_headers = df_lines[:2]
+        col_headers = [x.split("\t") for x in col_headers]
+        col_headers = [" ".join([x.strip(), y.strip()]) for x, y in zip(col_headers[0], col_headers[1]) ]
+        col_types = ["int", "float","float", "float", "float", "float"]
+        dtype = list(zip(col_headers, col_types))
+        fl = lambda x: self.__find_float(x)
+        arr = np.array([tuple(fl(y.strip()) for y in x.split("\t")) for x in df_lines[2:]],
+                dtype=dtype)
+        return pd.DataFrame.from_records(arr)
+
+    @staticmethod
+    def __find_float(x):
+        searched = re.search(r"[-+]?(\d+([.,]\d*)?|[.,]\d+)([eE][-+]?\d+)?", x)
+        if searched:
+            return(searched.group(1))
         else:
-            pass
+            raise ValueError("There is no float here.")
 
     def get_steps(self, num_only=False):
         """
@@ -236,6 +336,7 @@ class LTSpiceReader:
         # Filter lines with .step command
         step_lines = [line for line in self.log if re.match('^.step', line, re.IGNORECASE)]
         no_steps = len(step_lines)
+        self.no_steps = no_steps
         if num_only:
             return no_steps
         # Split the steps to find the information about the stepped data
@@ -316,19 +417,67 @@ class LTSpiceReader:
 
 if __name__=='__main__':
 
-    netlist_path = '/Users/karolniewiadomski/Documents/SCENT/Research/Toolbox/UQSpice_0.02/ltspice_files/raport01/Lisn_sym_copy.net'
-    ltrunner = LTSpiceRunner(netlist_path)
-    # sweepdf = pd.DataFrame({
-    #     'C1': [1,2],
-    #     'R1': [2,3]
-    # })
-    # ltrunner.add_sweep(sweepdf)
-    # ltrunner.run(timeout=10)
-    # removed = ltrunner.clean_sweeps()
+    import polynomial_chaos as pc
 
-    # ltrunner.run(ascii=False)
+    # Some desired parameters
+    fs = 20e3
+    duty = 0.5
+    Vg = 24
+    Vout = 12
+    diL = 1
+    Ts = 1/fs
+    dV = 0.1
+
+    # Nominal values
+    nomL = (Vg-Vout)/(2*diL) * duty * Ts
+    nomC = diL*Ts/(8*dV)
+    nomR = 10
+
+    # Specify the random variables
+    vars = {
+        "C1": {
+            "distribution": "uniform",
+            "parameters": {
+                "min": nomC - 0.1*nomC,
+                "max": nomC + 0.1*nomC
+            }
+        },
+
+        "L1": {
+            "distribution": "uniform",
+            "parameters": {
+                "min": nomL - 0.1*nomL,
+                "max": nomL + 0.1*nomL
+            }
+        },
+
+        "R1": {
+            "distribution": "uniform",
+            "parameters": {
+                "min": nomR - 0.1*nomR,
+                "max": nomR + 0.1*nomR
+            }
+        }
+    }
+
+
+    # Specify the desired number of simulations
+    num_sim = 3
+
+    # Create the PC architect
+    pcarch = pc.PCArchitect(vars)
+    pts, pts_df, w = pcarch.get_experimental_design(num_sim)
+
+    # Maintain the LTSpice Runner
+    netlist_path = "/Users/karolniewiadomski/Documents/SCENT/Research/Toolbox/UQSpice_0.02/ltspice_files/raport01/Lisn_sym.net"
+    ltrunner = LTSpiceRunner(netlist_path)
+    ltrunner.add_sweep(pts_df, sweep_param_name='Rx')
+    ltrunner.run()
+    ltrunner.clean_sweeps()
+
     ltreader = LTSpiceReader(ltrunner)
-    print(ltreader.any_four())
+    print(ltreader.get_measurements())
+
     # parsed_data = ltreader.parse_raw(columns=['time','V(n006)','Ix(u1:LOUT)'], add_step=False)
     # print(parsed_data)
     
