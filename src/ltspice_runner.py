@@ -469,7 +469,7 @@ if __name__=='__main__':
     pts, pts_df, w = pcarch.get_experimental_design(num_sim)
 
     # Maintain the LTSpice Runner
-    netlist_path = "/Users/karolniewiadomski/Documents/SCENT/Research/Toolbox/UQSpice_0.02/ltspice_files/raport01/Lisn_sym.net"
+    netlist_path = "../ltspice_files/raport01/Lisn_sym.net"
     ltrunner = LTSpiceRunner(netlist_path)
     ltrunner.add_sweep(pts_df, sweep_param_name='Rx')
     ltrunner.run()
