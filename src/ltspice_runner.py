@@ -1,12 +1,8 @@
-import enum
 import os, subprocess, sys, re
 import numpy as np
-from numpy.core.numeric import full
 import pandas as pd
 from parse_utils import ENC_UTF16LE, ENC_UTF8, parse_binary, parse_header, parse_netlist, write_netlist, parse_log
 import re
-from datetime import datetime
-from struct import unpack
 import matplotlib.pyplot as plt
 from random import random
 
