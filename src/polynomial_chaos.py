@@ -54,12 +54,70 @@ class PCArchitect:
             return samples_df
         return samples, samples_df, weights
 
-    def predict(self, input_samples: pd.DataFrame, x_col: str, sweep_col: str):
+    def predict(self, input_samples: pd.DataFrame, pc_expansion, sweep_col: str, x_col=None):
+        if type(pc_expansion) is list and x_col is not None:
+            return self._predict_batch(input_samples, pc_expansion, x_col, sweep_col)
+        elif type(pc_expansion) is ot.FunctionalChaosResult:
+            return self._predict_single(input_samples, pc_expansion, sweep_col)
+        else:
+            raise ValueError("Improper types for `predict`.")
+
+
+    def _predict_single(self, input_samples: pd.DataFrame, pc_expansion: ot.metamodel.FunctionalChaosResult, sweep_col: str):
+        if np.any(np.isin(sweep_col, input_samples.columns)):
+            if input_samples.index.name is None:
+                input_samples = input_samples.set_index(sweep_col).sort_index()
+            elif input_samples.index.name != sweep_col:
+                input_samples = input_samples.reset_index().set_index(sweep_col).sort_index()
+            input_samples = np.asarray(input_samples)
+        else:
+            input_samples = np.asarray(input_samples)
+        metamodel = pc_expansion.getMetaModel()
+        newoutput = metamodel(input_samples)
+        newoutput_df = pd.DataFrame(np.asarray(newoutput))
+        return newoutput_df
+
+    def get_sobol_indices(self, pc_expansion):
+        sobolIndices = ot.FunctionalChaosSobolIndices(pc_expansion)
+        return sobolIndices
+    
+
+    def plot_sobol_indices(self, pc_expansion, marginals=None):
+        sobolIndices = self.get_sobol_indices(pc_expansion)
+        metamodel = pc_expansion.getMetaModel()
+        dimension = metamodel.getInputDimension()
+        if marginals is None:
+            output_dim = metamodel.getOutputDimension()
+            marginals = range(output_dim)
+        
+        outputDescription = metamodel.getOutputDescription()
+        for m in marginals:
+            first_order = [sobolIndices.getSobolIndex(i, m) for i in range(dimension)]
+            total_order = [sobolIndices.getSobolTotalIndex(i, m) for i in range(dimension)]
+            description = metamodel.getInputDescription()
+            graph = ot.SobolIndicesAlgorithm.DrawSobolIndices(description, first_order, total_order)
+            graph.setLegendPosition('center')
+            graph.setTitle(f"Sobol' indices for {outputDescription[m]}")
+            viewer.View(graph)
+
+
+    def hist(self, pc_expansion, n_samples):
+        newpts, _,_ = self.get_experimental_design(n_samples)
+        metamodel = pc_expansion.getMetaModel()
+        newoutput = metamodel(newpts)
+        columns = metamodel.getOutputDescription()
+        output_df = pd.DataFrame(np.asarray(newoutput), columns=columns)
+        h = output_df.hist(bins=20, density=True)
+        return h
+
+
+    def _predict_batch(self, input_samples: pd.DataFrame, pc_expansions: list, x_col: str, sweep_col: str):
         # Random variable names are in `self.variables`. 
         # `x_col` represents a name for a deterministic variable
         # We need to search in available models for the value of `x_col` as close as possible
         # to the values that we have in the available models.
         pass
+    
 
     def compute_pc_expansion(self, input_samples: pd.DataFrame, output_samples: pd.DataFrame, max_total_degree, x_col, sweep_col):
         if np.any(np.isin(sweep_col, input_samples.columns)):
@@ -88,10 +146,11 @@ class PCArchitect:
             pclist[i] = pc_expansion
         return pclist
 
-    def compute_sparse_pc_expansion(self, input_samples, output_samples, max_total_degree):
+    def compute_sparse_pc_expansion(self, input_samples, output_samples, max_total_degree, description=None):
         """
         Computes the sparse expansion given `input_samples` and `output_samples`
         """
+        # Set description
         output_samples = np.asarray(output_samples)
         selection_algorithm = ot.LeastSquaresMetaModelSelectionFactory()
         least_squares = ot.LeastSquaresStrategy(input_samples, output_samples, selection_algorithm)
@@ -101,6 +160,10 @@ class PCArchitect:
         pc_algo = ot.FunctionalChaosAlgorithm(input_samples, output_samples, self.distribution, basis_strategy, least_squares)
         pc_algo.run()
         pc_expansion = pc_algo.getResult()
+        if description is not None:
+            metamodel = pc_expansion.getMetaModel()
+            metamodel.setDescription(description) 
+            pc_expansion.setMetaModel(metamodel)
         return pc_expansion
 
     @staticmethod
@@ -188,7 +251,8 @@ if __name__=='__main__':
     fun1 = lambda t, x, y: t**2 + 0.2*x**2 + 0.4*y**3
     fun2 = lambda t, x, y: t**2 + np.sin(x) - 0.4*y**3
 
-    # I need to simulate the `sample_size` times I am getting a result. The time vector for each of these results can be different.
+    # I need to simulate the `sample_size` times I am getting a result. 
+    # The time vector for each of these results can be different.
     start, stop = 0.1, 0.3 # Time vector bounds.
     low, high = 3, 5 # number of possible lengths of the time vector
     ntime = np.random.randint(low, high+1, sample_size)

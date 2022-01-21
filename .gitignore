@@ -3,3 +3,4 @@ ltspice_files/
 __pycache__
 .vscode
 *.ipynb
+notebooks/

@@ -1,3 +1,4 @@
+from io import UnsupportedOperation
 import re, os
 from datetime import datetime
 from numpy import exp
@@ -14,18 +15,26 @@ DTYPE_COMPLEX128 = 'complex128'
 def parse_netlist(netlist_path, encoding=None):
     if os.path.exists(netlist_path):
         if encoding is None:
-            with open(netlist_path, 'rb') as file:
-                file.read(2) # Pass first two bytes.
-                first_byte = file.read(2)
-                if first_byte.decode(ENC_UTF8) == "* ":
+            try:
+                with open(netlist_path, 'r', encoding=ENC_UTF8) as file:
+                    line = file.readline()
                     encoding = ENC_UTF8
-                elif first_byte.decode(ENC_UTF16LE) == "*":
-                    encoding = ENC_UTF16LE
-                else:
-                    raise Exception(f"Unknown encoding of the file {netlist_path}.")
-            file.close()
+                file.close()
 
-        if encoding is not None and file.closed:
+            except Exception as e:
+                try:
+                    with open(netlist_path, 'r', encoding=ENC_UTF16LE) as file:
+                        line = file.readline()
+                        encoding = ENC_UTF16LE
+                    file.close()
+                
+                except Exception as e:
+                    raise e
+
+        elif encoding is not None:
+            encoding = check_encoding(encoding)
+
+        if encoding is not None:
             try:
                 with open(netlist_path, 'r', encoding=encoding) as file:
                     lines = file.read().split('\n')
@@ -85,7 +94,7 @@ def parse_binary(raw_path, no_points, no_variables,
         raise ValueError("Index start should be defined and greater than zero.")
     
     # The error has not been raised, move forward.
-    if col_idx is None or any(cidx <= 0 for cidx in col_idx):
+    if col_idx is None or any(cidx < 0 for cidx in col_idx):
         # By default read all variables
         col_idx == range(no_variables)
     
@@ -104,13 +113,15 @@ def parse_binary(raw_path, no_points, no_variables,
             raise ValueError("The lengths of `col_names` and `col_idx` do not match.")
         col_names = str(col_names) 
 
-    dtype = check_datatype(dtype)
-    header_encoding = check_encoding(header_encoding)
-    # raw_path = re.sub(r'.asc$|.cir$|.net$', '.raw', fullname)
+    try:
+        dtype = check_datatype(dtype)
+        header_encoding = check_encoding(header_encoding)
+    except Exception as e:
+        raise e
 
     with open(raw_path, 'rb') as file:
         decodedfun = read_byte_utf16le if header_encoding == ENC_UTF16LE else read_byte_utf8
-        sep, data_line, no_lines = "\n", "Binary:", 1
+        sep, data_line, no_lines = "\n", "Binary:\n", 1
         # Pass the header until you reach the binary part 
         while no_lines < index_start:
             decoded = decodedfun(file)
@@ -135,7 +146,7 @@ def parse_binary(raw_path, no_points, no_variables,
                     # Get the name of this columns
                     name = col_dict[var_idx]
                     if var_idx==0:
-                        # Read the timestamp of frequency
+                        # Read the time or frequency
                         data_df.at[i, name] = read_real8(file)
                     else:
                         # Read the variables provided in columns
@@ -245,7 +256,8 @@ def read_complex16(file):
     """
     Read the complex data, saved in two 8-bytes chunks (for real and imaginary parts)
     """
-    return unpack('dd', file.read(16))
+    (real, imaginary) = unpack('dd', file.read(16))
+    return complex(real=real, imag=imaginary)
 
 
 def check_encoding(encoding):

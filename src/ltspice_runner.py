@@ -1,10 +1,14 @@
-import os, subprocess, sys, re
+from email import header
+from multiprocessing.sharedctypes import Value
+import os, subprocess, sys, re, mmap
 import numpy as np
 import pandas as pd
 from parse_utils import ENC_UTF16LE, ENC_UTF8, parse_binary, parse_header, parse_netlist, write_netlist, parse_log
 import re
 import matplotlib.pyplot as plt
 from random import random
+from datetime import datetime
+import warnings
 
 """
 LTspiceRunner is responsible for a given netlist, cir or asc file.
@@ -66,13 +70,14 @@ class LTSpiceRunner:
         return param_line, values_lines
 
 
-    def add_sweep(self, input_samples: pd.DataFrame, sweep_param_name='Rx'):
+    def add_sweep(self, input_samples: pd.DataFrame, sweep_param_name='Rx', encoding=None):
         """
         Appends the netlist with sweep command created from the `input_samples`.
         """
         param, values = self._create_sweep_command(input_samples, sweep_param_name)
         # Read the netlist
-        netlist = parse_netlist(self.get_fullname())
+        netlist = parse_netlist(self.get_fullname(), encoding=encoding) # Hard encoding now.
+
         # Add this before the .backanno command
         # Should also add some kind of marker.
         for idx, command in enumerate(netlist):
@@ -114,9 +119,20 @@ class LTSpiceRunner:
             raise e
             
 
+    def _save_cols(self, cols=None):
+        # It is reasonable to save only selected variables to both speed-up the simulation
+        # and the postprocessing of the data
+        # TODO: implement
+        pass
 
 
-    def run(self, timeout=20, ascii=False):
+
+    def run(self, timeout=20, ascii=False, cols=None):
+
+        # Save a portion of the columns.
+        if cols is not None:
+            self._save_cols(cols)
+        
         try:
             if self._ltspice is not None:
                 cmd =  self._cmd_separator.join([
@@ -152,6 +168,8 @@ class LTSpiceReader:
         # Are there any meas or four commands?
         fullname = self.runner.get_fullname()
         netlist = parse_netlist(fullname)
+
+        # Specify if there are any `meas` or `four` commands
         self.no_measurements = 0
         self.no_four = False
         for command in netlist:
@@ -160,65 +178,151 @@ class LTSpiceReader:
             elif re.match('.four', command, re.IGNORECASE):
                 self.no_four +=1
 
+    @staticmethod
+    def _header_to_dict(headerlist, offset, encoding):
+        assert type(headerlist) is list
+        # For the variables columns make the binary stride
+        header_dict = {}
+        variables_idx = None
+        for idx, line in enumerate(headerlist):
+            searched = re.search(r'([A-Za-z\. ]+):(.*)$', line)
+            key, value = searched.group(1).strip(), searched.group(2).strip()
+            # Some values are numerical, such no. points, no. variables etc.
+            if re.match(r'Offset', key, re.IGNORECASE):
+                # Cast to number
+                value = float(value)
+            elif re.match(r'No. Variables|No. Points', key, re.IGNORECASE):
+                # Cast to integer
+                value = int(value)
+            elif re.match(r'Date', key, re.IGNORECASE):
+                # Create a datetime object
+                value = datetime.strptime(value, "%a %b %d %H:%M:%S %Y")
+            elif re.match(r'Flags', key, re.IGNORECASE):
+                # Flags should be separated
+                value = value.split(" ")
+            elif re.match(r'^Variable', key, re.IGNORECASE):
+                # The rest until `Data` flag should be the variable description
+                variables_idx = idx+1
+                break
+            # Append the dictionary
+            header_dict[key] = value
+
+        if variables_idx is not None:
+            # Variables should be the last thing before `Data` flag
+            # and `Data` flag is the last thing in `header_lines`
+            # `key` should be 'variables'
+            header_dict[key] = pd.DataFrame([
+                line.strip().split('\t')[1:] for line in headerlist[variables_idx:(len(headerlist)-1)]],
+                columns=['Variable', 'Description'])
+            header_dict["Binary_offset"] = offset # Append the number of lines at which "Data" or "Binary" appears
+            header_dict["Encoding"] = encoding
+        return header_dict
+
+    def parse_header(self):
+        filename = re.sub(r'.net$|.cir$|.asc$',r'.raw', self.runner.get_fullname())
+        with open(filename, 'r+b') as rawfile:
+            # Map the first part not to have to read it into the memory
+            mm = mmap.mmap(rawfile.fileno(), 0)  # Map the whole file in place, not to run into memory issues
+            
+            # Check what is the enoding of the file
+            title = mm.read(6)
+            if title.decode(ENC_UTF8) == 'Title':
+                encoding = ENC_UTF8
+            elif title.decode(ENC_UTF16LE) == 'Tit':
+                encoding = ENC_UTF16LE
+            else:
+                mm.close()
+                raise ValueError(f"Unknown encoding of the file {filename}")
+
+            # Find the binary part and get the results back
+            # TODO: Implement ASCII.
+            offset = mm.find("Binary:\n".encode(encoding))
+            mm.close()
+
+            # Create the header from the first part of the file
+            headerlines = rawfile.read(offset)
+            header = headerlines.decode(encoding).replace("\r", "\n").split("\n") # Useful for windows
+            offset += 16 if encoding == ENC_UTF16LE else 8
+            self.header = LTSpiceReader._header_to_dict(header, offset, encoding)
+        
+
+    def parse_rawfile(self):
+        filename = re.sub(r'.net$|.cir$|.asc$',r'.raw', self.runner.get_fullname())
+        offset = self.header["Binary_offset"]
+        with open(filename, 'r+b') as rawfile:
+            # Read the file from this offset onwards
+            rawfile.seek(offset, os.SEEK_SET)
+            binary = rawfile.read()
+
+        # Get the binary in the simplest form possible
+        binary = np.frombuffer(binary, dtype='uint8')
+
+        # Get the number of points and variable for further file reading
+        npoints, nvars = self.header['No. Points'], self.header['No. Variables']
+
+        # What is the data type?
+        if self._is_real():
+            xnbytes, datanbytes = 8, 4
+            xtype, datatype = "<f8", "<f4"
+        elif self._is_complex():
+            xnbytes = datanbytes = 16
+            xtype = datatype = "<c16"
+        else:
+            raise ValueError("Uknown flags! Don't know how to read the raw file.")
+
+        # TODO: Check if the length of the file is okay.
+        # How many bytes are there per row of data?
+        bytesperrow = xnbytes + (nvars-1)*datanbytes
+        
+        # We are setting the view using `as_strided`, which is generally not recommended
+        xvar_uncompressed = np.lib.stride_tricks.as_strided(
+            np.frombuffer(binary, dtype=xtype),
+            shape=(npoints,),
+            strides=(bytesperrow,))
+        xvar = np.abs(xvar_uncompressed) # To prevent imposing abs on the rest of the data
+        
+        # Get the rest of the columns
+        data = np.lib.stride_tricks.as_strided(
+            np.frombuffer(binary[xnbytes:], dtype=datatype), # Read from the rest of the file
+            shape=(npoints, nvars-1),
+            strides=(bytesperrow, datanbytes))
+        
+        # Create a dictonary of steps or at least steps offsets
+        if self._is_stepped():
+            plotname = self.header['Plotname']
+            try:
+                self._step_indices = LTSpiceReader._get_step_indices(xvar, plotname)
+            except Exception as e:
+                print(e)
+                warnings.warn("Making the step dictionary empty")
+                self._step_indices = np.asarray([])
+        else:
+            self._step_indices = np.asarray([]) # Empty array
+
+        # Have the data in self field
+        self._data = data
+        self._xvar = xvar
+
+
+    @staticmethod
+    def _get_step_indices(xvar, analysis_type):
+        if re.match('transient',analysis_type, re.IGNORECASE):
+            # The value does not have to be the same for each step
+            # The time vector should be monotically increasing, we will take the differences
+            # and the index where the negative differences occur are the ones where the next step starts
+            return np.insert(np.flatnonzero(np.diff(xvar) < 0) + 1, 0, 0)
+        elif re.match('ac', analysis_type, re.IGNORECASE):
+            # Actually the same methodology as above could be applied
+            return np.insert(np.flatnonzero(np.diff(xvar) < 0) + 1, 0, 0)        
+        else:
+            raise NotImplementedError("Other analyses are not implemented yet.")
+
 
     def parse_log(self):
         fullname = self.runner.get_fullname()
         log_path = re.sub(r'.net$|.asc$|.cir$', r'.log', fullname)
         self.log = parse_log(log_path)
         return self.log
-
-    def parse_header(self):
-        fullname = self.runner.get_fullname()
-        raw_path = re.sub(r'.net$|.cir$|.asc$', r'.raw', fullname)
-        self.header = parse_header(raw_path)
-        return self.header
-
-
-    def parse_raw(self, columns=None, add_step=True, interpolate=False):
-        # Find if it's ascii or not -- need to find a flag with Binary or Data
-        # Assume that the encoding is utf-16 le. Read 2 bytes at a time. -- assume that it is not ascii for now.
-        # For now, simply append the string chain. We will think about the rest and optimizatoin later.
-        fullname = self.runner.get_fullname()
-        raw_path = re.sub(r'.net$|.cir$|.asc$', r'.raw', fullname)
-        header_encoding = self.header["Encoding"]
-        no_points = int(self.header["No. Points"])
-        no_variables = int(self.header["No. Variables"])
-        index_start = int(self.header["No. Lines"])
-        offset = self.header["Offset"]
-
-        # Find the indexes of the columns we want to look at
-        all_columns = self.get_variable_names()
-        col_idx = [idx for idx, name in enumerate(all_columns) if (name in columns)]
-        
-        # Find the data type
-        if self._is_real():
-            dtype = 'float64'
-        elif self._is_complex():
-            dtype = 'complex128'
-        else:
-            raise ValueError("Unknown data type.")
-
-        # Data frame of the LTSpice data
-        self.data_df = parse_binary(
-            raw_path, no_points, no_variables,
-            index_start=index_start, col_idx=col_idx, col_names=columns,
-            dtype=dtype, header_encoding=header_encoding)
-        
-        # Add information about step
-        if add_step:
-            # LTSpice can produce different number of points between different steps
-            # Since we need to find the first element which is greater or equal to the offset.
-            x = self.data_df[self.data_df['time'] == offset].index.values.tolist()
-            x.append(len(self.data_df))
-            x = np.diff(x)
-            self.data_df.insert(
-                len(self.data_df.columns),
-                'step_no',
-                np.repeat(range(len(x)), x))
-        # TODO: interpolate data frames
-        # TODO: Depending on the type of analysis we should have either first column `time` of `frequency`
-        # Return straightaway   
-        return self.data_df
 
     def get_measurements(self):
         # TODO: Put which measurements you want to read.
@@ -248,7 +352,21 @@ class LTSpiceReader:
         dd = {name: df for name, df in zip(names, dflist)}
         self.dfmeas = dd
         return dd
-            
+      
+
+    def measurements_to_df(self, measurements=None):
+        if measurements is not None:
+            chosen_meas = {new_key: self.dfmeas[new_key] for new_key in measurements}
+        else:
+            chosen_meas = self.dfmeas
+
+        meas_fn = lambda m: m[m.columns.difference(['FROM', 'TO'])].set_index('step')
+        meas = [meas_fn(meas) for meas in chosen_meas.values()]
+        lastdf = meas[0]
+        if len(meas) > 1:
+            for m in meas[1:]:
+                lastdf = lastdf.join(m)
+        return lastdf
 
     def _extract_meas_table(self, start_idx, end_idx):
         df_lines = self.log[start_idx:end_idx]
@@ -394,7 +512,7 @@ class LTSpiceReader:
     def any_meas(self):
         return self.no_measurements > 0
 
-    def _is_stepped(self, header_dict):
+    def _is_stepped(self):
         return any(re.match('stepped', line, re.IGNORECASE) for line in self.header['Flags'])
 
     def _is_complex(self):
