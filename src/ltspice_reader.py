@@ -164,14 +164,18 @@ class LTSpiceReader:
 
     @staticmethod
     def _get_step_indices(xvar, analysis_type):
-        if re.match('transient',analysis_type, re.IGNORECASE):
+        if re.match(r'transient|ac',analysis_type, re.IGNORECASE):
             # The value does not have to be the same for each step
             # The time vector should be monotically increasing, we will take the differences
             # and the index where the negative differences occur are the ones where the next step starts
-            return np.insert(np.flatnonzero(np.diff(xvar) < 0) + 1, 0, 0)
-        elif re.match('ac', analysis_type, re.IGNORECASE):
-            # Actually the same methodology as above could be applied
-            return np.insert(np.flatnonzero(np.diff(xvar) < 0) + 1, 0, 0)        
+            start_indices = np.insert(np.flatnonzero(np.diff(xvar) < 0) + 1, 0, 0)
+            stop_indices = np.append(start_indices[1:]-1, len(xvar))
+            sweeps = range(1, len(start_indices)+1)
+            return pd.DataFrame({
+                'step': sweeps,
+                'start_idx': start_indices,
+                'stop_idx': stop_indices
+            }).set_index('step')  
         else:
             raise NotImplementedError("Other analyses are not implemented yet.")
 
