@@ -222,7 +222,7 @@ class LTSpiceReader:
         else:
             chosen_meas = self.dfmeas
 
-        meas_fn = lambda m: m[m.columns.difference(['FROM', 'TO'])].set_index('step')
+        meas_fn = lambda m: m[m.columns.difference(['FROM', 'from', 'TO', 'to', 'AT', 'at'])].set_index('step')
         meas = [meas_fn(meas) for meas in chosen_meas.values()]
         lastdf = meas[0]
         if len(meas) > 1:
@@ -364,9 +364,44 @@ class LTSpiceReader:
         self.step_df = step_df
         return self.step_df
             
-    
+
+    def get_pandas_df(self, columns=None):
+        """
+        Return a copy of the `data` as a pandas dataframe.
+        If `columns` are specified, select only the ones provided there.
+        """        
+        variables = self.get_variable_names()
+        xname, colnames = variables[0], variables[1:]
+
+        # Copy data
+        data = pd.DataFrame(self._data, columns=colnames)
+        xvar = np.copy(self._xvar)
+        data.insert(0, xname, xvar)
+        data.insert(0, 'step', 1) # Insert the step
+
+        # If the data is stepped
+        if len(self._step_indices.shape) > 1:
+            indices = self._step_indices.index
+            for idx in indices:
+                start_idx = self._step_indices.loc[idx].start_idx
+                stop_idx  = self._step_indices.loc[idx].stop_idx
+                data.at[start_idx:stop_idx, 'step'] = np.int32(idx)  
+        return data
+
+
+    def get_pandas_df_interpolated(self, nknots):
+        """
+        Return a copy of the `data` as a pandas dataframe interpolated at certain knots.
+        Especially used with transient analysis.
+        """
+        pass
+
+
     def get_variable_names(self):
-        return self.header['Variables']['Variable']
+        """
+        Return the 
+        """
+        return np.asarray(self.header['Variables']['Variable'].values)
 
     def any_four(self):
         return self.no_four > 0

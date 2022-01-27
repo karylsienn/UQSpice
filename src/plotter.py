@@ -2,6 +2,8 @@ from multiprocessing.sharedctypes import Value
 import matplotlib.pyplot as plt
 from ltspice_reader import LTSpiceReader
 import numpy as np
+import openturns as ot
+import  openturns.viewer as viewer
 
 
 class Plotter:
@@ -10,7 +12,12 @@ class Plotter:
         pass
 
     def plot_stepped_var(self, ltreader: LTSpiceReader, varname, steps=0):
-        steps = np.asarray(steps)
+
+        # Convert to array straightaway
+        if type(steps) is list or type(steps) is np.ndarray:
+            steps = np.asarray(steps)
+        else:
+            steps = np.asarray([steps])
     
         if not hasattr(ltreader, '_data'):
             raise ValueError("Has the LTReader read the results?")
@@ -57,3 +64,22 @@ class Plotter:
     
     def _plot_stepped_transient(self, varname, selectedvar, steps):
         pass
+
+
+    def plot_sobol_indices(self, sobolIndices, marginals=None):
+        pc_expansion = sobolIndices.getFunctionalChaosResult()
+        metamodel = pc_expansion.getMetaModel()
+        dimension = metamodel.getInputDimension()
+        if marginals is None:
+            output_dim = metamodel.getOutputDimension()
+            marginals = range(output_dim)
+        
+        outputDescription = metamodel.getOutputDescription()
+        for m in marginals:
+            first_order = [sobolIndices.getSobolIndex(i, m) for i in range(dimension)]
+            total_order = [sobolIndices.getSobolTotalIndex(i, m) for i in range(dimension)]
+            description = metamodel.getInputDescription()
+            graph = ot.SobolIndicesAlgorithm.DrawSobolIndices(description, first_order, total_order)
+            graph.setLegendPosition('center')
+            graph.setTitle(f"Sobol' indices for {outputDescription[m]}")
+            viewer.View(graph)

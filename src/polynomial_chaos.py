@@ -1,7 +1,6 @@
 import openturns as ot
 import numpy as np
 import pandas as pd
-import  openturns.viewer as viewer
 from matplotlib import pylab as plt
 
 
@@ -80,26 +79,24 @@ class PCArchitect:
     def get_sobol_indices(self, pc_expansion):
         sobolIndices = ot.FunctionalChaosSobolIndices(pc_expansion)
         return sobolIndices
-    
 
-    def plot_sobol_indices(self, pc_expansion, marginals=None):
-        sobolIndices = self.get_sobol_indices(pc_expansion)
+    def nonzero_variables(self, sobolIndices, marginals=None):
+        pc_expansion = sobolIndices.getFunctionalChaosResult()
         metamodel = pc_expansion.getMetaModel()
         dimension = metamodel.getInputDimension()
         if marginals is None:
             output_dim = metamodel.getOutputDimension()
             marginals = range(output_dim)
-        
         outputDescription = metamodel.getOutputDescription()
+        outNonzero = {}
         for m in marginals:
             first_order = [sobolIndices.getSobolIndex(i, m) for i in range(dimension)]
-            total_order = [sobolIndices.getSobolTotalIndex(i, m) for i in range(dimension)]
             description = metamodel.getInputDescription()
-            graph = ot.SobolIndicesAlgorithm.DrawSobolIndices(description, first_order, total_order)
-            graph.setLegendPosition('center')
-            graph.setTitle(f"Sobol' indices for {outputDescription[m]}")
-            viewer.View(graph)
+            outNonzero[outputDescription[m]] = {description[i]: first_order[i] for i in range(len(first_order)) if first_order[i] > 0}
+        return outNonzero
+        
 
+        
 
     def hist(self, pc_expansion, n_samples):
         newpts, _,_ = self.get_experimental_design(n_samples)
