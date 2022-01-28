@@ -1,3 +1,4 @@
+from distutils.log import warn
 from ltspice_runner import LTSpiceRunner
 from datetime import datetime
 import warnings
@@ -198,6 +199,17 @@ class LTSpiceReader:
                 if searched:
                     name = searched.group(1).strip()
                     names.append(name)
+                else:
+                    newsearch = re.search('Measurement "(.*)"', line)
+                    name = newsearch.group(1).strip()
+                    names.append(name)
+                # Maybe the measurement failed
+                if re.search("FAIL", line, re.IGNORECASE):
+                    warnings.warn(f"Measurement {name} failed!")
+                    dflist.append([]) # Append empty list.
+                    no_meas += 1
+                    found_meas = False
+
             elif found_meas and re.search('step', line):
                 # Line with names
                 start_idx = idx
@@ -223,7 +235,7 @@ class LTSpiceReader:
             chosen_meas = self.dfmeas
 
         meas_fn = lambda m: m[m.columns.difference(['FROM', 'from', 'TO', 'to', 'AT', 'at'])].set_index('step')
-        meas = [meas_fn(meas) for meas in chosen_meas.values()]
+        meas = [meas_fn(meas) for meas in chosen_meas.values() if len(meas)>0]
         lastdf = meas[0]
         if len(meas) > 1:
             for m in meas[1:]:
