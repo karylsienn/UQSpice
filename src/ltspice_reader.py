@@ -134,10 +134,18 @@ class LTSpiceReader:
         bytesperrow = xnbytes + (nvars-1)*datanbytes
         
         # We are setting the view using `as_strided`, which is generally not recommended
-        xvar_uncompressed = np.lib.stride_tricks.as_strided(
-            np.frombuffer(binary, dtype=xtype),
-            shape=(npoints,),
-            strides=(bytesperrow,))
+        try:
+            xvar_uncompressed = np.lib.stride_tricks.as_strided(
+                np.frombuffer(binary, dtype=xtype),
+                shape=(npoints,),
+                strides=(bytesperrow,))
+
+        except ValueError as e:
+            xvar_uncompressed = np.lib.stride_tricks.as_strided(
+                np.frombuffer(binary[:-4], dtype=xtype),
+                shape=(npoints,),
+                strides=(bytesperrow,))
+        
         xvar = np.abs(xvar_uncompressed) # To prevent imposing abs on the rest of the data
         
         # Get the rest of the columns
