@@ -383,7 +383,7 @@ class LTSpiceReader:
         return self.step_df
             
 
-    def get_pandas_df(self, columns=None):
+    def get_pandas_df(self, columns='all'):
         """
         Return a copy of the `data` as a pandas dataframe.
         If `columns` are specified, select only the ones provided there.
@@ -392,10 +392,16 @@ class LTSpiceReader:
         xname, colnames = variables[0], variables[1:]
 
         # Copy data
-        data = pd.DataFrame(self._data, columns=colnames)
+        if columns == 'all':
+            data = pd.DataFrame(self._data, columns=colnames)
+        elif type(columns) is list and len(columns) >= 1:
+            # Match column names with their indices.
+            data = pd.DataFrame(self._data, columns=columns)
+
+            
         xvar = np.copy(self._xvar)
-        data.insert(0, xname, xvar)
-        data.insert(0, 'step', 1) # Insert the step
+        data.insert(0, xname, xvar) # Insert the x-axis at the first position
+        data.insert(0, 'step', 1) # Insert the step at the first position
 
         # If the data is stepped
         if len(self._step_indices.shape) > 1:
@@ -417,7 +423,7 @@ class LTSpiceReader:
 
     def get_variable_names(self):
         """
-        Return the 
+        Return the column names of the recorded data.
         """
         return np.asarray(self.header['Variables']['Variable'].values)
 
