@@ -1,3 +1,4 @@
+from logging import warning
 import numpy as np
 import re, mmap, warnings, os
 from datetime import datetime
@@ -19,11 +20,11 @@ class RawReader:
         {
             'step1': {
                 'start': start_idx, 
-                'stop': stop_idx
+                'n': length
             },
             'step2': {
                 'start': start_idx, 
-                'stop': stop_idx
+                'n': length
             }
         }
     of the original stepped data (if the data is stepped).
@@ -32,10 +33,14 @@ class RawReader:
     the data can be interpolated, such that it consists evenly-spaced data points. 
     """
 
-    def __init__(self, raw_path) -> None:
-        self.raw_path = raw_path
-        self._parse_header()
-        self._parse_rawfile()
+    def __init__(self, raw_path=None) -> None:
+        if raw_path:
+            self.raw_path = raw_path
+            self._parse_header()
+            self._parse_rawfile()
+        else: # For unit testing purposes
+            self.raw_path = None
+
 
     def get_pandas(self, columns='all', steps='all', interpolated=True, **kwargs):
         """Returns a copy of the raw data as `pandas.DataFrame`.
@@ -157,19 +162,19 @@ class RawReader:
     def _compute_step_indices(self, xvar):
         if self._is_stepped():
             start_indices = np.insert(np.flatnonzero(np.diff(xvar) < 0) + 1, 0, 0)
-            stop_indices = np.append(start_indices[1:]-1, len(xvar))
+            lengths = np.append(start_indices[1:], len(xvar)) - start_indices
             steps = range(1, len(start_indices)+1)
             return {
                 f"step{step}": {
                     'start': start_indices[i],
-                    'stop': stop_indices[i]
+                    'n': lengths[i]
                 } for i, step in enumerate(steps)
             }
         else:
             return {
                 "step1": {
                     "start": 0,
-                    "stop": len(xvar)-1
+                    "n": len(xvar)
                 }
             }
 
@@ -239,10 +244,11 @@ class RawReader:
         if not interpolated:
             arrlist, xvar = [], np.array([], dtype=self._xvar.dtype)
             for _, sv in step_dict:
-                arrpart = self._data[sv['start']:(sv['stop']+1), idxs].copy()
-                arrpart = arrpart.reshape((sv['stop']-sv['start']+1), len(cols))
+                start, numpoints = sv['start'], sv['n']
+                arrpart = self._data[start:(start+numpoints), idxs].copy()
+                arrpart = arrpart.reshape((numpoints), len(cols))
                 arrlist.append(arrpart)
-                xvar = np.concatenate([xvar, self._xvar[sv['start']:(sv['stop']+1)].copy()])
+                xvar = np.concatenate([xvar, self._xvar[start:(start+numpoints)].copy()])
             return xvar, np.concatenate(arrlist), self._steps_dict_to_numpy_array(step_dict)
         else:
             # TODO
@@ -303,14 +309,23 @@ class RawReader:
     def _steps_dict_to_numpy_array(self, steps_dict):
         reps = [(
             int(re.match('step([0-9]+)', k).group(1)), # take the step number
-            v['stop'] - v['start'] + 1 # compute the number of repetitions
+            v['n'] # compute the number of repetitions
         ) for k, v in steps_dict]
         reps = list(zip(*reps))
         return np.repeat(reps[0], reps[1])
 
+
+    """
+    Several checks
+    """
     def _is_stepped(self):
         return any(re.match('stepped', line, re.IGNORECASE) for line in self.header['Flags'])
 
+    def _is_real(self):
+        return any(re.match('real', line, re.IGNORECASE) for line in self.header['Flags'])
+
+    def _is_complex(self):
+        return any(re.match('complex', line, re.IGNORECASE ) for line in self.header['Flags'])
 
 
 class LogReader:
