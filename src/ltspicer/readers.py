@@ -1,4 +1,5 @@
 from logging import warning
+from multiprocessing.sharedctypes import Value
 import numpy as np
 import re, mmap, warnings, os
 from datetime import datetime
@@ -25,9 +26,16 @@ class RawReader:
             'step2': {
                 'start': start_idx, 
                 'n': length
+            },
+            
+            ...
+
+            'stepn': {
+                'start': start_idx,
+                'n': length
             }
         }
-    of the original stepped data (if the data is stepped).
+    of the original stepped data (if the data is stepped). 
 
     In case the LTSpice raw file consists results of transient analysis,
     the data can be interpolated, such that it consists evenly-spaced data points. 
@@ -40,7 +48,6 @@ class RawReader:
             self._parse_rawfile()
         else: # For unit testing purposes
             self.raw_path = None
-
 
     def get_pandas(self, columns='all', steps='all', interpolated=True, **kwargs):
         """Returns a copy of the raw data as `pandas.DataFrame`.
@@ -84,6 +91,35 @@ class RawReader:
 
     def get_numpy(self, columns='all', steps='all', interpolated=True, **kwargs):
         pass
+
+    def get_steps(self, steps='all'):
+        """Returns the dictionary
+        {
+            'step1': {
+                'start': start_idx, 
+                'n': length
+            },
+            'step2': {
+                'start': start_idx, 
+                'n': length
+            },
+            
+            ...
+
+            'stepn': {
+                'start': start_idx,
+                'n': length
+            }
+        }
+        of steps of the original LTSpice simulation.
+        
+        Parameters:
+        ------------
+        steps : list or str (default 'all')
+            the steps of the LTSpice simulation
+        """
+        return self._check_get_selected_steps(steps).copy()
+
 
     def _parse_rawfile(self):
         offset = self.header["Binary_offset"]
@@ -158,7 +194,6 @@ class RawReader:
             offset += 16 if encoding == ENC_UTF16LE else 8
             self.header = RawReader._header_to_dict(header, offset, encoding)
 
-
     def _compute_step_indices(self, xvar):
         if self._is_stepped():
             start_indices = np.insert(np.flatnonzero(np.diff(xvar) < 0) + 1, 0, 0)
@@ -177,6 +212,14 @@ class RawReader:
                     "n": len(xvar)
                 }
             }
+    
+    def _steps_dict_to_numpy_array(self, steps_dict):
+        reps = [(
+            int(re.match('step([0-9]+)', k).group(1)), # take the step number
+            v['n'] # compute the number of repetitions
+        ) for k, v in steps_dict.items()]
+        reps = list(zip(*reps))
+        return np.repeat(reps[0], reps[1])
 
     @staticmethod
     def _header_to_dict(headerlist, offset, encoding):
@@ -282,8 +325,10 @@ class RawReader:
 
     def _check_get_selected_steps(self, selection): 
         # Quietly assuming (for now) that we have either string or list-like flat object
-        if re.match('all', selection, re.IGNORECASE):
+        if isinstance(selection, str) and re.match('all', selection, re.IGNORECASE):
             return self._step_indices.copy() 
+        elif isinstance(selection, str):
+            raise ValueError("`selection` can be 'all' or a list of ints")
         else:
             assert isinstance(selection[0], int)
             unselected, selected = [], {}
@@ -294,8 +339,7 @@ class RawReader:
                 else:
                     unselected.append(s)
             if len(unselected) > 0:
-                warnings.warn(f"Steps: {','.join(unselected) if len(unselected) > 1 else unselected[0]}\
-                    are not present in the dataset and will be omitted")
+                warnings.warn(f"Steps: {','.join([str(u) for u in unselected]) if len(unselected) > 1 else unselected[0]} are not present in the dataset and will be omitted")
             if len(selected) == 0:
                 raise ValueError("There are no valid steps in the data!")
             return selected
@@ -306,17 +350,8 @@ class RawReader:
     def _get_all_steps(self):
         return list(self._step_indices.keys())
     
-    def _steps_dict_to_numpy_array(self, steps_dict):
-        reps = [(
-            int(re.match('step([0-9]+)', k).group(1)), # take the step number
-            v['n'] # compute the number of repetitions
-        ) for k, v in steps_dict]
-        reps = list(zip(*reps))
-        return np.repeat(reps[0], reps[1])
-
-
     """
-    Several checks
+    Several checks mostly going through Flags in the header.
     """
     def _is_stepped(self):
         return any(re.match('stepped', line, re.IGNORECASE) for line in self.header['Flags'])
