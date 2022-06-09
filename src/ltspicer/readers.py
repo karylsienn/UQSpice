@@ -44,6 +44,7 @@ class RawReader:
     def __init__(self, raw_path=None) -> None:
         if raw_path:
             self.raw_path = raw_path
+            # TODO: maybe find operating point.
             self._parse_header()
             self._parse_rawfile()
         else: # For unit testing purposes
@@ -147,10 +148,9 @@ class RawReader:
         # TODO: Check if the length of the file is okay.
         # How many bytes are there per row of data?
         bytesperrow = xnbytes + (nvars-1)*datanbytes
-        if bytesperrow % xnbytes != 0:
-            endbyte = -4
-        else:
-            endbyte = len(binary)
+        endbyte = len(binary)
+        while endbyte % xnbytes != 0:
+            endbyte -= 1
 
         # We are setting the view using `as_strided`, which is generally not recommended
         xvar_uncompressed = np.lib.stride_tricks.as_strided( # Thanks to Pete Lonsdale.
@@ -171,7 +171,7 @@ class RawReader:
         self._data = data
         self._xvar = xvar
 
-    def _parse_header(self):
+    def _parse_header(self) -> None:
         with open(self.raw_path, 'r+b') as rawfile:
             # Map the first part not to have to read it into the memory
             mm = mmap.mmap(rawfile.fileno(), 0)  # Map the whole file in place, not to run into memory issues
@@ -267,7 +267,7 @@ class RawReader:
         return header_dict
 
 
-    def _get_data_array(self, columns='all', steps='all', interpolated=True, **kwargs):
+    def _get_data_array(self, columns='all', steps='all', interpolated=False, **kwargs):
         try: # First get the columns
             cols = self._check_get_selected_columns(selection=columns)
             cols, idxs = list(zip(*cols))
@@ -278,15 +278,15 @@ class RawReader:
             step_dict = self._check_get_selected_steps(steps)
         except ValueError as e:
             warnings.warn("%s Returning empty array.".format(str(e)))
-            return np.array([])
+            return np.array([]), np.array([]), np.array([])
         
-        if len(cols) == len(self._get_all_columns()) and len(step_dict) == len(self._get_all_steps()):
+        if len(cols) == len(self._get_all_column_names()) and len(step_dict) == len(self._get_all_steps()):
             # Return a copy of the whole data 
             return self._xvar.copy(), self._data.copy(), self._steps_dict_to_numpy_array(step_dict)
 
         if not interpolated:
             arrlist, xvar = [], np.array([], dtype=self._xvar.dtype)
-            for _, sv in step_dict:
+            for _, sv in step_dict.items():
                 start, numpoints = sv['start'], sv['n']
                 arrpart = self._data[start:(start+numpoints), idxs].copy()
                 arrpart = arrpart.reshape((numpoints), len(cols))
@@ -299,26 +299,28 @@ class RawReader:
 
 
     def _check_get_selected_columns(self, selection):
-        # Sort columns names with respect to the index
-        available_columns = sorted([(k, v['Index']) for k, v in self.header['Variables'].items()],
-                                    lambda x: x[1])
-        if re.match('all', selection, re.IGNORECASE):
+        # Sort columns names with respect to the index -- get rid of the first name
+        available_columns = sorted([(k, v['Index']-1) for k, v in self.header['Variables'].items()],
+                                   key=lambda x: x[1])
+        _ = available_columns.pop(0) # pop x-axis column
+        if isinstance(selection, str) and re.match('all', selection, re.IGNORECASE):
             return available_columns    
 
         if type(selection) is str: 
             selection = [selection] 
 
         unknown_cols = [] # Check selected columns exist in the data.
-        for i, col in enumerate(selection):
-            if col not in [acol for acol, _ in available_columns]:
-                unknown_cols.append(selection.pop(i))
+        acolnms = [acol for acol, _ in available_columns]
+        n = len(selection)
+        for _ in range(n):
+            if selection[-1] not in acolnms:
+                unknown_cols.append(selection.pop())
         
         if len(selection) == 0: # Is there anything left?
             raise ValueError("No columns could be selected.")
 
         if len(unknown_cols) > 0:
-            warnings.warn(f"Columns: {','.join(unknown_cols) if len(unknown_cols) > 1 else unknown_cols[0]}\
-                            are not present in the data. Proceeding with the remaining columns.")
+            warnings.warn(f"Columns: {','.join(reversed(unknown_cols)) if len(unknown_cols) > 1 else unknown_cols[0]} are not present in the data. Proceeding with the remaining columns.")
         # All checks passed - iterate through `available_columns` to return sorted version.
         return [(col, idx) for col, idx in available_columns if col in selection]
 
@@ -344,12 +346,15 @@ class RawReader:
                 raise ValueError("There are no valid steps in the data!")
             return selected
 
-    def _get_all_columns(self):
-        return list(self.header['Variables'].keys())
+    def _get_all_column_names(self):
+        return list(self.header['Variables'].keys())[1:]
     
+    def _get_xname(self):
+        return list(self.header['Variables'].keys())[0]
+
     def _get_all_steps(self):
         return list(self._step_indices.keys())
-    
+
     """
     Several checks mostly going through Flags in the header.
     """
