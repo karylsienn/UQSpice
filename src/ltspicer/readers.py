@@ -1,5 +1,6 @@
 from logging import warning
 from multiprocessing.sharedctypes import Value
+from matplotlib.pyplot import plot
 import numpy as np
 import re, mmap, warnings, os
 from datetime import datetime
@@ -366,6 +367,15 @@ class RawReader:
 
     def _is_complex(self):
         return any(re.match('complex', line, re.IGNORECASE ) for line in self.header['Flags'])
+
+    def get_analysis_type(self):
+        plotname = self.header['Plotname']
+        if re.match('transient', plotname, re.IGNORECASE):
+            return 'transient'
+        elif re.match('ac', plotname, re.IGNORECASE):
+            return 'ac'
+        else:
+            return NotImplementedError("Other analyses are not yet implemented")
 
 
 class LogReader:

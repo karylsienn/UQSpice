@@ -264,6 +264,25 @@ class RawParserTransientSteppedTests(unittest.TestCase):
         self.assertEqual(d.shape, (4, 1))
         self.assertLess( np.max(np.abs(d*r-v)), eps )
 
+class AnalysisTypeTests(unittest.TestCase):
+
+    def __init__(self, methodName: str = ...) -> None:
+        super().__init__(methodName)
+        self.ac_reader = RawReader("test_files/AC/simple_rlc_copy.raw")
+        self.tran_reader = RawReader("test_files/Transient/simple_resistor_stepped_copy.raw")
+    
+    def test_ac_analysis_type(self):
+        self.assertEqual(self.ac_reader.get_analysis_type(), 'ac')
+    
+    def test_transient_analysis_type(self):
+        self.assertEqual(self.tran_reader.get_analysis_type(), 'transient')
+
+    def test_ac_flags(self):
+        self.assertTrue(self.ac_reader._is_complex()) and self.assertFalse(self.ac_reader._is_real())
+    
+    def test_tran_falgs(self):
+        self.assertTrue(self.tran_reader._is_real()) and self.assertFalse(self.tran_reader._is_complex())
+
 
 if __name__=="__main__":
     unittest.main()
