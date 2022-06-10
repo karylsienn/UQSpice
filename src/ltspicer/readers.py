@@ -87,7 +87,7 @@ class RawReader:
 
         """
         import pandas as pd
-
+        # TODO: Return in order of selection
         pass
 
     def get_numpy(self, columns='all', steps='all', interpolated=True, **kwargs):

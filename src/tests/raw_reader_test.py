@@ -111,7 +111,7 @@ class HeaderParserTransientTests(unittest.TestCase):
         super().__init__(methodName)
         self.raw_reader = RawReader()
         self.test_files_path = "test_files"
-        self.raw_reader.raw_path = os.path.join(self.test_files_path, "Transient", "simple_resistor.raw")
+        self.raw_reader.raw_path = os.path.join(self.test_files_path, "Transient", "simple_resistor_copy.raw")
         self.raw_reader._parse_header() 
 
     def test_header_keys(self):
@@ -157,7 +157,7 @@ class RawParserTransientTests(unittest.TestCase):
         super().__init__(methodName)
         self.raw_reader = RawReader()
         self.test_files_path = "test_files"
-        self.raw_reader.raw_path = os.path.join(self.test_files_path, "Transient", "simple_resistor.raw")
+        self.raw_reader.raw_path = os.path.join(self.test_files_path, "Transient", "simple_resistor_copy.raw")
         self.raw_reader._parse_header() 
         self.raw_reader._parse_rawfile()
     
@@ -220,8 +220,50 @@ class RawParserTransientTests(unittest.TestCase):
         self.assertEqual(d.shape, (self.raw_reader.header['No. Points'], self.raw_reader.header['No. Variables']-1))
         self.assertListEqual(list(s), [1,1,1,1]) and isinstance(s, np.array)
 
-    def test_get_data_contents_are_the_same_in_ltspice(self):
-        pass
+    def test_get_data_returns_correct_selected_data(self):
+        x, d, _ = self.raw_reader._get_data_array(columns=['I(R1)', 'I(V1)'])
+        self.assertTrue(np.all(np.diff(x) > 0)) # Monotonic x
+        self.assertTrue(np.all(d[:, 0] > 1.2))
+        self.assertTrue(np.all(d[:, 1] < -1.2))
+    
+
+class RawParserTransientSteppedTests(unittest.TestCase):
+
+    def __init__(self, methodName: str = ...) -> None:
+        super().__init__(methodName)
+        self.raw_reader = RawReader()
+        self.test_files_path = "test_files"
+        self.raw_reader.raw_path = os.path.join(self.test_files_path, "Transient", "simple_resistor_stepped_copy.raw") # 3 steps 1, 2, 5
+        self.raw_reader._parse_header() 
+        self.raw_reader._parse_rawfile()
+    
+    def test_get_data_array_returns_all_data(self):
+        x, d, s = self.raw_reader._get_data_array()
+        self.assertTrue(len(x), self.raw_reader.header['No. Points'])
+        self.assertTrue(d.shape, (self.raw_reader.header['No. Points'], self.raw_reader.header['No. Variables']-1))
+        self.assertListEqual(list(s), [1,1,1,1,2,2,2,2,3,3,3,3])
+
+    def test_get_data_array_returns_monotonic_steps(self):
+        x, _, _ = self.raw_reader._get_data_array()
+        for i in range(3):
+            self.assertTrue( np.all(np.diff(x[i*4:((i+1)*4)])) ) # Check the times are monotonic.
+        self.assertLess(x[4], x[3]) and self.assertLess(x[8], x[7])   # And that between steps there are gaps
+
+    def test_get_data_array_returns_steps_in_correct_order(self):
+        _, d, _ = self.raw_reader._get_data_array(columns=['I(R1)'])
+        eps = 1e-9
+        voltage = 4
+        resistances = [1, 2, 5]
+        for i, r in enumerate(resistances):
+            ltspice_i = d[(i*4):((i+1)*4), 0]
+            self.assertLess( np.max(np.abs(ltspice_i*r-voltage)), eps)
+    
+    def test_get_data_array_returns_selected_steps(self):
+        _, d, _ = self.raw_reader._get_data_array(columns='I(R1)', steps=[2])
+        v, r, eps = 4, 2, 1e-9
+        self.assertEqual(d.shape, (4, 1))
+        self.assertLess( np.max(np.abs(d*r-v)), eps )
+
 
 if __name__=="__main__":
     unittest.main()
