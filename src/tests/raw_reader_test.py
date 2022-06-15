@@ -1,10 +1,11 @@
 from distutils.log import warn
+from logging import warning
 from select import select
 import unittest 
 import numpy as np
 import warnings, os
 
-from sympy import N
+from sympy import N, interpolate
 from ltspicer.readers import RawReader
 
 class StepDictTests(unittest.TestCase):
@@ -193,7 +194,7 @@ class RawParserTransientTests(unittest.TestCase):
 
     def test_check_get_selected_columns_returns_selected_columns(self):
         selected_cols = self.raw_reader._check_get_selected_columns(selection=['I(R1)', 'V(n001)'])
-        self.assertEqual(selected_cols, [ ("V(n001)", 0), ("I(R1)", 1) ])
+        self.assertEqual(selected_cols, [ ("I(R1)", 1), ("V(n001)", 0)  ])
     
     def test_check_get_selected_columns_warns_about_nonexistent_columns(self):
         with warnings.catch_warnings(record=True) as w:
@@ -208,20 +209,20 @@ class RawParserTransientTests(unittest.TestCase):
     """
     def test_get_data_array_returns_empty_data_when_nonexistent_steps_and_warns_about_it(self):
         with warnings.catch_warnings(record=True) as w:
-            x, d, s = self.raw_reader._get_data_array(columns='all', steps=[2, 3], interpolated=False)
+            x, d, s, _ = self.raw_reader._get_data_array(columns='all', steps=[2, 3], interpolated=False)
             self.assertEqual(len(x), 0)
             self.assertEqual(len(d), 0)
             self.assertEqual(len(s), 0)
             self.assertIsInstance(w[-1], warnings.WarningMessage)
     
     def test_get_data_array_returns_full_original_data_by_default(self):
-        x, d, s = self.raw_reader._get_data_array()
+        x, d, s, _ = self.raw_reader._get_data_array()
         self.assertEqual(len(x), self.raw_reader.header['No. Points'])
         self.assertEqual(d.shape, (self.raw_reader.header['No. Points'], self.raw_reader.header['No. Variables']-1))
         self.assertListEqual(list(s), [1,1,1,1]) and isinstance(s, np.array)
 
     def test_get_data_returns_correct_selected_data(self):
-        x, d, _ = self.raw_reader._get_data_array(columns=['I(R1)', 'I(V1)'])
+        x, d, _, _ = self.raw_reader._get_data_array(columns=['I(R1)', 'I(V1)'])
         self.assertTrue(np.all(np.diff(x) > 0)) # Monotonic x
         self.assertTrue(np.all(d[:, 0] > 1.2))
         self.assertTrue(np.all(d[:, 1] < -1.2))
@@ -238,19 +239,19 @@ class RawParserTransientSteppedTests(unittest.TestCase):
         self.raw_reader._parse_rawfile()
     
     def test_get_data_array_returns_all_data(self):
-        x, d, s = self.raw_reader._get_data_array()
+        x, d, s, _= self.raw_reader._get_data_array()
         self.assertTrue(len(x), self.raw_reader.header['No. Points'])
         self.assertTrue(d.shape, (self.raw_reader.header['No. Points'], self.raw_reader.header['No. Variables']-1))
         self.assertListEqual(list(s), [1,1,1,1,2,2,2,2,3,3,3,3])
 
     def test_get_data_array_returns_monotonic_steps(self):
-        x, _, _ = self.raw_reader._get_data_array()
+        x, _, _, _= self.raw_reader._get_data_array()
         for i in range(3):
             self.assertTrue( np.all(np.diff(x[i*4:((i+1)*4)])) ) # Check the times are monotonic.
         self.assertLess(x[4], x[3]) and self.assertLess(x[8], x[7])   # And that between steps there are gaps
 
     def test_get_data_array_returns_steps_in_correct_order(self):
-        _, d, _ = self.raw_reader._get_data_array(columns=['I(R1)'])
+        _, d, _, _ = self.raw_reader._get_data_array(columns=['I(R1)'])
         eps = 1e-9
         voltage = 4
         resistances = [1, 2, 5]
@@ -259,7 +260,7 @@ class RawParserTransientSteppedTests(unittest.TestCase):
             self.assertLess( np.max(np.abs(ltspice_i*r-voltage)), eps)
     
     def test_get_data_array_returns_selected_steps(self):
-        _, d, _ = self.raw_reader._get_data_array(columns='I(R1)', steps=[2])
+        _, d, _, _ = self.raw_reader._get_data_array(columns='I(R1)', steps=[2])
         v, r, eps = 4, 2, 1e-9
         self.assertEqual(d.shape, (4, 1))
         self.assertLess( np.max(np.abs(d*r-v)), eps )
@@ -280,8 +281,70 @@ class AnalysisTypeTests(unittest.TestCase):
     def test_ac_flags(self):
         self.assertTrue(self.ac_reader._is_complex()) and self.assertFalse(self.ac_reader._is_real())
     
-    def test_tran_falgs(self):
+    def test_tran_flags(self):
         self.assertTrue(self.tran_reader._is_real()) and self.assertFalse(self.tran_reader._is_complex())
+
+class InterpolatedDataTests(unittest.TestCase):
+
+    def __init__(self, methodName: str = ...) -> None:
+        super().__init__(methodName)
+        self.tran_reader = RawReader("test_files/Transient/simple_resistor_stepped_copy.raw")
+        self.ac_reader =  RawReader("test_files/AC/simple_rlc_copy.raw")
+    
+    def test_defaults(self):
+        x, d, s, _ = self.tran_reader._get_data_array(interpolated=True)
+        xorig, dorig, sorig, _ = self.tran_reader._get_data_array(interpolated=False)
+        self.assertEqual(d.shape, (12, 3))
+        self.assertEqual(x.shape, (12, ))
+        self.assertListEqual(list(s), list(np.repeat([1,2,3], 4)))
+        for i in range(3):
+            self.assertListEqual(list(d[:, i]), list(dorig[:,i])) # they are constant so should be the same
+        
+    def test_kwargs(self):
+        x, d, _, _ = self.tran_reader._get_data_array(interpolated=True, n=8, tmin=0.0008, tmax=0.0012)
+        self.assertEqual(x.shape, (8*3,))
+        self.assertEqual(d.shape, (8*3, 3))
+        for i in [0, 8, 16]:
+            self.assertAlmostEqual(x[i], 0.0008)
+            self.assertAlmostEqual(x[i+7], 0.0012)
+    
+    def test_steps_and_columns_selection(self):
+        x, d, s, _ = self.tran_reader._get_data_array(steps=[1,3], columns=['I(R1)', 'V(n001)'],
+                                                    interpolated=True, n=6)
+        self.assertEqual(x.shape, (12,))
+        self.assertEqual(d.shape, (12, 2))
+        self.assertEqual(list(s), [1]*6 + [3]*6)
+
+    def test_raises_error_when_analysis_not_transient(self):
+        with self.assertRaises(NotImplementedError):
+            self.ac_reader._get_data_array(interpolated=True)
+        
+
+class PandasAndNumpyTests(unittest.TestCase):
+
+    def __init__(self, methodName: str = ...) -> None:
+        super().__init__(methodName)
+        self.tran_reader = RawReader("test_files/Transient/simple_resistor_stepped_copy.raw")
+        self.ac_reader =  RawReader("test_files/AC/simple_rlc_copy.raw")
+    
+    def test_pandas_transient_interpolated_df(self):
+        df = self.tran_reader.get_pandas(steps=[1,2], columns=['I(R1)', 'V(n001)'],
+                                        interpolated=True, n=3)
+        self.assertListEqual(list(df.columns), ['time', 'step', 'I(R1)', 'V(n001)'])
+        self.assertEqual(df.shape, (6, 4))
+    
+    def test_pandas_ac_interpolated_df_raises_error(self):
+        with self.assertRaises(NotImplementedError):
+            self.ac_reader.get_pandas(interpolated=True)
+
+    def test_pandas_ac_df(self):
+        df = self.ac_reader.get_pandas(steps=[1,2], columns=['I(R1)', 'V(n001)'])
+        self.assertEqual(df.shape, (2*19, 4))
+    
+    def test_numpy_and_pandas_are_the_same(self):
+        df = self.ac_reader.get_pandas(steps=[1,2], columns=['I(R1)', 'V(n001)'])
+        arr = self.ac_reader.get_numpy(steps=[1,2], columns=['I(R1)', 'V(n001)'])
+        self.assertTrue(np.all(arr == np.asarray(df)))
 
 
 if __name__=="__main__":

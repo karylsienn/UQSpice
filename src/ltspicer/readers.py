@@ -1,3 +1,4 @@
+from email.policy import default
 from logging import warning
 from multiprocessing.sharedctypes import Value
 from matplotlib.pyplot import plot
@@ -51,7 +52,7 @@ class RawReader:
         else: # For unit testing purposes
             self.raw_path = None
 
-    def get_pandas(self, columns='all', steps='all', interpolated=True, **kwargs):
+    def get_pandas(self, columns='all', steps='all', interpolated=False, **kwargs):
         """Returns a copy of the raw data as `pandas.DataFrame`.
 
         Parameter `columns` can be either a list of column names or 'all'.
@@ -72,7 +73,7 @@ class RawReader:
             names of columns 
         steps : list | integer | str (default "all")
             steps of the LTspice analysis 
-        interpolated : boolean (default True)
+        interpolated : boolean (default False)
             whether to interpolate the data (only used when analysis is .tran)
         **kwargs
             Additional keyword arguments passed to interpolation, see below
@@ -86,13 +87,81 @@ class RawReader:
         n : int
             number of evenly-spaced time instants
 
+        Returns
+        -------
+        pandas.DataFrame
+            a copy of the LTSpice data
+
+        Raises
+        -------
+        NotImplementedError
+            if a interpolation is performed for data coming from not transient (.tran) analysis
+
+
         """
         import pandas as pd
-        # TODO: Return in order of selection
-        pass
+        try:
+            xvar, data, stepnp, colnames = self._get_data_array(columns, steps, interpolated, **kwargs)
+            xname = 'time' if self.get_analysis_type() == 'transient' else 'frequency'
+            return pd.DataFrame(
+                np.hstack( (xvar.reshape((-1, 1)), stepnp.reshape((-1, 1)), data) ),
+                columns=[xname, 'step'] + list(colnames)
+            )
+        except NotImplementedError as e:
+            raise e
 
-    def get_numpy(self, columns='all', steps='all', interpolated=True, **kwargs):
-        pass
+    def get_numpy(self, columns='all', steps='all', interpolated=False, **kwargs):
+        """Returns a copy of the raw data as `numpy.array`.
+
+        Parameter `columns` can be either a list of column names or 'all'.
+        `steps` can be a list, numpy.array, an integer or 'all'. If the data is stepped 
+        only a required portion of the data will be returned and a column `step` added 
+        to a data frame. In case the required steps are not in the data, a warning will
+        be shown and only existing steps will be returned, or an empty data frame in case
+        `steps` do not match any existing steps.
+
+        For .tran analysis interpolation may be required. If `interpolated` is set to `True`
+        the returned data frame will be interpolated for evenly-spaced points. The interpolation
+        parameters can be set as keyword arguments. By default a minimal time span across all steps
+        is taken and maximum number of points is computed.
+        
+        Parameters
+        ----------
+        columns : list or str (default is "all")
+            names of columns 
+        steps : list | integer | str (default "all")
+            steps of the LTspice analysis 
+        interpolated : boolean (default False)
+            whether to interpolate the data (only used when analysis is .tran)
+        **kwargs
+            Additional keyword arguments passed to interpolation, see below
+        
+        Other Parameters
+        ----------------
+        tmin : float
+            smallest time instant (start) for performing interpolation
+        tmax : float
+            largest time instant (stop) for performing interpolation
+        n : int
+            number of evenly-spaced time instants
+
+        Returns
+        -------
+        numpy.array
+            a copy of the LTSpice data
+
+        Raises
+        -------
+        NotImplementedError
+            if a interpolation is performed for data coming from not transient (.tran) analysis
+
+
+        """
+        try:
+            xvar, data, stepnp, _ = self._get_data_array(columns, steps, interpolated, **kwargs)
+            return np.hstack( (xvar.reshape((-1, 1)), stepnp.reshape((-1, 1)), data) )
+        except NotImplementedError as e:
+            raise e
 
     def get_steps(self, steps='all'):
         """Returns the dictionary
@@ -122,6 +191,23 @@ class RawReader:
         """
         return self._check_get_selected_steps(steps).copy()
 
+    def get_analysis_type(self):
+        """Returns the analysis type of this RawReader instance.        
+
+        The possible values are 'transient' and 'ac'.
+
+        Raises:
+        -------
+        NotImplementedError
+            if the raw file consists analyses other than ac and transient.
+        """
+        plotname = self.header['Plotname']
+        if re.match('transient', plotname, re.IGNORECASE):
+            return 'transient'
+        elif re.match('ac', plotname, re.IGNORECASE):
+            return 'ac'
+        else:
+            return NotImplementedError("Other analyses are not yet implemented")
 
     def _parse_rawfile(self):
         offset = self.header["Binary_offset"]
@@ -279,11 +365,13 @@ class RawReader:
             step_dict = self._check_get_selected_steps(steps)
         except ValueError as e:
             warnings.warn("%s Returning empty array.".format(str(e)))
-            return np.array([]), np.array([]), np.array([])
+            return np.array([]), np.array([]), np.array([]), cols
         
-        if len(cols) == len(self._get_all_column_names()) and len(step_dict) == len(self._get_all_steps()):
+        if len(cols) == len(self._get_all_column_names())\
+             and len(step_dict) == len(self._get_all_steps()) and not interpolated: 
             # Return a copy of the whole data 
-            return self._xvar.copy(), self._data.copy(), self._steps_dict_to_numpy_array(step_dict)
+            return self._xvar.copy(), self._data.copy(), self._steps_dict_to_numpy_array(step_dict), cols
+
 
         if not interpolated:
             arrlist, xvar = [], np.array([], dtype=self._xvar.dtype)
@@ -293,11 +381,34 @@ class RawReader:
                 arrpart = arrpart.reshape((numpoints), len(cols))
                 arrlist.append(arrpart)
                 xvar = np.concatenate([xvar, self._xvar[start:(start+numpoints)].copy()])
-            return xvar, np.concatenate(arrlist), self._steps_dict_to_numpy_array(step_dict)
-        else:
-            # TODO
-            pass
+            return xvar, np.concatenate(arrlist), self._steps_dict_to_numpy_array(step_dict), cols
+            
 
+        else:
+            if self.get_analysis_type() != 'transient':
+                raise NotImplementedError("Only linear interpolation provided. Recommended to use only with transient analysis.")
+
+            defaults = { # Default values if keywords are not present
+                'n': max([v['n'] for v in step_dict.values()]),
+                'tmin': max([self._xvar[v['start']] for  v in step_dict.values()]),
+                'tmax': min([self._xvar[v['start']+v['n']-1] for v in step_dict.values()])
+            }
+            n = kwargs.get("n", defaults['n'])
+            tmin = kwargs.get("tmin", defaults['tmin'])
+            tmax = kwargs.get("tmax", defaults['tmax'])
+            # Preallocate the array for holding the interpolated version of the data.
+            nsteps, ncol = len(step_dict), len(cols)
+            tt = np.linspace(tmin, tmax, n, dtype=self._data.dtype)
+            interp_xvar = np.tile(tt, nsteps) 
+            interp_data = np.zeros(shape=(nsteps*n, ncol), dtype=self._data.dtype)
+            for i, v in enumerate(step_dict.values()):
+                # apply along rows axis-0 - returns new array so can be used with strided view
+                stepidx = slice(v['start'],v['start']+v['n'])
+                interp_data[slice(i*n, (i+1)*n), idxs] = np.apply_along_axis(func1d=lambda y: np.interp(tt, self._xvar[stepidx], y), \
+                                                            axis=0, arr=self._data[stepidx, idxs])
+            return interp_xvar, interp_data, self._steps_dict_to_numpy_array({
+                        k: {'start': i*n, 'n': n} for i, k in enumerate(step_dict.keys())
+                    }), cols
 
     def _check_get_selected_columns(self, selection):
         # Sort columns names with respect to the index -- get rid of the first name
@@ -323,8 +434,9 @@ class RawReader:
         if len(unknown_cols) > 0:
             warnings.warn(f"Columns: {','.join(reversed(unknown_cols)) if len(unknown_cols) > 1 else unknown_cols[0]} are not present in the data. Proceeding with the remaining columns.")
         # All checks passed - iterate through `available_columns` to return sorted version.
-        return [(col, idx) for col, idx in available_columns if col in selection]
-
+        # Update: return columns in the order of appearance
+        available_columns_dict = {col: idx for col, idx in available_columns}
+        return [(col, available_columns_dict[col]) for col in selection]
 
     def _check_get_selected_steps(self, selection): 
         # Quietly assuming (for now) that we have either string or list-like flat object
@@ -367,16 +479,6 @@ class RawReader:
 
     def _is_complex(self):
         return any(re.match('complex', line, re.IGNORECASE ) for line in self.header['Flags'])
-
-    def get_analysis_type(self):
-        plotname = self.header['Plotname']
-        if re.match('transient', plotname, re.IGNORECASE):
-            return 'transient'
-        elif re.match('ac', plotname, re.IGNORECASE):
-            return 'ac'
-        else:
-            return NotImplementedError("Other analyses are not yet implemented")
-
 
 class LogReader:
 
