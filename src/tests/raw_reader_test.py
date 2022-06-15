@@ -325,7 +325,7 @@ class PandasAndNumpyTests(unittest.TestCase):
     def __init__(self, methodName: str = ...) -> None:
         super().__init__(methodName)
         self.tran_reader = RawReader("test_files/Transient/simple_resistor_stepped_copy.raw")
-        self.ac_reader =  RawReader("test_files/AC/simple_rlc_copy.raw")
+        self.ac_reader = RawReader("test_files/AC/simple_rlc_copy.raw")
     
     def test_pandas_transient_interpolated_df(self):
         df = self.tran_reader.get_pandas(steps=[1,2], columns=['I(R1)', 'V(n001)'],
