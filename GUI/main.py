@@ -480,16 +480,33 @@ def get_file_path():
         )
 
     # # Image Implementation - not yet working
-    svg_schematic = svg2rlg(file_path[1])
-    renderPM.drawToFile(svg_schematic, "temp_schematic.png", fmt="PNG")
-    img = Image.open('temp_schematic.png')
-    pimg = ImageTk.PhotoImage(img)
-    size = img.size
-    canvas.create_image(20, 20, anchor=NW, image=pimg, tags='schematic')
+    # svg_schematic = svg2rlg(file_path[1])
+    # renderPM.drawToFile(svg_schematic, "temp_schematic.png", fmt="PNG")
+    # img = Image.open('temp_schematic.png')
+    # pimg = ImageTk.PhotoImage(img)
+    # size = img.size
+    # canvas.create_image(20, 20, anchor=NW, image=pimg, tags='schematic')
 
-    ltspiceascfile = open(file_path[0], "r")
-    schematic = ltspiceascfile.readlines()
+    
+    # TODO: Guess the encoding
+    fpath = file_path[0]
+    with open(fpath, 'rb') as ltspiceascfile:
+        first_line = ltspiceascfile.read(4)
+        if first_line.decode('utf-8') == "Vers":
+            encoding = 'utf-8'
+        elif first_line.decode('utf-16 le') == 'Ve':
+            encoding = 'utf-16 le'
+        else:
+            raise ValueError("Unknown encoding.")
     ltspiceascfile.close()
+
+    with open(fpath, mode='r', encoding=encoding) as ltspiceascfile:
+        schematic = ltspiceascfile.readlines()
+        # TODO: read the remainder with readlines(encoding=encoding)
+    ltspiceascfile.close()
+    # ltspiceascfile = open(file_path[0], "r")
+    # schematic = ltspiceascfile.readlines()
+    # ltspiceascfile.close()
     sketch_schematic_asc(schematic)
 
     # Display file path at the bottom of the window
