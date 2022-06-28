@@ -1,11 +1,12 @@
-﻿import tkinter
-from tkinter import *
-import tkinter as tk
+﻿from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog as fd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from pandas import DataFrame
+import numpy as np
+from matplotlib.figure import Figure
+from matplotlib.widgets import Slider
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF, renderPM
 from PIL import Image, ImageTk
@@ -15,9 +16,38 @@ from PIL import Image, ImageTk
 # -------------------------------------------------GUI Program beta v0.1------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-# Opening a file using tkinter
-
 circuit_components = []
+
+
+class IndexTracker(object):
+    def __init__(self, ax, X, smax):
+        self.ax = ax
+        ax.set_title('use scroll wheel to navigate images')
+        self.X = X
+        rows, cols, self.slices = X.shape
+        self.ind = self.slices//2
+        self.im = ax.imshow(self.X[:, :, self.ind], cmap='gray')
+        self.smax = smax
+        self.update()
+
+    def onscroll(self, event):
+        print("%s %s" % (event.button, event.step))
+        if event.button == 'up':
+            self.ind = (self.ind + 1) % self.slices
+        else:
+            self.ind = (self.ind - 1) % self.slices
+        self.update()
+
+    def contrast(self, event):
+        print('Changing contrast')
+        print(self.smax.val)
+        self.im.set_clim([0, self.smax.val])
+        self.update()
+
+    def update(self):
+        self.im.set_data(self.X[:, :, self.ind])
+        self.ax.set_ylabel('slice %s' % self.ind)
+        self.im.axes.figure.canvas.draw()
 
 
 # a subclass of Canvas for dealing with resizing of windows
@@ -41,7 +71,7 @@ class ResizingCanvas(Canvas):
 
 
 # create the root window
-root = tk.Tk()
+root = Tk()
 root.title('EMC Analysis')
 root.geometry('1080x720+250+200')
 
@@ -132,6 +162,21 @@ def beta_distribution_params(component_distribution,
 # ---------------------------------------- Function for sketching graphs on tab 2 --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def sketch_graphs(data):
+    # im = np.array(np.random.rand(10, 10, 10))
+    # graph = Figure()
+    # canvas = FigureCanvasTkAgg(graph, root)
+    # canvas.get_tk_widget().pack(fill="both", expand=True)
+    #
+    # im = np.array(np.random.rand(10, 10, 10))
+    #
+    # ax = graph.subplots(1, 1)
+    #
+    # axmax = graph.add_axes([0.25, 0.01, 0.65, 0.03])
+    # smax = Slider(axmax, 'Max', 0, np.max(im), valinit=50)
+    # tracker = IndexTracker(ax, im)
+    # canvas.mpl_connect('scroll_event', tracker.onscroll)
+    # canvas.mpl_connect('button_release_event', tracker.contrast)  # add this for contrast change
+
     data = {'Country': ['US', 'CA', 'GER', 'UK', 'FR'],
             'GDP_Per_Capita': [45000, 42000, 52000, 49000, 47000]
             }
@@ -166,10 +211,14 @@ def open_new_window(component, index):
     component_param2_array = [None] * len(circuit_components)
     name_label_array = [None] * len(circuit_components)
 
+    first_component = StringVar(root)
+    first_component.set(circuit_components[0])
+    component_drop_down_list = OptionMenu(entering_parameters_window, first_component, *circuit_components)
     for circuit_component in range(len(circuit_components)):
+
         component_tabs_array[circuit_component] = ttk.Frame(component_tabs)
         component_tabs.add(component_tabs_array[circuit_component], text=circuit_components[circuit_component])
-        component_name_array[circuit_component] = tkinter.Label(entering_parameters_window,
+        component_name_array[circuit_component] = Label(entering_parameters_window,
                                                                 text=circuit_components[circuit_component],
                                                                 width=10)
         # Parameters entered by the user
@@ -179,11 +228,11 @@ def open_new_window(component, index):
                                                                width=12,
                                                                bg="white")
 
-        component_param1_label_array[circuit_component] = tkinter.Label(entering_parameters_window,
+        component_param1_label_array[circuit_component] = Label(entering_parameters_window,
                                                                         text='',
                                                                         width=20)
 
-        component_param2_label_array[circuit_component] = tkinter.Label(entering_parameters_window,
+        component_param2_label_array[circuit_component] = Label(entering_parameters_window,
                                                                         text='',
                                                                         width=20)
 
@@ -200,6 +249,8 @@ def open_new_window(component, index):
         name_label_array[circuit_component] = Label(canvas,
                                                     text='')
 
+
+
         # Default parameters which are:
         # distribution: Normal
         # Mean = 1
@@ -210,6 +261,7 @@ def open_new_window(component, index):
         component_param1_array[circuit_component].insert(INSERT, '1')
         component_param2_array[circuit_component].insert(INSERT, '2')
 
+    #component_drop_down_list.grid(row=4, column=7)
     component_tabs.pack(expand=True, fill=BOTH)
 
     # sets the title of the new window created for entering parameters
@@ -230,13 +282,13 @@ def open_new_window(component, index):
     # Distribution:
     # param1=
     # param2=
-    component_name_array_label = tkinter.Label(entering_parameters_window,
-                                               text='Component Name:',
-                                               width=20)
+    component_name_array_label = Label(entering_parameters_window,
+                                       text='Component Name:',
+                                       width=20)
 
-    component_distribution_label = tkinter.Label(entering_parameters_window,
-                                                 text='Distribution',
-                                                 width=20)
+    component_distribution_label = Label(entering_parameters_window,
+                                         text='Distribution',
+                                         width=20)
 
     # Button for saving parameters
     save_parameters_button = ttk.Button(
@@ -482,7 +534,7 @@ def _create_circle(self, x, y, r, **kwargs):
     return self.create_oval(x - r, y - r, x + r, y + r, **kwargs)
 
 
-tk.Canvas.create_circle = _create_circle
+Canvas.create_circle = _create_circle
 
 
 # Function for opening a file
