@@ -1,4 +1,4 @@
-﻿# GUI controller containing all functions
+# GUI controller containing all functions
 import controller as control
 
 
