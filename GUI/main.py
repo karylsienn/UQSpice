@@ -1,4 +1,4 @@
-import tkinter
+﻿import tkinter
 from tkinter import *
 import tkinter as tk
 from tkinter import ttk
@@ -6,6 +6,9 @@ from tkinter import filedialog as fd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from pandas import DataFrame
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF, renderPM
+from PIL import Image, ImageTk
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------GUI Program beta v0.1------------------------------------------------
@@ -28,8 +31,13 @@ tabControl.add(graphs, text='Graphs')
 
 canvas = Canvas(schematic_params, width=1080, height=720)
 
+all_component_parameters = []
+name_label = Label(canvas, text='')
 
-# Functions for hovering over components - Not yet implemented
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Functions for hovering over components --------------------------------------
+# ---------------------------------------------Not Implemented----------------------------------------------------------
 def on_enter(e, element_to_change):
     canvas.itemconfig(element_to_change, fill='green')
     print("happening")
@@ -39,7 +47,9 @@ def on_leave(e, element_to_change):
     canvas.itemconfig(element_to_change, fill='white')
 
 
-# Functions for distribution buttons
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Functions for distribution buttons ------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 def normal_distribution_params(component_distribution,
                                component_param1_label,
                                component_param2_label,
@@ -52,10 +62,10 @@ def normal_distribution_params(component_distribution,
     component_distribution.insert(INSERT, 'Normal')
     component_param1_label['text'] = 'Mean (μ)'
     component_param2_label['text'] = 'Standard deviation (σ)'
-    component_param1.place(in_=array_of_tabs[tab_number], x=180, y=100)
-    component_param2.place(in_=array_of_tabs[tab_number], x=180, y=130)
-    component_param1_label.place(in_=array_of_tabs[tab_number], x=45, y=100)
-    component_param2_label.place(in_=array_of_tabs[tab_number], x=45, y=130)
+    component_param1.place(in_=array_of_tabs[tab_number], x=136, y=100)
+    component_param2.place(in_=array_of_tabs[tab_number], x=136, y=130)
+    component_param1_label.place(in_=array_of_tabs[tab_number], x=1, y=100)
+    component_param2_label.place(in_=array_of_tabs[tab_number], x=1, y=130)
 
 
 def gamma_distribution_params(component_distribution,
@@ -70,10 +80,10 @@ def gamma_distribution_params(component_distribution,
     component_distribution.insert(INSERT, 'Gamma')
     component_param1_label['text'] = 'Shape (k)'
     component_param2_label['text'] = 'Scale (θ)'
-    component_param1.place(in_=array_of_tabs[tab_number], x=180, y=100)
-    component_param2.place(in_=array_of_tabs[tab_number], x=180, y=130)
-    component_param1_label.place(in_=array_of_tabs[tab_number], x=45, y=100)
-    component_param2_label.place(in_=array_of_tabs[tab_number], x=45, y=130)
+    component_param1.place(in_=array_of_tabs[tab_number], x=136, y=100)
+    component_param2.place(in_=array_of_tabs[tab_number], x=136, y=130)
+    component_param1_label.place(in_=array_of_tabs[tab_number], x=1, y=100)
+    component_param2_label.place(in_=array_of_tabs[tab_number], x=1, y=130)
 
 
 def beta_distribution_params(component_distribution,
@@ -88,12 +98,15 @@ def beta_distribution_params(component_distribution,
     component_distribution.insert(INSERT, 'Beta')
     component_param1_label['text'] = 'Alpha (α)'
     component_param2_label['text'] = 'Beta (β)'
-    component_param1.place(in_=array_of_tabs[tab_number], x=180, y=100)
-    component_param2.place(in_=array_of_tabs[tab_number], x=180, y=130)
-    component_param1_label.place(in_=array_of_tabs[tab_number], x=45, y=100)
-    component_param2_label.place(in_=array_of_tabs[tab_number], x=45, y=130)
+    component_param1.place(in_=array_of_tabs[tab_number], x=136, y=100)
+    component_param2.place(in_=array_of_tabs[tab_number], x=136, y=130)
+    component_param1_label.place(in_=array_of_tabs[tab_number], x=1, y=100)
+    component_param2_label.place(in_=array_of_tabs[tab_number], x=1, y=130)
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Function for sketching graphs on tab 2 --------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 def sketch_graphs(data):
     data = {'Country': ['US', 'CA', 'GER', 'UK', 'FR'],
              'GDP_Per_Capita': [45000, 42000, 52000, 49000, 47000]
@@ -108,53 +121,9 @@ def sketch_graphs(data):
     ax.set_title('Example Plot')
 
 
-# Function for opening a file
-def get_file_path():
-    global file_path
-    # Open and return file path
-    file_path = fd.askopenfilenames(
-        title="Select a Schematic",
-
-        filetypes=(
-            ("LTspice Schematic", "*.asc"),
-            ("All files", "*.*")
-        )
-
-    )
-
-    too_many_files_selected = Label(canvas,
-                                    text='Please Select Two files, an LTSpice schematic and and image of the schematic'
-                                    )
-    while len(file_path) > 2:
-        file_path = fd.askopenfilenames(
-            title="Select a Schematic",
-
-            filetypes=(
-                ("LTspice Schematic", "*.asc"),
-                ("All files", "*.*")
-            )
-
-        )
-
-    # Image Implementation - not yet working
-    img = PhotoImage(file="ball.ppm")
-    canvas.create_image(20, 20, anchor=NW, image=img)
-
-    ltspiceascfile = open(file_path[0], "r")
-    schematic = ltspiceascfile.readlines()
-    ltspiceascfile.close()
-    sketch_schematic_asc(schematic)
-
-    # Display file path at the bottom of the window
-    # l1 = Label(root, text="File path: " + file_path).pack()
-
-
-parametersSaved = tk.IntVar()
-
-all_component_parameters = []
-name_label = Label(canvas, text='')
-
-
+# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------- Function for enter all parameters button --------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Function for entering parameters
 def open_new_window(component, index):
     global name_label
@@ -270,6 +239,18 @@ def open_new_window(component, index):
                                                 name_label_array)
     )
 
+    # Button for saving parameters
+    save_all_parameters_button = ttk.Button(
+        entering_parameters_window,
+        text='Save All Parameters',
+        command=lambda: save_all_entered_parameters(component,
+                                                    component_distribution_array,
+                                                    component_param1_label_array,
+                                                    component_param2_label_array,
+                                                    component_param1_array,
+                                                    component_param2_array,
+                                                    name_label_array)
+    )
     # ---------------------------------- Buttons for selecting type of distribution ------------------------------------
     normal_distribution_button = ttk.Button(
         entering_parameters_window,
@@ -313,17 +294,20 @@ def open_new_window(component, index):
         )
     )
     # Placing Labels
-    component_name_array_label.place(x=45, y=40)
-
+    component_name_array_label.place(x=1, y=40)
+    component_distribution_label.place(x=1, y=80)
     # Placing button and parameter windows
-    component_distribution_label.place(x=50, y=70)
-    normal_distribution_button.place(x=160, y=70)
-    gamma_distribution_button.place(x=280, y=70)
-    beta_distribution_button.place(x=400, y=70)
-    save_parameters_button.place(x=110, y=250)
+    normal_distribution_button.place(x=111, y=80)
+    gamma_distribution_button.place(x=231, y=80)
+    beta_distribution_button.place(x=351, y=80)
+    save_parameters_button.place(x=60, y=250)
+    save_all_parameters_button.place(x=160, y=250)
     # save_parameters_button.wait_window(entering_parameters_window)
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Function for saving a single parameter --------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Function for closing new windows using a  button
 def save_entered_parameters(entering_parameters_window,
                             component_name,
@@ -349,8 +333,8 @@ def save_entered_parameters(entering_parameters_window,
     appending_flag = 0
     for parameters in range(len(all_component_parameters)):
         if component_name == list(all_component_parameters[parameters].keys())[-1]:
-            print(parameters)
-
+            # If the last entered component is similar to the previously entered one then,
+            # replace the old parameters with the new ones
             all_component_parameters[parameters] = ({component_name:
                                                     {'distribution': component_distribution,
                                                      'parameters': {component_param1_label: component_param1,
@@ -359,10 +343,12 @@ def save_entered_parameters(entering_parameters_window,
                                                      }
 
                                                     )
-            print(all_component_parameters)
+            # Ensures no appending takes place
             appending_flag = 0
             break
         else:
+            # If the last entered component is NOT similar to the previously entered one then,
+            # ensure to add the component to the end of the list
             appending_flag = 1
 
     if appending_flag == 1:
@@ -376,7 +362,6 @@ def save_entered_parameters(entering_parameters_window,
         )
         appending_flag = 0
 
-    print("Final List", end='')
     print(all_component_parameters)
     # --------------------------------- Displaying entered parameters on root window -----------------------------------
     global name_label
@@ -391,6 +376,60 @@ def save_entered_parameters(entering_parameters_window,
                                              (100 * index) + 100, anchor=E,
                                              window=full_name_labels[index],
                                              tags='schematic')
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Function for saving all parameters ------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def save_all_entered_parameters(component_name,
+                                component_distribution_array,
+                                component_param1_label_array,
+                                component_param2_label_array,
+                                component_param1_array,
+                                component_param2_array,
+                                full_name_labels):
+
+    global name_label
+    global all_component_parameters
+    all_component_parameters.clear()
+
+    print(component_name)
+    for circuit_component in range(len(circuit_components)):
+        # clearing the name label of all parameters
+        full_name_labels[circuit_component].config(text='')
+
+        # Storing the name label of all parameters
+        full_name_labels[circuit_component] =\
+            Label(canvas,
+                  text=component_name[circuit_component] +
+
+                  '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0', END).strip('\n') +
+
+                  '\n' + component_param1_label_array[circuit_component]['text']
+                  + '=' + component_param1_array[circuit_component].get('1.0', END).strip('\n') +
+
+                  '\n' + component_param2_label_array[circuit_component]['text']
+                  + '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'))
+
+        # Placing the name label of all parameters on the root window
+        name_label_window = canvas.create_window(800, (100 * circuit_component) + 100, anchor=E,
+                                                 window=full_name_labels[circuit_component],
+                                                 tags='schematic')
+
+        # Storing all components with their parameters in a dictionary
+        all_component_parameters.append(
+            {component_name[circuit_component]:
+             {'distribution': component_distribution_array[circuit_component].get('1.0', END).strip('\n'),
+              'parameters': {component_param1_label_array[circuit_component]['text']:
+                             component_param1_array[circuit_component].get('1.0', END).strip('\n'),
+
+                             component_param2_label_array[circuit_component]['text']:
+                             component_param2_array[circuit_component].get('1.0', END).strip('\n')}
+              }
+             }
+              )
+
+    print(all_component_parameters)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -410,6 +449,51 @@ def _create_circle(self, x, y, r, **kwargs):
 
 
 tk.Canvas.create_circle = _create_circle
+
+
+# Function for opening a file
+def get_file_path():
+    global file_path
+    # Open and return file path
+    file_path = fd.askopenfilenames(
+        title="Select a Schematic",
+
+        filetypes=(
+            ("LTspice Schematic", "*.asc"),
+            ("All files", "*.*")
+        )
+
+    )
+
+    too_many_files_selected = Label(canvas,
+                                    text='Please Select Two files, an LTSpice schematic and and image of the schematic'
+                                    )
+    while len(file_path) > 2:
+        file_path = fd.askopenfilenames(
+            title="Select a Schematic",
+
+            filetypes=(
+                ("LTspice Schematic", "*.asc"),
+                ("All files", "*.*")
+            )
+
+        )
+
+    # # Image Implementation - not yet working
+    svg_schematic = svg2rlg(file_path[1])
+    renderPM.drawToFile(svg_schematic, "temp_schematic.png", fmt="PNG")
+    img = Image.open('temp_schematic.png')
+    pimg = ImageTk.PhotoImage(img)
+    size = img.size
+    canvas.create_image(20, 20, anchor=NW, image=pimg, tags='schematic')
+
+    ltspiceascfile = open(file_path[0], "r")
+    schematic = ltspiceascfile.readlines()
+    ltspiceascfile.close()
+    sketch_schematic_asc(schematic)
+
+    # Display file path at the bottom of the window
+    # l1 = Label(root, text="File path: " + file_path).pack()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
