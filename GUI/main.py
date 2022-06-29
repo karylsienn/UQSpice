@@ -75,7 +75,6 @@ class ResizingCanvas(Canvas):
         # self.bind('<Button-5>', self.__wheel)  # zoom for Linux, wheel scroll down
         # self.bind('<Button-4>', self.__wheel)  # zoom for Linux, wheel scroll up
 
-
     def on_resize(self, event):
         # determine the ratio of old width/height to new width/height
         width_scale = float(event.width) / self.width
@@ -107,7 +106,6 @@ component_parameters_frame.pack(side='right', fill=Y, padx=40)
 canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickness=0)
 
 all_component_parameters = []
-
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -801,10 +799,9 @@ def sketch_schematic_asc(schematic):
     # --------------------------------------------Binding events--------------------------------------------------------
 
     # --------------------------------- Making voltage sources change colour when hovered over -------------------------
-    ############################# Not yet implemented ##################################################################
-    # for vol_elements in drawn_voltage_sources:
-    #     canvas.tag_bind(vol_elements, '<Enter>', on_enter)
-    #     canvas.tag_bind(vol_elements, '<Leave>', on_leave)
+    for vol_elements in drawn_voltage_sources:
+        canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg))
+        canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg))
 
 
 # Select a schematic using a button
