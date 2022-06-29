@@ -65,6 +65,9 @@ graphs = ttk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
+component_parameters_frame = Frame(schematic_params, width=200, height=100)
+component_parameters_frame.pack(side='right')
+
 canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickness=0)
 
 all_component_parameters = []
@@ -359,48 +362,6 @@ def open_new_window(component, index):
                                                     component_param2_array,
                                                     name_label_array)
     )
-    # ---------------------------------- Buttons for selecting type of distribution ------------------------------------
-    normal_distribution_button = ttk.Button(
-        entering_parameters_window,
-        text='Normal Distribution',
-        command=lambda: normal_distribution_params(
-            component_distribution_array[component_tabs.index(component_tabs.select())],
-            component_param1_label_array[component_tabs.index(component_tabs.select())],
-            component_param2_label_array[component_tabs.index(component_tabs.select())],
-            component_param1_array[component_tabs.index(component_tabs.select())],
-            component_param2_array[component_tabs.index(component_tabs.select())],
-            component_tabs_array,
-            component_tabs.index(component_tabs.select())
-        )
-    )
-
-    gamma_distribution_button = ttk.Button(
-        entering_parameters_window,
-        text='Gamma Distribution',
-        command=lambda: gamma_distribution_params(
-            component_distribution_array[component_tabs.index(component_tabs.select())],
-            component_param1_label_array[component_tabs.index(component_tabs.select())],
-            component_param2_label_array[component_tabs.index(component_tabs.select())],
-            component_param1_array[component_tabs.index(component_tabs.select())],
-            component_param2_array[component_tabs.index(component_tabs.select())],
-            component_tabs_array,
-            component_tabs.index(component_tabs.select())
-        )
-    )
-
-    beta_distribution_button = ttk.Button(
-        entering_parameters_window,
-        text='Beta Distribution',
-        command=lambda: beta_distribution_params(
-            component_distribution_array[component_tabs.index(component_tabs.select())],
-            component_param1_label_array[component_tabs.index(component_tabs.select())],
-            component_param2_label_array[component_tabs.index(component_tabs.select())],
-            component_param1_array[component_tabs.index(component_tabs.select())],
-            component_param2_array[component_tabs.index(component_tabs.select())],
-            component_tabs_array,
-            component_tabs.index(component_tabs.select())
-        )
-    )
 
     # Component drop down list and component name label
     component_name_array_label.grid(row=3, column=5)
@@ -408,10 +369,6 @@ def open_new_window(component, index):
 
     # Placing Distribution Label
     component_distribution_label.grid(row=4, column=5)
-    # Placing button and parameter windows
-    # normal_distribution_button.grid(row=4, column=6)
-    # gamma_distribution_button.grid(row=4, column=7)
-    # beta_distribution_button.grid(row=4, column=8)
     distribution_drop_down_list.grid(row=4, column=6)
 
     component_param1_label.grid(row=5, column=5)
@@ -496,17 +453,21 @@ def save_entered_parameters(entering_parameters_window,
     print(all_component_parameters)
     # --------------------------------- Displaying entered parameters on root window -----------------------------------
     global name_label
+
     full_name_labels[index].config(text='')
-    full_name_labels[index] = Label(canvas,
+    full_name_labels[index] = Label(component_parameters_frame,
                                     text=component_name +
                                          '\nDistribution: ' + component_distribution +
                                          '\n' + component_param1_label + '=' + component_param1 +
                                          '\n' + component_param2_label + '=' + component_param2)
 
-    name_label_window = canvas.create_window(800,
-                                             (100 * index) + 100, anchor=E,
-                                             window=full_name_labels[index],
-                                             tags='schematic')
+
+    full_name_labels[index].grid(row=0, column=1)
+
+    # frame_window = canvas.create_window(800,
+    #                                     (100 * index) + 100, anchor=E,
+    #                                     window=canvas_frame,
+    #                                     tags='schematic')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -784,9 +745,9 @@ def sketch_schematic_asc(schematic):
 
     # --------------------------------- Making voltage sources change colour when hovered over -------------------------
     ############################# Not yet implemented ##################################################################
-    for vol_elements in drawn_voltage_sources:
-        canvas.tag_bind(vol_elements, '<Enter>', on_enter)
-        canvas.tag_bind(vol_elements, '<Leave>', on_leave)
+    # for vol_elements in drawn_voltage_sources:
+    #     canvas.tag_bind(vol_elements, '<Enter>', on_enter)
+    #     canvas.tag_bind(vol_elements, '<Leave>', on_leave)
 
 
 # Select a schematic using a button
