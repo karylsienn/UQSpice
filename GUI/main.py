@@ -139,19 +139,26 @@ def beta_distribution_params(component_distribution,
     # component_param1_label.place(in_=array_of_tabs[tab_number], x=1, y=100)
     # component_param2_label.place(in_=array_of_tabs[tab_number], x=1, y=130)
 
+
 def select_distribution_type(distribution_type, parameter1_label, parameter2_label, component_distribution):
-    component_distribution = ''
 
     if distribution_type.get() == 'Gamma Distribution':
-        component_distribution = 'Gamma'
+        component_distribution['text'] = 'Gamma'
         parameter1_label['text'] = 'Shape (k)'
         parameter2_label['text'] = 'Scale (θ)'
 
     if distribution_type.get() == 'Beta Distribution':
-        component_distribution = 'Beta'
+        component_distribution['text'] = 'Beta'
         parameter1_label['text'] = 'Alpha (α)'
         parameter2_label['text'] = 'Beta (β)'
+
+    if distribution_type.get() == 'Normal Distribution':
+        component_distribution['text'] = 'Normal'
+        parameter1_label['text'] = 'Mean (μ)'
+        parameter2_label['text'] = 'Standard deviation (σ)'
     print(distribution_type.get())
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for sketching graphs on tab 2 --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -238,7 +245,11 @@ def open_new_window(component, index):
     component_distribution_label = Label(entering_parameters_window,
                                          text='Distribution',
                                          width=20)
-    distribution_for_component = ''
+
+    distribution_for_component_label = Label(entering_parameters_window,
+                                       text='',
+                                       width=20)
+
     component_param1_label = Label(entering_parameters_window,
                               text='',
                               width=20)
@@ -260,7 +271,7 @@ def open_new_window(component, index):
                                              command=lambda _: select_distribution_type(distribution_selected,
                                                                                         component_param1_label,
                                                                                         component_param2_label,
-                                                                                        distribution_for_component))
+                                                                                        distribution_for_component_label))
 
     for circuit_component in range(len(circuit_components)):
 
@@ -311,27 +322,21 @@ def open_new_window(component, index):
 
 
     #component_tabs.pack(expand=True, fill=BOTH)
-    component_distribution = 'Normal'
+    distribution_for_component_label['text'] = 'Normal'
     component_param1_label['text'] = 'Mean (μ)'
     component_param2_label['text'] = 'Standard Deviation (σ)'
 
 
-
+    print(distribution_for_component_label['text'])
     # Button for saving parameters
     save_parameters_button = ttk.Button(
         entering_parameters_window,
         text='Save Parameters',
         command=lambda: save_entered_parameters(entering_parameters_window,
-                                                component[component_tabs.index(component_tabs.select())],
-                                                component_distribution_array[
-                                                    component_tabs.index(component_tabs.select())].get('1.0',
-                                                                                                       END).strip('\n'),
-                                                component_param1_label_array[
-                                                    component_tabs.index(component_tabs.select())][
-                                                    'text'],
-                                                component_param2_label_array[
-                                                    component_tabs.index(component_tabs.select())][
-                                                    'text'],
+                                                component_selected.get(),
+                                                distribution_for_component_label['text'],
+                                                component_param1_label['text'],
+                                                component_param2_label['text'],
                                                 component_param1_array[
                                                     component_tabs.index(component_tabs.select())].get(
                                                     '1.0', END).strip('\n'),
