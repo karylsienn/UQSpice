@@ -110,7 +110,6 @@ all_component_parameters = []
 # ---------------------------------------------Not Implemented----------------------------------------------------------
 def on_enter(e, element_to_change):
     canvas.itemconfig(element_to_change, fill='green')
-    print("happening")
 
 
 def on_leave(e, element_to_change):
@@ -582,16 +581,16 @@ def save_all_entered_parameters(component_name,
 def component_parameters():
     global all_component_parameters
     global circuit_components
-    print(type(all_component_parameters))
+
     if len(circuit_components) != 0:
         open_new_window(circuit_components, 0)
     else:
         error_for_not_entering_schematic = \
-            canvas.create_window(500, 300,
+            canvas.create_window(400, 300,
                                  window=Label(canvas,
                                               text="Please select a schematic first",
                                               width=40,
-                                              font=("Courier", 20),
+                                              font=("Times New Roman", 20),
                                               height=40),
                                  tags='Error if schematic not entered')
 
@@ -672,8 +671,8 @@ def sketch_schematic_asc(schematic):
     canvas.delete('schematic')
     canvas.delete('all')
     # Clear all previous labels in root window of component parameters
-    for widget in component_parameters_frame.winfo_children():
-        widget.destroy()
+    for labels in component_parameters_frame.winfo_children():
+        labels.destroy()
     # Clear all previous component parameters
     all_component_parameters.clear()
 
