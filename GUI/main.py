@@ -4,6 +4,7 @@ from tkinter import filedialog as fd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from pandas import DataFrame
+import plotly.graph_objects as go
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.widgets import Slider
@@ -50,6 +51,16 @@ class IndexTracker(object):
         self.im.axes.figure.canvas.draw()
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# ------------------------------------ Functions for zooming in and out of canvas --------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def do_zoom(event):
+    x = canvas.canvasx(event.x)
+    y = canvas.canvasy(event.y)
+    factor = 1.001 ** event.delta
+    canvas.scale(ALL, x, y, factor, factor)
+
+
 # a subclass of Canvas for dealing with resizing of windows
 class ResizingCanvas(Canvas):
     def __init__(self, parent, **kwargs):
@@ -57,6 +68,13 @@ class ResizingCanvas(Canvas):
         self.bind("<Configure>", self.on_resize)
         self.height = self.winfo_reqheight()
         self.width = self.winfo_reqwidth()
+        self.bind("<MouseWheel>", do_zoom)
+        self.bind('<ButtonPress-1>', lambda event: self.scan_mark(event.x, event.y))
+        self.bind("<B1-Motion>", lambda event: self.scan_dragto(event.x, event.y, gain=1))
+        # # code for linux not yet implemented
+        # self.bind('<Button-5>', self.__wheel)  # zoom for Linux, wheel scroll down
+        # self.bind('<Button-4>', self.__wheel)  # zoom for Linux, wheel scroll up
+
 
     def on_resize(self, event):
         # determine the ratio of old width/height to new width/height
@@ -83,13 +101,13 @@ graphs = ttk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = Frame(schematic_params, width=200, height=100)
+component_parameters_frame = Frame(schematic_params, width=300, height=100)
 component_parameters_frame.pack(side='right', fill=Y, padx=40)
 
 canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickness=0)
 
 all_component_parameters = []
-name_label = Label(canvas, text='')
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -221,13 +239,18 @@ def sketch_graphs(data):
     data_frame_plot.plot(kind='line', legend=True, ax=ax)
     ax.set_title('Example Plot')
 
+    # fig = go.Figure(
+    #     data=[go.Bar(y=[2, 1, 3])],
+    #     layout_title_text="A Figure Displayed with fig.show()"
+    # )
+    # fig.show()
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Function for enter all parameters button --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for entering parameters
 def open_new_window(component, index):
-    global name_label
     # Toplevel object which will
     # be treated as a new window
     entering_parameters_window = Toplevel(root)
@@ -487,14 +510,15 @@ def save_entered_parameters(entering_parameters_window,
 
     print(all_component_parameters)
     # --------------------------------- Displaying entered parameters on root window -----------------------------------
-    global name_label
     print(component_index)
     full_name_labels[index].config(text='')
     full_name_labels[index] = Label(component_parameters_frame,
                                     text=component_name +
                                          '\nDistribution: ' + component_distribution +
                                          '\n' + component_param1_label + '=' + component_param1 +
-                                         '\n' + component_param2_label + '=' + component_param2)
+                                         '\n' + component_param2_label + '=' + component_param2,
+                                    highlightcolor='black',
+                                    highlightthickness=2)
 
     full_name_labels[component_index].grid(row=component_index, column=1)
 
@@ -515,7 +539,6 @@ def save_all_entered_parameters(component_name,
                                 component_param1_array,
                                 component_param2_array,
                                 full_name_labels):
-    global name_label
     global all_component_parameters
     all_component_parameters.clear()
 
@@ -526,7 +549,7 @@ def save_all_entered_parameters(component_name,
 
         # Storing the name label of all parameters
         full_name_labels[circuit_component] = \
-            Label(canvas,
+            Label(component_parameters_frame,
                   text=component_name[circuit_component] +
 
                        '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0', END).strip(
@@ -539,9 +562,7 @@ def save_all_entered_parameters(component_name,
                        + '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'))
 
         # Placing the name label of all parameters on the root window
-        name_label_window = canvas.create_window(800, (100 * circuit_component) + 100, anchor=E,
-                                                 window=full_name_labels[circuit_component],
-                                                 tags='schematic')
+        full_name_labels[circuit_component].grid(row=circuit_component, column=1)
 
         # Storing all components with their parameters in a dictionary
         all_component_parameters.append(
@@ -656,7 +677,8 @@ def sketch_schematic_asc(schematic):
     canvas.delete('schematic')
     canvas.delete('all')
     # Clear all previous labels in root window of component parameters
-    global name_label
+    for widget in component_parameters_frame.winfo_children():
+        widget.destroy()
     # Clear all previous component parameters
     all_component_parameters.clear()
 
