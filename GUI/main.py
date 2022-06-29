@@ -84,7 +84,7 @@ tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
 component_parameters_frame = Frame(schematic_params, width=200, height=100)
-component_parameters_frame.pack(side='right')
+component_parameters_frame.pack(side='right', fill=Y, padx=40)
 
 canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickness=0)
 
@@ -161,7 +161,17 @@ def beta_distribution_params(component_distribution,
     # component_param2_label.place(in_=array_of_tabs[tab_number], x=1, y=130)
 
 
-def select_distribution_type(distribution_type, parameter1_label, parameter2_label, component_distribution):
+def change_component_index(component_selected):
+    global component_index
+    for comp_index in range(len(circuit_components)):
+        if component_selected.get() == circuit_components[comp_index]:
+            component_index = comp_index
+
+
+def select_distribution_type(distribution_type,
+                             parameter1_label,
+                             parameter2_label,
+                             component_distribution):
 
     if distribution_type.get() == 'Gamma Distribution':
         component_distribution['text'] = 'Gamma'
@@ -285,7 +295,12 @@ def open_new_window(component, index):
     distribution_selected = StringVar(root)
     distribution_selected.set(distributions[0])
 
-    component_drop_down_list = OptionMenu(entering_parameters_window, component_selected, *circuit_components)
+    global component_index
+    component_index = 0
+    component_drop_down_list = OptionMenu(entering_parameters_window,
+                                          component_selected,
+                                          *circuit_components,
+                                          command=lambda _: change_component_index(component_selected))
     distribution_drop_down_list = OptionMenu(entering_parameters_window,
                                              distribution_selected,
                                              *distributions,
@@ -364,7 +379,7 @@ def open_new_window(component, index):
                                                 component_param2_array[
                                                     component_tabs.index(component_tabs.select())].get(
                                                     '1.0', END).strip('\n'),
-                                                component_tabs.index(component_tabs.select()),
+                                                component_index,
                                                 name_label_array)
     )
 
@@ -394,12 +409,13 @@ def open_new_window(component, index):
     component_param1_array[0].grid(row=5, column=6)
     component_param2_array[0].grid(row=6, column=6)
 
-    # Saving Parameters button
-
+    # Saving Parameters button location in new window
     save_parameters_button.grid(row=8, column=7)
-    save_all_parameters_button.grid(row=8, column=8)
     save_parameters_button.grid_rowconfigure(8, weight=1)
     save_parameters_button.grid_columnconfigure(6, weight=1)
+
+    # Saving All Parameters button location in new window
+    save_all_parameters_button.grid(row=8, column=8)
     save_all_parameters_button.grid_rowconfigure(8, weight=1)
     save_all_parameters_button.grid_columnconfigure(7, weight=1)
 
@@ -425,6 +441,7 @@ def save_entered_parameters(entering_parameters_window,
                             index,
                             full_name_labels):
     global all_component_parameters
+    global component_index
 
     if len(all_component_parameters) == 0:
         all_component_parameters.append({component_name:
@@ -471,7 +488,7 @@ def save_entered_parameters(entering_parameters_window,
     print(all_component_parameters)
     # --------------------------------- Displaying entered parameters on root window -----------------------------------
     global name_label
-
+    print(component_index)
     full_name_labels[index].config(text='')
     full_name_labels[index] = Label(component_parameters_frame,
                                     text=component_name +
@@ -479,8 +496,8 @@ def save_entered_parameters(entering_parameters_window,
                                          '\n' + component_param1_label + '=' + component_param1 +
                                          '\n' + component_param2_label + '=' + component_param2)
 
+    full_name_labels[component_index].grid(row=component_index, column=1)
 
-    full_name_labels[index].grid(row=0, column=1)
 
     # frame_window = canvas.create_window(800,
     #                                     (100 * index) + 100, anchor=E,
