@@ -107,7 +107,7 @@ all_component_parameters = []
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for hovering over components --------------------------------------
-# ---------------------------------------------Not Implemented----------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 def on_enter(e, element_to_change):
     canvas.itemconfig(element_to_change, fill='green')
 
@@ -117,62 +117,10 @@ def on_leave(e, element_to_change):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------- Functions for distribution buttons ------------------------------------------
+# ------------------------------------------- Functions for drop down lists --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def normal_distribution_params(component_distribution,
-                               component_param1_label,
-                               component_param2_label,
-                               component_param1,
-                               component_param2,
-                               array_of_tabs,
-                               tab_number
-                               ):
-    component_distribution.delete('1.0', END)
-    component_distribution.insert(INSERT, 'Normal')
-    component_param1_label['text'] = 'Mean (μ)'
-    component_param2_label['text'] = 'Standard deviation (σ)'
-    # component_param1.place(in_=array_of_tabs[tab_number], x=136, y=100)
-    # component_param2.place(in_=array_of_tabs[tab_number], x=136, y=130)
-    # component_param1_label.place(in_=array_of_tabs[tab_number], x=1, y=100)
-    # component_param2_label.place(in_=array_of_tabs[tab_number], x=1, y=130)
 
-
-def gamma_distribution_params(component_distribution,
-                              component_param1_label,
-                              component_param2_label,
-                              component_param1,
-                              component_param2,
-                              array_of_tabs,
-                              tab_number
-                              ):
-    component_distribution.delete('1.0', END)
-    component_distribution.insert(INSERT, 'Gamma')
-    component_param1_label['text'] = 'Shape (k)'
-    component_param2_label['text'] = 'Scale (θ)'
-    # component_param1.place(in_=array_of_tabs[tab_number], x=136, y=100)
-    # component_param2.place(in_=array_of_tabs[tab_number], x=136, y=130)
-    # component_param1_label.place(in_=array_of_tabs[tab_number], x=1, y=100)
-    # component_param2_label.place(in_=array_of_tabs[tab_number], x=1, y=130)
-
-
-def beta_distribution_params(component_distribution,
-                             component_param1_label,
-                             component_param2_label,
-                             component_param1,
-                             component_param2,
-                             array_of_tabs,
-                             tab_number
-                             ):
-    component_distribution.delete('1.0', END)
-    component_distribution.insert(INSERT, 'Beta')
-    component_param1_label['text'] = 'Alpha (α)'
-    component_param2_label['text'] = 'Beta (β)'
-    # component_param1.place(in_=array_of_tabs[tab_number], x=136, y=100)
-    # component_param2.place(in_=array_of_tabs[tab_number], x=136, y=130)
-    # component_param1_label.place(in_=array_of_tabs[tab_number], x=1, y=100)
-    # component_param2_label.place(in_=array_of_tabs[tab_number], x=1, y=130)
-
-
+# Function when the selected component has been changed from dropdown list
 def change_component_index(component_selected,
                            distribution_type,
                            component_distribution_array,
@@ -186,6 +134,8 @@ def change_component_index(component_selected,
         if component_selected.get() == circuit_components[comp_index]:
             component_index = comp_index
 
+    component_param1_array[component_index].grid_remove()
+    component_param2_array[component_index].grid_remove()
     component_distribution_array[component_index].delete('1.0', END)
     if distribution_type.get() == 'Gamma Distribution':
         component_distribution_array[component_index].insert(INSERT, 'Gamma')
@@ -202,11 +152,22 @@ def change_component_index(component_selected,
         component_param1_label_array[component_index]['text'] = 'Mean (μ)'
         component_param2_label_array[component_index]['text'] = 'Standard deviation (σ)'
 
-    component_param1_label_array[component_index].grid(row=5, column=5)
-    component_param2_label_array[component_index].grid(row=6, column=5)
-    component_param1_array[component_index].grid(row=5, column=6)
-    component_param2_array[component_index].grid(row=6, column=6)
+    for labels in range(len(component_param1_label_array)):
+        if labels == component_index:
+            component_param1_label_array[labels].grid(row=5, column=5)
+            component_param2_label_array[labels].grid(row=6, column=5)
+            component_param1_array[labels].grid(row=5, column=6)
+            component_param2_array[labels].grid(row=6, column=6)
+        else:
+            component_param1_label_array[labels].grid_remove()
+            component_param2_label_array[labels].grid_remove()
+            component_param1_array[labels].grid_remove()
+            component_param2_array[labels].grid_remove()
 
+
+
+
+# Function when the selected distribution for the component has been changed from dropdown list
 def select_distribution_type(distribution_type,
                              index_of_selected_component,
                              component_distribution,
@@ -222,31 +183,30 @@ def select_distribution_type(distribution_type,
         parameter1_label[index_of_selected_component]['text'] = 'Shape (k)'
         parameter2_label[index_of_selected_component]['text'] = 'Scale (θ)'
 
-        parameter1_label[index_of_selected_component].grid(row=5, column=5)
-        parameter2_label[index_of_selected_component].grid(row=6, column=5)
-        param1_array[index_of_selected_component].grid(row=5, column=6)
-        param2_array[index_of_selected_component].grid(row=6, column=6)
-
-
     if distribution_type.get() == 'Beta Distribution':
         component_distribution[index_of_selected_component].insert(INSERT, 'Beta')
         parameter1_label[index_of_selected_component]['text'] = 'Alpha (α)'
         parameter2_label[index_of_selected_component]['text'] = 'Beta (β)'
-
-        parameter1_label[index_of_selected_component].grid(row=5, column=5)
-        parameter2_label[index_of_selected_component].grid(row=6, column=5)
-        param1_array[index_of_selected_component].grid(row=5, column=6)
-        param2_array[index_of_selected_component].grid(row=6, column=6)
 
     if distribution_type.get() == 'Normal Distribution':
         component_distribution[index_of_selected_component].insert(INSERT, 'Normal')
         parameter1_label[index_of_selected_component]['text'] = 'Mean (μ)'
         parameter2_label[index_of_selected_component]['text'] = 'Standard deviation (σ)'
 
-        parameter1_label[index_of_selected_component].grid(row=5, column=5)
-        parameter2_label[index_of_selected_component].grid(row=6, column=5)
-        param1_array[index_of_selected_component].grid(row=5, column=6)
-        param2_array[index_of_selected_component].grid(row=6, column=6)
+    print(len(param1_array))
+    for labels in range(len(param1_array)):
+        if labels == index_of_selected_component:
+            parameter1_label[labels].grid(row=5, column=5)
+            parameter2_label[labels].grid(row=6, column=5)
+            param1_array[labels].grid(row=5, column=6)
+            param2_array[labels].grid(row=6, column=6)
+        else:
+            parameter1_label[labels].grid_remove()
+            parameter2_label[labels].grid_remove()
+            param1_array[labels].grid_remove()
+            param2_array[labels].grid_remove()
+
+
     print(distribution_type.get())
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -291,9 +251,8 @@ def sketch_graphs(data):
 # -------------------------------------- Function for enter all parameters button --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for entering parameters
-def open_new_window(component, index):
-    # Toplevel object which will
-    # be treated as a new window
+def open_new_window(component):
+    # Creating a new window for entering parameters
     entering_parameters_window = Toplevel(root)
 
     # sets the title of the new window created for entering parameters
@@ -302,17 +261,6 @@ def open_new_window(component, index):
     # sets the size of the new window created for entering parameters
     # entering_parameters_window.geometry("500x300")
 
-    # # Add a grid
-    # mainframe = Frame(entering_parameters_window)
-    # mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-    # mainframe.columnconfigure(0, weight=1)
-    # mainframe.rowconfigure(0, weight=1)
-
-
-
-    component_tabs = ttk.Notebook(entering_parameters_window)
-
-    component_tabs_array = [None] * len(circuit_components)
     component_name_array = [None] * len(circuit_components)
     component_distribution_array = [None] * len(circuit_components)
     component_param1_label_array = [None] * len(circuit_components)
@@ -334,55 +282,52 @@ def open_new_window(component, index):
     # param1=
     # param2=
     component_name_array_label = Label(entering_parameters_window,
-                                       text='Component Name:',
-                                       width=20)
+                                       height=1,
+                                       width=20,
+                                       text='Component Name:'
+                                       )
 
     component_distribution_label = Label(entering_parameters_window,
-                                         text='Distribution',
-                                         width=20)
+                                         height=1,
+                                         width=20,
+                                         text='Distribution'
+                                         )
 
-    distribution_for_component_label = Label(entering_parameters_window,
-                                       text='',
-                                       width=20)
-
-    component_param1_label = Label(entering_parameters_window,
-                              text='',
-                              width=20)
-
-    component_param2_label = Label(entering_parameters_window,
-                                   text='',
-                                   width=20)
 
     for circuit_component in range(len(circuit_components)):
 
-        component_tabs_array[circuit_component] = ttk.Frame(component_tabs)
-        component_tabs.add(component_tabs_array[circuit_component], text=circuit_components[circuit_component])
         component_name_array[circuit_component] = Label(entering_parameters_window,
-                                                                text=circuit_components[circuit_component],
-                                                                width=10)
-        # Parameters entered by the user
-        #component_name_array[circuit_component].place(in_=component_tabs_array[circuit_component], x=180, y=17)
+                                                        height=1,
+                                                        width=20,
+                                                        text=circuit_components[circuit_component]
+                                                        )
+
         component_distribution_array[circuit_component] = Text(entering_parameters_window,
                                                                height=1,
-                                                               width=12,
-                                                               bg="white")
+                                                               width=20,
+                                                               bg="white"
+                                                               )
 
         component_param1_label_array[circuit_component] = Label(entering_parameters_window,
-                                                                        text='',
-                                                                        width=20)
+                                                                height=1,
+                                                                width=20,
+                                                                text=''
+                                                                )
 
         component_param2_label_array[circuit_component] = Label(entering_parameters_window,
-                                                                        text='',
-                                                                        width=20)
+                                                                height=1,
+                                                                width=20,
+                                                                text=''
+                                                                )
 
         component_param1_array[circuit_component] = Text(entering_parameters_window,
                                                          height=1,
-                                                         width=6,
+                                                         width=20,
                                                          bg="white")
 
         component_param2_array[circuit_component] = Text(entering_parameters_window,
                                                          height=1,
-                                                         width=6,
+                                                         width=20,
                                                          bg="white")
 
         name_label_array[circuit_component] = Label(canvas,
@@ -400,9 +345,6 @@ def open_new_window(component, index):
         component_param1_array[circuit_component].insert(INSERT, '1')
         component_param2_array[circuit_component].insert(INSERT, '2')
 
-    distribution_for_component_label['text'] = 'Normal'
-    component_param1_label['text'] = 'Mean (μ)'
-    component_param2_label['text'] = 'Standard Deviation (σ)'
 
     component_selected = StringVar(root)
     component_selected.set(circuit_components[0])
@@ -472,7 +414,7 @@ def open_new_window(component, index):
     component_name_array_label.grid(row=3, column=5)
     component_drop_down_list.grid(row=3, column=6)
 
-    # Placing Distribution Label
+    # Placing Label and dropdown list for distribution
     component_distribution_label.grid(row=4, column=5)
     distribution_drop_down_list.grid(row=4, column=6)
 
@@ -511,7 +453,8 @@ def save_entered_parameters(entering_parameters_window,
     global all_component_parameters
     global component_index
 
-    print(component_param1_label)
+    print("Index:", end='')
+    print(component_index)
 
     if len(all_component_parameters) == 0:
         all_component_parameters.append({component_name:
@@ -630,7 +573,7 @@ def component_parameters():
     global circuit_components
 
     if len(circuit_components) != 0:
-        open_new_window(circuit_components, 0)
+        open_new_window(circuit_components)
     else:
         error_for_not_entering_schematic = \
             canvas.create_window(400, 300,
