@@ -352,7 +352,6 @@ def open_new_window(component):
         component_param1_array[circuit_component].insert(INSERT, '1')
         component_param2_array[circuit_component].insert(INSERT, '2')
 
-
     component_selected = StringVar(root)
     component_selected.set(circuit_components[0])
     distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
@@ -542,15 +541,11 @@ def save_all_entered_parameters(component_name,
         full_name_labels[circuit_component] = \
             Label(component_parameters_frame,
                   text=component_name[circuit_component] +
-
-                       '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0', END).strip(
-                      '\n') +
-
-                       '\n' + component_param1_label_array[circuit_component]['text']
-                       + '=' + component_param1_array[circuit_component].get('1.0', END).strip('\n') +
-
-                       '\n' + component_param2_label_array[circuit_component]['text']
-                       + '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'))
+                  '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0', END).strip('\n') +
+                  '\n' + component_param1_label_array[circuit_component]['text'] +
+                  '=' + component_param1_array[circuit_component].get('1.0', END).strip('\n') +
+                  '\n' + component_param2_label_array[circuit_component]['text'] +
+                  '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'))
 
         # Placing the name label of all parameters on the root window
         full_name_labels[circuit_component].grid(row=circuit_component, column=1)
@@ -678,6 +673,7 @@ def sketch_schematic_asc(schematic):
     voltage_sources = ''
     components = ''
     power_flags = ''
+    resistors = ''
     # finds the connection wires in the circuit
     for lines in schematic:
         if "WIRE" in lines:
@@ -686,6 +682,8 @@ def sketch_schematic_asc(schematic):
             canvas_size += lines.replace("SHEET 1 ", '')
         if "SYMBOL voltage " in lines:
             voltage_sources += lines.replace("SYMBOL voltage ", '')
+        if "SYMBOL res " in lines:
+            resistors += lines.replace("SYMBOL res ", '')
         if "SYMATTR InstName" in lines:
             components += lines.replace("SYMATTR InstName ", '')
         if "FLAG" in lines:
@@ -707,7 +705,22 @@ def sketch_schematic_asc(schematic):
     # for component_number in range(len(components)):
 
     adjustment = 150
-    # Draw voltage source/s
+    # Separating Resistors
+    resistor_x_adjustment = 6
+    resistor_y_adjustment = 16
+    resistors = resistors.split('\n')
+    resistors = [res for resistor in resistors for res in resistor.split(' ')]
+    resistors = [x for x in resistors if "R" not in x]
+    resistors.pop()
+    resistors = [int(resistor) for resistor in resistors]
+    modified_resistors = [modification + adjustment for modification in resistors]
+
+    for resistor_start in range(1, len(modified_resistors), 2):
+        modified_resistors[resistor_start] = modified_resistors[resistor_start] + resistor_y_adjustment
+
+    for resistor_start in range(0, len(modified_resistors), 2):
+        modified_resistors[resistor_start] = modified_resistors[resistor_start] + resistor_x_adjustment
+    # Separating voltage sources
     voltage_sources = voltage_sources.split('\n')
     voltage_sources = [voltage for source in voltage_sources for voltage in source.split(' ')]
     # removing anything which has 'R'
@@ -752,12 +765,51 @@ def sketch_schematic_asc(schematic):
             drawn_voltage_sources[vol_sources] = canvas.create_circle(modified_voltage_sources[vol_sources - 2],
                                                                       modified_voltage_sources[vol_sources - 1] + 56,
                                                                       40,
-                                                                      tags='schematic')
+                                                                      tags='schematic'
+                                                                      )
             break
         drawn_voltage_sources[vol_sources] = canvas.create_circle(modified_voltage_sources[vol_sources],
                                                                   modified_voltage_sources[vol_sources + 1] + 56,
                                                                   40,
                                                                   tags='schematic')
+
+    # -------------------------------------------------Drawing resistors------------------------------------------
+    drawn_resistors = len(modified_resistors) * [None]
+
+    for resistor in range(0, len(modified_resistors), 2):
+        if (resistor + 1) >= len(modified_resistors):
+            drawn_resistors[resistor] = canvas.create_polygon(modified_resistors[resistor - 2],
+                                                              modified_resistors[resistor - 1],
+                                                              modified_resistors[resistor - 2] + 20,
+                                                              modified_resistors[resistor - 1],
+                                                              modified_resistors[resistor - 2] + 20,
+                                                              modified_resistors[resistor - 1] + 80,
+                                                              modified_resistors[resistor - 2],
+                                                              modified_resistors[resistor - 1] + 80,
+                                                              modified_resistors[resistor - 2],
+                                                              modified_resistors[resistor - 1],
+                                                              fill='',
+                                                              activefill='green',
+                                                              outline='black',
+                                                              disabledfill='',
+                                                              tags='schematic',
+                                                              )
+            break
+        drawn_resistors[resistor] = canvas.create_polygon(modified_resistors[resistor],
+                                                          modified_resistors[resistor + 1],
+                                                          modified_resistors[resistor] + 20,
+                                                          modified_resistors[resistor + 1],
+                                                          modified_resistors[resistor] + 20,
+                                                          modified_resistors[resistor + 1] + 80,
+                                                          modified_resistors[resistor],
+                                                          modified_resistors[resistor + 1] + 80,
+                                                          modified_resistors[resistor],
+                                                          modified_resistors[resistor + 1],
+                                                          fill='',
+                                                          outline='black',
+                                                          activefill='green',
+                                                          disabledfill='',
+                                                          tags='schematic')
 
     while None in drawn_voltage_sources: drawn_voltage_sources.remove(None)
 
@@ -784,6 +836,8 @@ def sketch_schematic_asc(schematic):
         canvas.create_polygon(modified_ground_flags[flag_coordinates] - 25, modified_ground_flags[flag_coordinates + 1],
                               modified_ground_flags[flag_coordinates] + 25, modified_ground_flags[flag_coordinates + 1],
                               modified_ground_flags[flag_coordinates], modified_ground_flags[flag_coordinates + 1] + 25,
+                              fill='',
+                              outline='black',
                               tags='schematic')
 
     # --------------------------------------------Binding events--------------------------------------------------------
@@ -792,6 +846,11 @@ def sketch_schematic_asc(schematic):
     for vol_elements in drawn_voltage_sources:
         canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg))
         canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg))
+
+    # # --------------------------- Making resistors change colour when hovered over -------------------------------
+    # for resistor_elements in drawn_resistors:
+    #     canvas.tag_bind(resistor_elements, '<Enter>', lambda event, arg=resistor_elements: on_enter(event, arg))
+    #     canvas.tag_bind(resistor_elements, '<Leave>', lambda event, arg=resistor_elements: on_leave(event, arg))
 
 
 # Select a schematic using a button
