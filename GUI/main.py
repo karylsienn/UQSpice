@@ -173,34 +173,81 @@ def beta_distribution_params(component_distribution,
     # component_param2_label.place(in_=array_of_tabs[tab_number], x=1, y=130)
 
 
-def change_component_index(component_selected):
+def change_component_index(component_selected,
+                           distribution_type,
+                           component_distribution_array,
+                           component_param1_label_array,
+                           component_param2_label_array,
+                           component_param1_array,
+                           component_param2_array
+                           ):
     global component_index
     for comp_index in range(len(circuit_components)):
         if component_selected.get() == circuit_components[comp_index]:
             component_index = comp_index
 
-
-def select_distribution_type(distribution_type,
-                             parameter1_label,
-                             parameter2_label,
-                             component_distribution):
-
+    component_distribution_array[component_index].delete('1.0', END)
     if distribution_type.get() == 'Gamma Distribution':
-        component_distribution['text'] = 'Gamma'
-        parameter1_label['text'] = 'Shape (k)'
-        parameter2_label['text'] = 'Scale (θ)'
+        component_distribution_array[component_index].insert(INSERT, 'Gamma')
+        component_param1_label_array[component_index]['text'] = 'Shape (k)'
+        component_param2_label_array[component_index]['text'] = 'Scale (θ)'
 
     if distribution_type.get() == 'Beta Distribution':
-        component_distribution['text'] = 'Beta'
-        parameter1_label['text'] = 'Alpha (α)'
-        parameter2_label['text'] = 'Beta (β)'
+        component_distribution_array[component_index].insert(INSERT, 'Beta')
+        component_param1_label_array[component_index]['text'] = 'Alpha (α)'
+        component_param2_label_array[component_index]['text'] = 'Beta (β)'
 
     if distribution_type.get() == 'Normal Distribution':
-        component_distribution['text'] = 'Normal'
-        parameter1_label['text'] = 'Mean (μ)'
-        parameter2_label['text'] = 'Standard deviation (σ)'
-    print(distribution_type.get())
+        component_distribution_array[component_index].insert(INSERT, 'Normal')
+        component_param1_label_array[component_index]['text'] = 'Mean (μ)'
+        component_param2_label_array[component_index]['text'] = 'Standard deviation (σ)'
 
+    component_param1_label_array[component_index].grid(row=5, column=5)
+    component_param2_label_array[component_index].grid(row=6, column=5)
+    component_param1_array[component_index].grid(row=5, column=6)
+    component_param2_array[component_index].grid(row=6, column=6)
+
+def select_distribution_type(distribution_type,
+                             index_of_selected_component,
+                             component_distribution,
+                             parameter1_label,
+                             parameter2_label,
+                             param1_array,
+                             param2_array
+                             ):
+
+    component_distribution[index_of_selected_component].delete('1.0', END)
+    if distribution_type.get() == 'Gamma Distribution':
+        component_distribution[index_of_selected_component].insert(INSERT, 'Gamma')
+        parameter1_label[index_of_selected_component]['text'] = 'Shape (k)'
+        parameter2_label[index_of_selected_component]['text'] = 'Scale (θ)'
+
+        parameter1_label[index_of_selected_component].grid(row=5, column=5)
+        parameter2_label[index_of_selected_component].grid(row=6, column=5)
+        param1_array[index_of_selected_component].grid(row=5, column=6)
+        param2_array[index_of_selected_component].grid(row=6, column=6)
+
+
+    if distribution_type.get() == 'Beta Distribution':
+        component_distribution[index_of_selected_component].insert(INSERT, 'Beta')
+        parameter1_label[index_of_selected_component]['text'] = 'Alpha (α)'
+        parameter2_label[index_of_selected_component]['text'] = 'Beta (β)'
+
+        parameter1_label[index_of_selected_component].grid(row=5, column=5)
+        parameter2_label[index_of_selected_component].grid(row=6, column=5)
+        param1_array[index_of_selected_component].grid(row=5, column=6)
+        param2_array[index_of_selected_component].grid(row=6, column=6)
+
+    if distribution_type.get() == 'Normal Distribution':
+        component_distribution[index_of_selected_component].insert(INSERT, 'Normal')
+        parameter1_label[index_of_selected_component]['text'] = 'Mean (μ)'
+        parameter2_label[index_of_selected_component]['text'] = 'Standard deviation (σ)'
+
+        parameter1_label[index_of_selected_component].grid(row=5, column=5)
+        parameter2_label[index_of_selected_component].grid(row=6, column=5)
+        param1_array[index_of_selected_component].grid(row=5, column=6)
+        param2_array[index_of_selected_component].grid(row=6, column=6)
+    print(distribution_type.get())
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for sketching graphs on tab 2 --------------------------------------
@@ -306,26 +353,6 @@ def open_new_window(component, index):
                                    text='',
                                    width=20)
 
-    component_selected = StringVar(root)
-    component_selected.set(circuit_components[0])
-    distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
-    distribution_selected = StringVar(root)
-    distribution_selected.set(distributions[0])
-
-    global component_index
-    component_index = 0
-    component_drop_down_list = OptionMenu(entering_parameters_window,
-                                          component_selected,
-                                          *circuit_components,
-                                          command=lambda _: change_component_index(component_selected))
-    distribution_drop_down_list = OptionMenu(entering_parameters_window,
-                                             distribution_selected,
-                                             *distributions,
-                                             command=lambda _: select_distribution_type(distribution_selected,
-                                                                                        component_param1_label,
-                                                                                        component_param2_label,
-                                                                                        distribution_for_component_label))
-
     for circuit_component in range(len(circuit_components)):
 
         component_tabs_array[circuit_component] = ttk.Frame(component_tabs)
@@ -373,29 +400,57 @@ def open_new_window(component, index):
         component_param1_array[circuit_component].insert(INSERT, '1')
         component_param2_array[circuit_component].insert(INSERT, '2')
 
-
-    #component_tabs.pack(expand=True, fill=BOTH)
     distribution_for_component_label['text'] = 'Normal'
     component_param1_label['text'] = 'Mean (μ)'
     component_param2_label['text'] = 'Standard Deviation (σ)'
 
+    component_selected = StringVar(root)
+    component_selected.set(circuit_components[0])
+    distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
+    distribution_selected = StringVar(root)
+    distribution_selected.set(distributions[0])
 
-    print(distribution_for_component_label['text'])
+    global component_index
+    component_index = 0
+
+    # Drop down list for selecting which component to enter parameters for
+    component_drop_down_list = OptionMenu(entering_parameters_window,
+                                          component_selected,
+                                          *circuit_components,
+                                          command=lambda _: change_component_index(component_selected,
+                                                                                   distribution_selected,
+                                                                                   component_distribution_array,
+                                                                                   component_param1_label_array,
+                                                                                   component_param2_label_array,
+                                                                                   component_param1_array,
+                                                                                   component_param2_array
+                                                                                   ))
+
+    # Drop down list for selecting the type of distribution for random components
+    distribution_drop_down_list = OptionMenu(entering_parameters_window,
+                                             distribution_selected,
+                                             *distributions,
+                                             command=lambda _: select_distribution_type(distribution_selected,
+                                                                                        component_index,
+                                                                                        component_distribution_array,
+                                                                                        component_param1_label_array,
+                                                                                        component_param2_label_array,
+                                                                                        component_param1_array,
+                                                                                        component_param2_array
+                                                                                        ))
+
     # Button for saving parameters
     save_parameters_button = ttk.Button(
         entering_parameters_window,
         text='Save Parameters',
         command=lambda: save_entered_parameters(entering_parameters_window,
                                                 component_selected.get(),
-                                                distribution_for_component_label['text'],
-                                                component_param1_label['text'],
-                                                component_param2_label['text'],
-                                                component_param1_array[
-                                                    component_tabs.index(component_tabs.select())].get(
-                                                    '1.0', END).strip('\n'),
-                                                component_param2_array[
-                                                    component_tabs.index(component_tabs.select())].get(
-                                                    '1.0', END).strip('\n'),
+                                                distribution_selected.get(),
+                                                component_distribution_array[component_index].get('1.0', END).strip('\n'),
+                                                component_param1_label_array[component_index]['text'],
+                                                component_param2_label_array[component_index]['text'],
+                                                component_param1_array[component_index].get('1.0', END).strip('\n'),
+                                                component_param2_array[component_index].get('1.0', END).strip('\n'),
                                                 component_index,
                                                 name_label_array)
     )
@@ -421,11 +476,6 @@ def open_new_window(component, index):
     component_distribution_label.grid(row=4, column=5)
     distribution_drop_down_list.grid(row=4, column=6)
 
-    component_param1_label.grid(row=5, column=5)
-    component_param2_label.grid(row=6, column=5)
-    component_param1_array[0].grid(row=5, column=6)
-    component_param2_array[0].grid(row=6, column=6)
-
     # Saving Parameters button location in new window
     save_parameters_button.grid(row=8, column=7)
     save_parameters_button.grid_rowconfigure(8, weight=1)
@@ -450,6 +500,7 @@ def open_new_window(component, index):
 # Function for closing new windows using a  button
 def save_entered_parameters(entering_parameters_window,
                             component_name,
+                            selected_distribution,
                             component_distribution,
                             component_param1_label,
                             component_param2_label,
@@ -459,6 +510,8 @@ def save_entered_parameters(entering_parameters_window,
                             full_name_labels):
     global all_component_parameters
     global component_index
+
+    print(component_param1_label)
 
     if len(all_component_parameters) == 0:
         all_component_parameters.append({component_name:
@@ -508,19 +561,13 @@ def save_entered_parameters(entering_parameters_window,
     full_name_labels[index].config(text='')
     full_name_labels[index] = Label(component_parameters_frame,
                                     text=component_name +
-                                         '\nDistribution: ' + component_distribution +
-                                         '\n' + component_param1_label + '=' + component_param1 +
-                                         '\n' + component_param2_label + '=' + component_param2,
+                                    '\nDistribution: ' + component_distribution +
+                                    '\n' + component_param1_label + '=' + component_param1 +
+                                    '\n' + component_param2_label + '=' + component_param2,
                                     highlightcolor='black',
                                     highlightthickness=2)
 
     full_name_labels[component_index].grid(row=component_index, column=1)
-
-
-    # frame_window = canvas.create_window(800,
-    #                                     (100 * index) + 100, anchor=E,
-    #                                     window=canvas_frame,
-    #                                     tags='schematic')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
