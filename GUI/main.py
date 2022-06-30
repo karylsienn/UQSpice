@@ -9,6 +9,7 @@ def main():
 ﻿from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog as fd
+import customtkinter
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from pandas import DataFrame
@@ -21,6 +22,28 @@ from reportlab.graphics import renderPDF, renderPM
 from PIL import Image, ImageTk
 >>>>>>> a47dab3 (Added the ability to pan and zoom canvas)
 
+<<<<<<< HEAD
+=======
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------GUI Program beta v0.1------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+circuit_components = []
+
+
+class IndexTracker(object):
+    def __init__(self, ax, X, smax):
+        self.ax = ax
+        ax.set_title('use scroll wheel to navigate images')
+        self.X = X
+        rows, cols, self.slices = X.shape
+        self.ind = self.slices//2
+        self.im = ax.imshow(self.X[:, :, self.ind], cmap='gray')
+        self.smax = smax
+        self.update()
+>>>>>>> ae34122 (Added new ui style using custom tkinter library)
 
 <<<<<<< HEAD
 # Run main GUI application
@@ -85,9 +108,12 @@ class ResizingCanvas(Canvas):
 
 
 # create the root window
-root = Tk()
+customtkinter.set_appearance_mode("dark")  # Modes: system (default), light, dark
+customtkinter.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
+
+root = customtkinter.CTk()
 root.title('EMC Analysis')
-root.geometry('1080x730+250+200')
+root.geometry('1100x750+250+200')
 
 tabControl = ttk.Notebook(root)
 
@@ -97,7 +123,7 @@ graphs = ttk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = Frame(schematic_params, bg='white', width=200, height=100)
+component_parameters_frame = Frame(schematic_params, width=200, height=100)
 component_parameters_frame.pack(side='right', fill=Y, padx=40)
 
 canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickness=0)
@@ -258,7 +284,7 @@ def sketch_graphs(data):
 # Function for entering parameters
 def open_new_window(component):
     # Creating a new window for entering parameters
-    entering_parameters_window = Toplevel(root)
+    entering_parameters_window = customtkinter.CTkToplevel(root)
 
     # sets the title of the new window created for entering parameters
     entering_parameters_window.title("Enter Component Parameters")
@@ -286,13 +312,13 @@ def open_new_window(component):
     # Distribution:
     # param1=
     # param2=
-    component_name_array_label = Label(entering_parameters_window,
+    component_name_array_label = customtkinter.CTkLabel(entering_parameters_window,
                                        height=1,
                                        width=20,
                                        text='Component Name:'
                                        )
 
-    component_distribution_label = Label(entering_parameters_window,
+    component_distribution_label = customtkinter.CTkLabel(entering_parameters_window,
                                          height=1,
                                          width=20,
                                          text='Distribution'
@@ -385,7 +411,7 @@ def open_new_window(component):
                                                                                         ))
 
     # Button for saving parameters
-    save_parameters_button = ttk.Button(
+    save_parameters_button = customtkinter.CTkButton(
         entering_parameters_window,
         text='Save Parameters',
         command=lambda: save_entered_parameters(entering_parameters_window,
@@ -401,7 +427,7 @@ def open_new_window(component):
     )
 
     # Button for saving parameters
-    save_all_parameters_button = ttk.Button(
+    save_all_parameters_button = customtkinter.CTkButton(
         entering_parameters_window,
         text='Save All Parameters',
         command=lambda: save_all_entered_parameters(component,
@@ -664,6 +690,7 @@ def sketch_schematic_asc(schematic):
     # Clear all previous component parameters
     all_component_parameters.clear()
 
+
     # Clear all previous drawn wires, components, power flags, voltage sources, etc.
     wires = ''
     canvas_size = ''
@@ -851,13 +878,13 @@ def sketch_schematic_asc(schematic):
 
 
 # Select a schematic using a button
-openfile_button = ttk.Button(root,
+openfile_button = customtkinter.CTkButton(root,
                              text='Open a Schematic',
                              command=get_file_path
                              )
 
 # Button for entering the parameters of the circuit
-enter_parameters_button = ttk.Button(root,
+enter_parameters_button = customtkinter.CTkButton(root,
                                      text='Enter All Parameters',
                                      command=component_parameters
                                      )
