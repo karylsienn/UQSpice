@@ -2,7 +2,7 @@
 from tkinter import ttk
 from tkinter import filedialog as fd
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from pandas import DataFrame
 import plotly.graph_objects as go
 import numpy as np
@@ -90,7 +90,7 @@ class ResizingCanvas(Canvas):
 # create the root window
 root = Tk()
 root.title('EMC Analysis')
-root.geometry('1080x720+250+200')
+root.geometry('1080x730+250+200')
 
 tabControl = ttk.Notebook(root)
 
@@ -100,7 +100,7 @@ graphs = ttk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = Frame(schematic_params, width=300, height=100)
+component_parameters_frame = Frame(schematic_params, bg='white', width=200, height=100)
 component_parameters_frame.pack(side='right', fill=Y, padx=40)
 
 canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickness=0)
@@ -140,6 +140,8 @@ def change_component_index(component_selected,
     component_param1_array[component_index].grid_remove()
     component_param2_array[component_index].grid_remove()
     component_distribution_array[component_index].delete('1.0', END)
+
+    # Check which distribution has been selected and change the parameters accordingly
     if distribution_type.get() == 'Gamma Distribution':
         component_distribution_array[component_index].insert(INSERT, 'Gamma')
         component_param1_label_array[component_index]['text'] = 'Shape (k)'
@@ -155,6 +157,7 @@ def change_component_index(component_selected,
         component_param1_label_array[component_index]['text'] = 'Mean (μ)'
         component_param2_label_array[component_index]['text'] = 'Standard deviation (σ)'
 
+    # Remove all labels for parameters, except the user selected component label
     for labels in range(len(component_param1_label_array)):
         if labels == component_index:
             component_param1_label_array[labels].grid(row=5, column=5)
@@ -168,8 +171,6 @@ def change_component_index(component_selected,
             component_param2_array[labels].grid_remove()
 
 
-
-
 # Function when the selected distribution for the component has been changed from dropdown list
 def select_distribution_type(distribution_type,
                              index_of_selected_component,
@@ -180,6 +181,7 @@ def select_distribution_type(distribution_type,
                              param2_array
                              ):
 
+    # Check which distribution has been selected and change the parameters accordingly
     component_distribution[index_of_selected_component].delete('1.0', END)
     if distribution_type.get() == 'Gamma Distribution':
         component_distribution[index_of_selected_component].insert(INSERT, 'Gamma')
@@ -196,7 +198,7 @@ def select_distribution_type(distribution_type,
         parameter1_label[index_of_selected_component]['text'] = 'Mean (μ)'
         parameter2_label[index_of_selected_component]['text'] = 'Standard deviation (σ)'
 
-    print(len(param1_array))
+    # Remove all labels for parameters, except the user selected component label
     for labels in range(len(param1_array)):
         if labels == index_of_selected_component:
             parameter1_label[labels].grid(row=5, column=5)
@@ -238,10 +240,13 @@ def sketch_graphs(data):
     figure = plt.Figure(figsize=(10, 6), dpi=100)
     ax = figure.add_subplot(111)
     chart_type = FigureCanvasTkAgg(figure, graphs)
-    chart_type.get_tk_widget().pack()
+    chart_type.get_tk_widget().pack(pady=0)
     data_frame_plot = data_frame_plot[['Country', 'GDP_Per_Capita']].groupby('Country').sum()
     data_frame_plot.plot(kind='line', legend=True, ax=ax)
     ax.set_title('Example Plot')
+    toolbar = NavigationToolbar2Tk(chart_type, graphs, pack_toolbar=False)
+    toolbar.update()
+    toolbar.pack(side=BOTTOM, fill=X)
 
     # fig = go.Figure(
     #     data=[go.Bar(y=[2, 1, 3])],
@@ -295,7 +300,6 @@ def open_new_window(component):
                                          width=20,
                                          text='Distribution'
                                          )
-
 
     for circuit_component in range(len(circuit_components)):
 
@@ -632,7 +636,7 @@ def get_file_path():
     # size = img.size
     # canvas.create_image(20, 20, anchor=NW, image=pimg, tags='schematic')
 
-    # TODO: Guess the encoding
+    # TODO: Make sure that micro gets replaced as it gives error to code
     fpath = file_path[0]
     with open(fpath, 'rb') as ltspiceascfile:
         first_line = ltspiceascfile.read(4)
@@ -646,7 +650,6 @@ def get_file_path():
 
     with open(fpath, mode='r', encoding=encoding) as ltspiceascfile:
         schematic = ltspiceascfile.readlines()
-        # TODO: read the remainder with readlines(encoding=encoding)
     ltspiceascfile.close()
 
     sketch_schematic_asc(schematic)
@@ -783,34 +786,29 @@ def sketch_schematic_asc(schematic):
                               modified_ground_flags[flag_coordinates], modified_ground_flags[flag_coordinates + 1] + 25,
                               tags='schematic')
 
-    # enter_parameters_window = canvas.create_window(150, 650, anchor=NW, window=enter_parameters_button)
-
     # --------------------------------------------Binding events--------------------------------------------------------
 
-    # --------------------------------- Making voltage sources change colour when hovered over -------------------------
+    # --------------------------- Making voltage sources change colour when hovered over -------------------------------
     for vol_elements in drawn_voltage_sources:
         canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg))
         canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg))
 
 
 # Select a schematic using a button
-openfile_button = ttk.Button(
-    root,
-    text='Open a Schematic',
-    command=get_file_path
-)
+openfile_button = ttk.Button(root,
+                             text='Open a Schematic',
+                             command=get_file_path
+                             )
 
 # Button for entering the parameters of the circuit
-enter_parameters_button = ttk.Button(
-    root,
-    text='Enter All Parameters',
-    command=component_parameters
-)
+enter_parameters_button = ttk.Button(root,
+                                     text='Enter All Parameters',
+                                     command=component_parameters
+                                     )
 
 value = 0
 sketch_graphs(value)
 # open file button, tab control and canvas location in root window
-openfile_button_window = canvas.create_window(20, 650, anchor=NW, window=openfile_button)
 enter_parameters_button.pack(padx=0, pady=10, side=BOTTOM)
 openfile_button.pack(padx=0, pady=2, side=BOTTOM)
 tabControl.pack(expand=True, fill=BOTH)
