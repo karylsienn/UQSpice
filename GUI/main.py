@@ -318,14 +318,16 @@ def open_new_window(component):
                                        width=20,
                                        text='Component Name:',
                                        background=label_background,
-                                       foreground=text_colour
+                                       foreground=text_colour,
+                                       highlightbackground=label_background,
                                        )
     component_distribution_label = Label(entering_parameters_window,
                                          height=1,
                                          width=20,
                                          text='Distribution',
                                          background=label_background,
-                                         foreground=text_colour
+                                         foreground=text_colour,
+                                         highlightbackground=label_background
                                          )
 
     for circuit_component in range(len(circuit_components)):
@@ -414,8 +416,16 @@ def open_new_window(component):
                                                                                    component_param2_array
                                                                                    ))
 
-    component_drop_down_list.config(background=label_background, foreground=text_colour)
-    component_drop_down_list["menu"].config(background=label_background, foreground=text_colour)
+    component_drop_down_list.config(background=label_background,
+                                    foreground=text_colour,
+                                    activebackground=text_colour,
+                                    activeforeground=label_background)
+
+    component_drop_down_list["menu"].config(background=label_background,
+                                            foreground=text_colour,
+                                            activebackground=text_colour,
+                                            activeforeground=label_background
+                                            )
 
     # Drop down list for selecting the type of distribution for random components
     distribution_drop_down_list = OptionMenu(entering_parameters_window,
@@ -430,8 +440,16 @@ def open_new_window(component):
                                                                                         component_param2_array
                                                                                         ))
 
-    distribution_drop_down_list.config(background=label_background, foreground=text_colour)
-    distribution_drop_down_list["menu"].config(background=label_background, foreground=text_colour)
+    distribution_drop_down_list.config(background=label_background,
+                                       foreground=text_colour,
+                                       activebackground=text_colour,
+                                       activeforeground=label_background
+                                       )
+    distribution_drop_down_list["menu"].config(background=label_background,
+                                               foreground=text_colour,
+                                               activebackground=text_colour,
+                                               activeforeground=label_background
+                                               )
 
     # Button for saving parameters
     save_parameters_button = customtkinter.CTkButton(
