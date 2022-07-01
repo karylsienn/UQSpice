@@ -136,7 +136,7 @@ component_parameters_frame = Frame(schematic_params, width=400, height=100)
 canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickness=0)
 
 all_component_parameters = []
-
+entering_parameters_window = None
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for hovering over components --------------------------------------
@@ -244,6 +244,7 @@ def select_distribution_type(distribution_type,
 
     print(distribution_type.get())
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for sketching graphs on tab 2 --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -291,237 +292,241 @@ def sketch_graphs(data):
 # Function for entering parameters
 def open_new_window(component):
     # Creating a new window for entering parameters
-    entering_parameters_window = customtkinter.CTkToplevel(root)
+    global entering_parameters_window
 
-    global Mode
-    if Mode == 'dark':
-        label_background = '#212325'
-        outline = '#212325'
-        text_colour = 'white'
-    elif Mode == 'light':
-        label_background = '#EBEBEB'
-        outline = '#EBEBEB'
-        text_colour = 'black'
+    if entering_parameters_window is not None and entering_parameters_window.winfo_exists():
+        entering_parameters_window.lift()
+    else:
+        entering_parameters_window = customtkinter.CTkToplevel(root)
 
-    # sets the title of the new window created for entering parameters
-    entering_parameters_window.title("Enter Component Parameters")
+        global Mode
+        if Mode == 'dark':
+            label_background = '#212325'
+            outline = '#212325'
+            text_colour = 'white'
+        elif Mode == 'light':
+            label_background = '#EBEBEB'
+            outline = '#EBEBEB'
+            text_colour = 'black'
 
-    # sets the size of the new window created for entering parameters
-    # entering_parameters_window.geometry("500x300")
+        # sets the title of the new window created for entering parameters
+        entering_parameters_window.title("Enter Component Parameters")
 
-    component_name_array = [None] * len(circuit_components)
-    component_distribution_array = [None] * len(circuit_components)
-    component_param1_entry_box = [None] * len(circuit_components)
+        # sets the size of the new window created for entering parameters
+        # entering_parameters_window.geometry("500x300")
 
-    component_param1_label_array = [None] * len(circuit_components)
-    component_param2_label_array = [None] * len(circuit_components)
-    component_param1_array = [None] * len(circuit_components)
-    component_param2_array = [None] * len(circuit_components)
-    name_label_array = [None] * len(circuit_components)
+        component_name_array = [None] * len(circuit_components)
+        component_distribution_array = [None] * len(circuit_components)
+        component_param1_entry_box = [None] * len(circuit_components)
 
-    # Example Structure
-    # name: L1
-    # distribution: normal
-    # parameters:
-    # mu: 1    sd: 2
+        component_param1_label_array = [None] * len(circuit_components)
+        component_param2_label_array = [None] * len(circuit_components)
+        component_param1_array = [None] * len(circuit_components)
+        component_param2_array = [None] * len(circuit_components)
+        name_label_array = [None] * len(circuit_components)
 
-    # Display names of the parameters using labels
-    # Which looks like the following:
-    # Component Name:
-    # Distribution:
-    # param1=
-    # param2=
-    component_name_array_label = Label(entering_parameters_window,
-                                       height=1,
-                                       width=20,
-                                       text='Component Name:',
-                                       background=label_background,
-                                       foreground=text_colour,
-                                       highlightbackground=label_background,
-                                       )
-    component_distribution_label = Label(entering_parameters_window,
-                                         height=1,
-                                         width=20,
-                                         text='Distribution',
-                                         background=label_background,
-                                         foreground=text_colour,
-                                         highlightbackground=label_background
-                                         )
+        # Example Structure
+        # name: L1
+        # distribution: normal
+        # parameters:
+        # mu: 1    sd: 2
 
-    for circuit_component in range(len(circuit_components)):
+        # Display names of the parameters using labels
+        # Which looks like the following:
+        # Component Name:
+        # Distribution:
+        # param1=
+        # param2=
+        component_name_array_label = Label(entering_parameters_window,
+                                           height=1,
+                                           width=20,
+                                           text='Component Name:',
+                                           background=label_background,
+                                           foreground=text_colour,
+                                           highlightbackground=label_background,
+                                           )
+        component_distribution_label = Label(entering_parameters_window,
+                                             height=1,
+                                             width=20,
+                                             text='Distribution',
+                                             background=label_background,
+                                             foreground=text_colour,
+                                             highlightbackground=label_background
+                                             )
 
-        component_name_array[circuit_component] = Label(entering_parameters_window,
-                                                        height=1,
-                                                        width=20,
-                                                        text=circuit_components[circuit_component],
-                                                        background=label_background,
-                                                        foreground=text_colour
-                                                        )
+        for circuit_component in range(len(circuit_components)):
+            component_name_array[circuit_component] = Label(entering_parameters_window,
+                                                            height=1,
+                                                            width=20,
+                                                            text=circuit_components[circuit_component],
+                                                            background=label_background,
+                                                            foreground=text_colour
+                                                            )
 
-        component_distribution_array[circuit_component] = Text(entering_parameters_window,
-                                                               height=1,
-                                                               width=20,
-                                                               bg="white"
-                                                               )
+            component_distribution_array[circuit_component] = Text(entering_parameters_window,
+                                                                   height=1,
+                                                                   width=20,
+                                                                   bg="white"
+                                                                   )
 
-        component_param1_label_array[circuit_component] = Label(entering_parameters_window,
-                                                                height=1,
-                                                                width=20,
-                                                                text='',
-                                                                background=label_background,
-                                                                foreground=text_colour
-                                                                )
+            component_param1_label_array[circuit_component] = Label(entering_parameters_window,
+                                                                    height=1,
+                                                                    width=20,
+                                                                    text='',
+                                                                    background=label_background,
+                                                                    foreground=text_colour
+                                                                    )
 
-        # component_param1_entry_box[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
-        #                                                                        height=1,
-        #                                                                        width=40,
-        #                                                                        text='',
-        #                                                                        validatecommand=vcmd
-        #                                                                        )
+            # component_param1_entry_box[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
+            #                                                                        height=1,
+            #                                                                        width=40,
+            #                                                                        text='',
+            #                                                                        validatecommand=vcmd
+            #                                                                        )
 
-        component_param2_label_array[circuit_component] = Label(entering_parameters_window,
-                                                                height=1,
-                                                                width=20,
-                                                                text='',
-                                                                background=label_background,
-                                                                foreground=text_colour
-                                                                )
+            component_param2_label_array[circuit_component] = Label(entering_parameters_window,
+                                                                    height=1,
+                                                                    width=20,
+                                                                    text='',
+                                                                    background=label_background,
+                                                                    foreground=text_colour
+                                                                    )
 
-        component_param1_array[circuit_component] = Text(entering_parameters_window,
-                                                         height=1,
-                                                         width=20,
-                                                         bg="white")
+            component_param1_array[circuit_component] = Text(entering_parameters_window,
+                                                             height=1,
+                                                             width=20,
+                                                             bg="white")
 
-        component_param2_array[circuit_component] = Text(entering_parameters_window,
-                                                         height=1,
-                                                         width=20,
-                                                         bg="white")
+            component_param2_array[circuit_component] = Text(entering_parameters_window,
+                                                             height=1,
+                                                             width=20,
+                                                             bg="white")
 
-        name_label_array[circuit_component] = Label(canvas,
-                                                    text='')
+            name_label_array[circuit_component] = Label(canvas,
+                                                        text='')
 
+            # Default parameters which are:
+            # distribution: Normal
+            # Mean = 1
+            # Standard Deviation = 2
+            component_distribution_array[circuit_component].insert(INSERT, 'Normal')
+            component_param1_label_array[circuit_component]['text'] = 'Mean (μ)'
+            component_param2_label_array[circuit_component]['text'] = 'Standard deviation (σ)'
+            component_param1_array[circuit_component].insert(INSERT, '1')
+            component_param2_array[circuit_component].insert(INSERT, '2')
 
+        component_selected = StringVar(root)
+        component_selected.set(circuit_components[0])
+        distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
+        distribution_selected = StringVar(root)
+        distribution_selected.set(distributions[0])
 
-        # Default parameters which are:
-        # distribution: Normal
-        # Mean = 1
-        # Standard Deviation = 2
-        component_distribution_array[circuit_component].insert(INSERT, 'Normal')
-        component_param1_label_array[circuit_component]['text'] = 'Mean (μ)'
-        component_param2_label_array[circuit_component]['text'] = 'Standard deviation (σ)'
-        component_param1_array[circuit_component].insert(INSERT, '1')
-        component_param2_array[circuit_component].insert(INSERT, '2')
+        global component_index
+        component_index = 0
 
-    component_selected = StringVar(root)
-    component_selected.set(circuit_components[0])
-    distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
-    distribution_selected = StringVar(root)
-    distribution_selected.set(distributions[0])
+        # Drop down list for selecting which component to enter parameters for
+        component_drop_down_list = OptionMenu(entering_parameters_window,
+                                              component_selected,
+                                              *circuit_components,
+                                              command=lambda _: change_component_index(component_selected,
+                                                                                       distribution_selected,
+                                                                                       component_distribution_array,
+                                                                                       component_param1_label_array,
+                                                                                       component_param2_label_array,
+                                                                                       component_param1_array,
+                                                                                       component_param2_array
+                                                                                       ))
 
-    global component_index
-    component_index = 0
+        component_drop_down_list.config(background=label_background,
+                                        foreground=text_colour,
+                                        activebackground=text_colour,
+                                        activeforeground=label_background)
 
-    # Drop down list for selecting which component to enter parameters for
-    component_drop_down_list = OptionMenu(entering_parameters_window,
-                                          component_selected,
-                                          *circuit_components,
-                                          command=lambda _: change_component_index(component_selected,
-                                                                                   distribution_selected,
-                                                                                   component_distribution_array,
-                                                                                   component_param1_label_array,
-                                                                                   component_param2_label_array,
-                                                                                   component_param1_array,
-                                                                                   component_param2_array
-                                                                                   ))
+        component_drop_down_list["menu"].config(background=label_background,
+                                                foreground=text_colour,
+                                                activebackground=text_colour,
+                                                activeforeground=label_background
+                                                )
 
-    component_drop_down_list.config(background=label_background,
-                                    foreground=text_colour,
-                                    activebackground=text_colour,
-                                    activeforeground=label_background)
+        # Drop down list for selecting the type of distribution for random components
+        distribution_drop_down_list = OptionMenu(entering_parameters_window,
+                                                 distribution_selected,
+                                                 *distributions,
+                                                 command=lambda _: select_distribution_type(distribution_selected,
+                                                                                            component_index,
+                                                                                            component_distribution_array,
+                                                                                            component_param1_label_array,
+                                                                                            component_param2_label_array,
+                                                                                            component_param1_array,
+                                                                                            component_param2_array
+                                                                                            ))
 
-    component_drop_down_list["menu"].config(background=label_background,
-                                            foreground=text_colour,
-                                            activebackground=text_colour,
-                                            activeforeground=label_background
-                                            )
+        distribution_drop_down_list.config(background=label_background,
+                                           foreground=text_colour,
+                                           activebackground=text_colour,
+                                           activeforeground=label_background
+                                           )
+        distribution_drop_down_list["menu"].config(background=label_background,
+                                                   foreground=text_colour,
+                                                   activebackground=text_colour,
+                                                   activeforeground=label_background
+                                                   )
 
-    # Drop down list for selecting the type of distribution for random components
-    distribution_drop_down_list = OptionMenu(entering_parameters_window,
-                                             distribution_selected,
-                                             *distributions,
-                                             command=lambda _: select_distribution_type(distribution_selected,
-                                                                                        component_index,
-                                                                                        component_distribution_array,
-                                                                                        component_param1_label_array,
-                                                                                        component_param2_label_array,
-                                                                                        component_param1_array,
-                                                                                        component_param2_array
-                                                                                        ))
-
-    distribution_drop_down_list.config(background=label_background,
-                                       foreground=text_colour,
-                                       activebackground=text_colour,
-                                       activeforeground=label_background
-                                       )
-    distribution_drop_down_list["menu"].config(background=label_background,
-                                               foreground=text_colour,
-                                               activebackground=text_colour,
-                                               activeforeground=label_background
-                                               )
-
-    # Button for saving parameters
-    save_parameters_button = customtkinter.CTkButton(
-        entering_parameters_window,
-        text='Save Parameters',
-        command=lambda: save_entered_parameters(entering_parameters_window,
-                                                component_selected.get(),
-                                                distribution_selected.get(),
-                                                component_distribution_array[component_index].get('1.0', END).strip('\n'),
-                                                component_param1_label_array[component_index]['text'],
-                                                component_param2_label_array[component_index]['text'],
-                                                component_param1_array[component_index].get('1.0', END).strip('\n'),
-                                                component_param2_array[component_index].get('1.0', END).strip('\n'),
-                                                component_index,
-                                                name_label_array)
-    )
-
-    # Button for saving parameters
-    save_all_parameters_button = customtkinter.CTkButton(
-        entering_parameters_window,
-        text='Save All Parameters',
-        command=lambda: save_all_entered_parameters(component,
-                                                    component_distribution_array,
-                                                    component_param1_label_array,
-                                                    component_param2_label_array,
-                                                    component_param1_array,
-                                                    component_param2_array,
+        # Button for saving parameters
+        save_parameters_button = customtkinter.CTkButton(
+            entering_parameters_window,
+            text='Save Parameters',
+            command=lambda: save_entered_parameters(entering_parameters_window,
+                                                    component_selected.get(),
+                                                    distribution_selected.get(),
+                                                    component_distribution_array[component_index].get('1.0', END).strip(
+                                                        '\n'),
+                                                    component_param1_label_array[component_index]['text'],
+                                                    component_param2_label_array[component_index]['text'],
+                                                    component_param1_array[component_index].get('1.0', END).strip('\n'),
+                                                    component_param2_array[component_index].get('1.0', END).strip('\n'),
+                                                    component_index,
                                                     name_label_array)
-    )
+        )
 
-    # Component drop down list and component name label
-    component_name_array_label.grid(row=3, column=5)
-    component_drop_down_list.grid(row=3, column=6)
+        # Button for saving parameters
+        save_all_parameters_button = customtkinter.CTkButton(
+            entering_parameters_window,
+            text='Save All Parameters',
+            command=lambda: save_all_entered_parameters(component,
+                                                        component_distribution_array,
+                                                        component_param1_label_array,
+                                                        component_param2_label_array,
+                                                        component_param1_array,
+                                                        component_param2_array,
+                                                        name_label_array)
+        )
 
-    # Placing Label and dropdown list for distribution
-    component_distribution_label.grid(row=4, column=5)
-    distribution_drop_down_list.grid(row=4, column=6)
+        # Component drop down list and component name label
+        component_name_array_label.grid(row=3, column=5)
+        component_drop_down_list.grid(row=3, column=6)
 
-    # Saving Parameters button location in new window
-    save_parameters_button.grid(row=8, column=7)
-    save_parameters_button.grid_rowconfigure(8, weight=1)
-    save_parameters_button.grid_columnconfigure(6, weight=1)
+        # Placing Label and dropdown list for distribution
+        component_distribution_label.grid(row=4, column=5)
+        distribution_drop_down_list.grid(row=4, column=6)
 
-    # Saving All Parameters button location in new window
-    save_all_parameters_button.grid(row=8, column=8)
-    save_all_parameters_button.grid_rowconfigure(8, weight=1)
-    save_all_parameters_button.grid_columnconfigure(7, weight=1)
+        # Saving Parameters button location in new window
+        save_parameters_button.grid(row=8, column=7)
+        save_parameters_button.grid_rowconfigure(8, weight=1)
+        save_parameters_button.grid_columnconfigure(6, weight=1)
 
-    component_name_array_label.grid_rowconfigure(3, weight=1)
-    component_name_array_label.grid_columnconfigure(5, weight=1)
-    component_drop_down_list.grid_rowconfigure(3, weight=1)
-    component_drop_down_list.grid_columnconfigure(6, weight=1)
-    entering_parameters_window.resizable(False, False)
-    enter_parameters_button.wait_window(entering_parameters_window)
+        # Saving All Parameters button location in new window
+        save_all_parameters_button.grid(row=8, column=8)
+        save_all_parameters_button.grid_rowconfigure(8, weight=1)
+        save_all_parameters_button.grid_columnconfigure(7, weight=1)
+
+        component_name_array_label.grid_rowconfigure(3, weight=1)
+        component_name_array_label.grid_columnconfigure(5, weight=1)
+        component_drop_down_list.grid_rowconfigure(3, weight=1)
+        component_drop_down_list.grid_columnconfigure(6, weight=1)
+        entering_parameters_window.resizable(False, False)
+        enter_parameters_button.wait_window(entering_parameters_window)
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -636,11 +641,13 @@ def save_all_entered_parameters(component_name,
         all_component_parameters.append(
             {component_name[circuit_component]:
                  {'distribution': component_distribution_array[circuit_component].get('1.0', END).strip('\n'),
-                  'parameters': {component_param1_label_array[circuit_component]['text']:
-                                     component_param1_array[circuit_component].get('1.0', END).strip('\n'),
 
+                  'parameters': {  # Parameter 1 label and user entered number
+                                 component_param1_label_array[circuit_component]['text']:
+                                 component_param1_array[circuit_component].get('1.0', END).strip('\n'),
+                                   # Parameter 2 label and user entered number
                                  component_param2_label_array[circuit_component]['text']:
-                                     component_param2_array[circuit_component].get('1.0', END).strip('\n')}
+                                 component_param2_array[circuit_component].get('1.0', END).strip('\n')}
                   }
              }
         )
@@ -677,7 +684,7 @@ def _create_circle(self, x, y, r, **kwargs):
 Canvas.create_circle = _create_circle
 
 
-# Function for opening a file
+# Function for opening a ltspice schematic file
 def get_file_path():
     global file_path
     # Open and return file path
