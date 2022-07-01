@@ -532,11 +532,21 @@ def save_entered_parameters(entering_parameters_window,
     print("Index:", end='')
     print(component_index)
 
+    if component_distribution == 'Normal':
+        component_param1_dictionary_input = 'mean'
+        component_param2_dictionary_input = 'standard deviation'
+    elif component_distribution == 'Gamma':
+        component_param1_dictionary_input = 'shape'
+        component_param2_dictionary_input = 'theta'
+    elif component_distribution == 'Beta':
+        component_param1_dictionary_input = 'alpha'
+        component_param2_dictionary_input = 'beta'
+
     if len(all_component_parameters) == 0:
         all_component_parameters.append({component_name:
                                              {'distribution': component_distribution,
-                                              'parameters': {component_param1_label: component_param1,
-                                                             component_param2_label: component_param2}
+                                              'parameters': {component_param1_dictionary_input: component_param1,
+                                                             component_param2_dictionary_input: component_param2}
                                               }
                                          }
                                         )
@@ -548,10 +558,10 @@ def save_entered_parameters(entering_parameters_window,
             # If the last entered component is similar to the previously entered one then,
             # replace the old parameters with the new ones
             all_component_parameters[parameters] = ({component_name:
-                                                         {'distribution': component_distribution,
-                                                          'parameters': {component_param1_label: component_param1,
-                                                                         component_param2_label: component_param2}
-                                                          }
+                                                    {'distribution': component_distribution,
+                                                     'parameters': {component_param1_dictionary_input: component_param1,
+                                                                    component_param2_dictionary_input: component_param2}
+                                                     }
                                                      }
 
             )
@@ -565,10 +575,10 @@ def save_entered_parameters(entering_parameters_window,
 
     if appending_flag == 1:
         all_component_parameters.append({component_name:
-                                             {'distribution': component_distribution,
-                                              'parameters': {component_param1_label: component_param1,
-                                                             component_param2_label: component_param2}
-                                              }
+                                        {'distribution': component_distribution,
+                                         'parameters': {component_param1_dictionary_input: component_param1,
+                                                        component_param2_dictionary_input: component_param2}
+                                         }
                                          }
 
                                         )
@@ -602,6 +612,20 @@ def save_all_entered_parameters(component_name,
     global all_component_parameters
     all_component_parameters.clear()
 
+    component_param1_dictionary_input = [None] * len(component_param1_label_array)
+    component_param2_dictionary_input = [None] * len(component_param2_label_array)
+
+    for distributions in range(len(component_distribution_array)):
+        if component_distribution_array[distributions].get('1.0', END).strip('\n') == 'Normal':
+            component_param1_dictionary_input[distributions] = 'mean'
+            component_param2_dictionary_input[distributions] = 'standard deviation'
+        elif component_distribution_array[distributions].get('1.0', END).strip('\n') == 'Gamma':
+            component_param1_dictionary_input[distributions] = 'shape'
+            component_param2_dictionary_input[distributions] = 'theta'
+        elif component_distribution_array[distributions].get('1.0', END).strip('\n') == 'Beta':
+            component_param1_dictionary_input[distributions] = 'alpha'
+            component_param2_dictionary_input[distributions] = 'beta'
+
     print(component_name)
     for circuit_component in range(len(circuit_components)):
         # clearing the name label of all parameters
@@ -626,10 +650,10 @@ def save_all_entered_parameters(component_name,
                  {'distribution': component_distribution_array[circuit_component].get('1.0', END).strip('\n'),
 
                   'parameters': {  # Parameter 1 label and user entered number
-                                 component_param1_label_array[circuit_component]['text']:
+                                 component_param1_dictionary_input[circuit_component]:
                                  component_param1_array[circuit_component].get('1.0', END).strip('\n'),
                                    # Parameter 2 label and user entered number
-                                 component_param2_label_array[circuit_component]['text']:
+                                 component_param2_dictionary_input[circuit_component]:
                                  component_param2_array[circuit_component].get('1.0', END).strip('\n')}
                   }
              }
