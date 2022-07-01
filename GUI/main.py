@@ -5,13 +5,13 @@ import customtkinter
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from pandas import DataFrame
-import plotly.graph_objects as go
-import numpy as np
-from matplotlib.figure import Figure
-from matplotlib.widgets import Slider
-from svglib.svglib import svg2rlg
-from reportlab.graphics import renderPDF, renderPM
-from PIL import Image, ImageTk
+# import plotly.graph_objects as go
+# import numpy as np
+# from matplotlib.figure import Figure
+# from matplotlib.widgets import Slider
+# from svglib.svglib import svg2rlg
+# from reportlab.graphics import renderPDF, renderPM
+# from PIL import Image, ImageTk
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -91,6 +91,7 @@ class ResizingCanvas(Canvas):
 
 # Set the colour of the background
 Mode = 'dark'
+theme_colour = ''
 if Mode == 'light':
     theme_colour = 'green'
 if Mode == 'dark':
@@ -121,6 +122,7 @@ canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickn
 all_component_parameters = []
 entering_parameters_window = None
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for hovering over components --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -132,12 +134,42 @@ def on_leave(e, element_to_change):
     canvas.itemconfig(element_to_change, fill='#F0F0F0')
 
 
+def on_resistor_press(event, arg):
+    print(arg)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------- Functions for drop down lists --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+def random_or_constant(value_selected,
+                       distribution_label,
+                       distribution_dropdown,
+                       component_param1_label_array,
+                       component_param2_label_array,
+                       component_param1_array,
+                       component_param2_array
+                       ):
+    # Placing Label and dropdown list for distribution
+    if value_selected.get() == 'Random':
+        distribution_label.grid(row=5, column=5)
+        distribution_dropdown.grid(row=5, column=6)
+    elif value_selected.get() == 'Constant':
+        distribution_label.grid_remove()
+        distribution_dropdown.grid_remove()
+
+        # Remove all labels and text boxes
+        for labels in range(len(component_param1_label_array)):
+            component_param1_label_array[labels].grid_remove()
+            component_param2_label_array[labels].grid_remove()
+            component_param1_array[labels].grid_remove()
+            component_param2_array[labels].grid_remove()
+
+    print(value_selected.get())
+
 
 # Function when the selected component has been changed from dropdown list
 def change_component_index(component_selected,
+                           value_selected,
                            distribution_type,
                            component_distribution_array,
                            component_param1_label_array,
@@ -170,18 +202,22 @@ def change_component_index(component_selected,
         component_param1_label_array[component_index]['text'] = 'Mean (μ)'
         component_param2_label_array[component_index]['text'] = 'Standard deviation (σ)'
 
-    # Remove all labels for parameters, except the user selected component label
-    for labels in range(len(component_param1_label_array)):
-        if labels == component_index:
-            component_param1_label_array[labels].grid(row=5, column=5)
-            component_param2_label_array[labels].grid(row=6, column=5)
-            component_param1_array[labels].grid(row=5, column=6)
-            component_param2_array[labels].grid(row=6, column=6)
-        else:
-            component_param1_label_array[labels].grid_remove()
-            component_param2_label_array[labels].grid_remove()
-            component_param1_array[labels].grid_remove()
-            component_param2_array[labels].grid_remove()
+    if value_selected == 'Random':
+        # Remove all labels for parameters, except the user selected component label
+        for labels in range(len(component_param1_label_array)):
+            if labels == component_index:
+                component_param1_label_array[labels].grid(row=6, column=5)
+                component_param2_label_array[labels].grid(row=7, column=5)
+                component_param1_array[labels].grid(row=6, column=6)
+                component_param2_array[labels].grid(row=7, column=6)
+            else:
+                component_param1_label_array[labels].grid_remove()
+                component_param2_label_array[labels].grid_remove()
+                component_param1_array[labels].grid_remove()
+                component_param2_array[labels].grid_remove()
+
+    elif value_selected == 'Constant':
+        print('constant value')
 
 
 # Function when the selected distribution for the component has been changed from dropdown list
@@ -214,16 +250,15 @@ def select_distribution_type(distribution_type,
     # Remove all labels for parameters, except the user selected component label
     for labels in range(len(param1_array)):
         if labels == index_of_selected_component:
-            parameter1_label[labels].grid(row=5, column=5)
-            parameter2_label[labels].grid(row=6, column=5)
-            param1_array[labels].grid(row=5, column=6)
-            param2_array[labels].grid(row=6, column=6)
+            parameter1_label[labels].grid(row=6, column=5)
+            parameter2_label[labels].grid(row=7, column=5)
+            param1_array[labels].grid(row=6, column=6)
+            param2_array[labels].grid(row=7, column=6)
         else:
             parameter1_label[labels].grid_remove()
             parameter2_label[labels].grid_remove()
             param1_array[labels].grid_remove()
             param2_array[labels].grid_remove()
-
 
     print(distribution_type.get())
 
@@ -282,6 +317,8 @@ def open_new_window(component):
     else:
         entering_parameters_window = customtkinter.CTkToplevel(root)
 
+        label_background = ''
+        text_colour = ''
         global Mode
         if Mode == 'dark':
             label_background = '#212325'
@@ -320,13 +357,21 @@ def open_new_window(component):
         # Distribution:
         # param1=
         # param2=
+        component_value_label = Label(entering_parameters_window,
+                                      height=1,
+                                      width=10,
+                                      text='Value:',
+                                      background=label_background,
+                                      foreground=text_colour,
+                                      highlightbackground=label_background)
+
         component_name_array_label = Label(entering_parameters_window,
                                            height=1,
                                            width=20,
                                            text='Component Name:',
                                            background=label_background,
                                            foreground=text_colour,
-                                           highlightbackground=label_background,
+                                           highlightbackground=label_background
                                            )
         component_distribution_label = Label(entering_parameters_window,
                                              height=1,
@@ -403,6 +448,9 @@ def open_new_window(component):
         distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
         distribution_selected = StringVar(root)
         distribution_selected.set(distributions[0])
+        values = ['Constant', 'Random']
+        values_selected = StringVar(root)
+        values_selected.set(values[0])
 
         global component_index
         component_index = 0
@@ -412,6 +460,7 @@ def open_new_window(component):
                                               component_selected,
                                               *circuit_components,
                                               command=lambda _: change_component_index(component_selected,
+                                                                                       values_selected,
                                                                                        distribution_selected,
                                                                                        component_distribution_array,
                                                                                        component_param1_label_array,
@@ -455,6 +504,32 @@ def open_new_window(component):
                                                    activeforeground=label_background
                                                    )
 
+        # Drop down list for selecting if component value is random or constant
+        component_value_drop_down_list = OptionMenu(entering_parameters_window,
+                                                    values_selected,
+                                                    *values,
+                                                    command=lambda _: random_or_constant(values_selected,
+                                                                                         component_distribution_label,
+                                                                                         distribution_drop_down_list,
+                                                                                         component_param1_label_array,
+                                                                                         component_param2_label_array,
+                                                                                         component_param1_array,
+                                                                                         component_param2_array
+                                                                                         ))
+
+        component_value_drop_down_list.config(background=label_background,
+                                              foreground=text_colour,
+                                              activebackground=text_colour,
+                                              activeforeground=label_background
+                                              )
+
+        component_value_drop_down_list["menu"].config(background=label_background,
+                                                      foreground=text_colour,
+                                                      activebackground=text_colour,
+                                                      activeforeground=label_background
+                                                      )
+
+
         # Button for saving parameters
         save_parameters_button = customtkinter.CTkButton(
             entering_parameters_window,
@@ -489,19 +564,19 @@ def open_new_window(component):
         component_name_array_label.grid(row=3, column=5)
         component_drop_down_list.grid(row=3, column=6)
 
-        # Placing Label and dropdown list for distribution
-        component_distribution_label.grid(row=4, column=5)
-        distribution_drop_down_list.grid(row=4, column=6)
+        # Placing label and dropdown for component value
+        component_value_label.grid(row=4, column=5)
+        component_value_drop_down_list.grid(row=4, column=6)
 
         # Saving Parameters button location in new window
-        save_parameters_button.grid(row=8, column=7)
-        save_parameters_button.grid_rowconfigure(8, weight=1)
+        save_parameters_button.grid(row=9, column=7)
+        save_parameters_button.grid_rowconfigure(9, weight=1)
         save_parameters_button.grid_columnconfigure(6, weight=1)
 
         # Saving All Parameters button location in new window
-        save_all_parameters_button.grid(row=8, column=8)
-        save_all_parameters_button.grid_rowconfigure(8, weight=1)
-        save_all_parameters_button.grid_columnconfigure(7, weight=1)
+        save_all_parameters_button.grid(row=9, column=8)
+        save_all_parameters_button.grid_rowconfigure(9, weight=1)
+        save_all_parameters_button.grid_columnconfigure(8, weight=1)
 
         component_name_array_label.grid_rowconfigure(3, weight=1)
         component_name_array_label.grid_columnconfigure(5, weight=1)
@@ -509,7 +584,6 @@ def open_new_window(component):
         component_drop_down_list.grid_columnconfigure(6, weight=1)
         entering_parameters_window.resizable(False, False)
         enter_parameters_button.wait_window(entering_parameters_window)
-
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -706,7 +780,7 @@ def get_file_path():
     )
 
     too_many_files_selected = Label(canvas,
-                                    text='Please Select Two files, an LTSpice schematic and and image of the schematic'
+                                    text='Please Select Two files, an LTSpice schematic and an image of the schematic'
                                     )
     while len(file_path) > 2:
         file_path = fd.askopenfilenames(
@@ -756,8 +830,8 @@ def get_file_path():
 # Function to sketch the schematic which has been opened
 def sketch_schematic_asc(schematic):
     # Remove all previous schematic drawings
-    #canvas.delete('schematic')
-    #canvas.delete('all')
+    canvas.delete('schematic')
+    canvas.delete('all')
     # Clear all previous labels in root window of component parameters
     for labels in component_parameters_frame.winfo_children():
         labels.destroy()
@@ -945,23 +1019,24 @@ def sketch_schematic_asc(schematic):
         canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg))
         canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg))
 
-    # # --------------------------- Making resistors change colour when hovered over -------------------------------
-    # for resistor_elements in drawn_resistors:
-    #     canvas.tag_bind(resistor_elements, '<Enter>', lambda event, arg=resistor_elements: on_enter(event, arg))
-    #     canvas.tag_bind(resistor_elements, '<Leave>', lambda event, arg=resistor_elements: on_leave(event, arg))
+    # --------------------------- Making resistors change colour when hovered over -------------------------------
+    for resistor_elements in drawn_resistors:
+        canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
+                        lambda event,
+                        arg=resistor_elements: on_resistor_press(event, arg))
 
 
 # Select a schematic using a button
 openfile_button = customtkinter.CTkButton(root,
-                             text='Open a Schematic',
-                             command=get_file_path
-                             )
+                                          text='Open a Schematic',
+                                          command=get_file_path
+                                          )
 
 # Button for entering the parameters of the circuit
 enter_parameters_button = customtkinter.CTkButton(root,
-                                     text='Enter All Parameters',
-                                     command=component_parameters
-                                     )
+                                                  text='Enter All Parameters',
+                                                  command=component_parameters
+                                                  )
 
 value = 0
 sketch_graphs(value)
