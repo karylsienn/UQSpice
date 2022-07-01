@@ -535,6 +535,7 @@ def open_new_window(component):
             entering_parameters_window,
             text='Save Parameters',
             command=lambda: save_entered_parameters(entering_parameters_window,
+                                                    values_selected,
                                                     component_selected.get(),
                                                     distribution_selected.get(),
                                                     component_distribution_array[component_index].get('1.0', END).strip(
@@ -552,6 +553,7 @@ def open_new_window(component):
             entering_parameters_window,
             text='Save All Parameters',
             command=lambda: save_all_entered_parameters(component,
+                                                        values_selected,
                                                         component_distribution_array,
                                                         component_param1_label_array,
                                                         component_param2_label_array,
@@ -591,6 +593,7 @@ def open_new_window(component):
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for closing new windows using a  button
 def save_entered_parameters(entering_parameters_window,
+                            value,
                             component_name,
                             selected_distribution,
                             component_distribution,
@@ -606,69 +609,73 @@ def save_entered_parameters(entering_parameters_window,
     print("Index:", end='')
     print(component_index)
 
-    if component_distribution == 'Normal':
-        component_param1_dictionary_input = 'mean'
-        component_param2_dictionary_input = 'standard deviation'
-    elif component_distribution == 'Gamma':
-        component_param1_dictionary_input = 'shape'
-        component_param2_dictionary_input = 'theta'
-    elif component_distribution == 'Beta':
-        component_param1_dictionary_input = 'alpha'
-        component_param2_dictionary_input = 'beta'
+    if value.get() == 'Random':
+        if component_distribution == 'Normal':
+            component_param1_dictionary_input = 'mean'
+            component_param2_dictionary_input = 'standard deviation'
+        elif component_distribution == 'Gamma':
+            component_param1_dictionary_input = 'shape'
+            component_param2_dictionary_input = 'theta'
+        elif component_distribution == 'Beta':
+            component_param1_dictionary_input = 'alpha'
+            component_param2_dictionary_input = 'beta'
 
-    if len(all_component_parameters) == 0:
-        all_component_parameters.append({component_name:
-                                             {'distribution': component_distribution,
-                                              'parameters': {component_param1_dictionary_input: component_param1,
-                                                             component_param2_dictionary_input: component_param2}
-                                              }
-                                         }
-                                        )
+        if len(all_component_parameters) == 0:
+            all_component_parameters.append({component_name:
+                                                 {'distribution': component_distribution,
+                                                  'parameters': {component_param1_dictionary_input: component_param1,
+                                                                 component_param2_dictionary_input: component_param2}
+                                                  }
+                                             }
+                                            )
 
-    # -------------------------- removing duplicates and storing in a list of dictionaries -----------------------------
-    appending_flag = 0
-    for parameters in range(len(all_component_parameters)):
-        if component_name == list(all_component_parameters[parameters].keys())[-1]:
-            # If the last entered component is similar to the previously entered one then,
-            # replace the old parameters with the new ones
-            all_component_parameters[parameters] = ({component_name:
-                                                    {'distribution': component_distribution,
-                                                     'parameters': {component_param1_dictionary_input: component_param1,
-                                                                    component_param2_dictionary_input: component_param2}
-                                                     }
-                                                     }
-
-            )
-            # Ensures no appending takes place
-            appending_flag = 0
-            break
-        else:
-            # If the last entered component is NOT similar to the previously entered one then,
-            # ensure to add the component to the end of the list
-            appending_flag = 1
-
-    if appending_flag == 1:
-        all_component_parameters.append({component_name:
-                                        {'distribution': component_distribution,
-                                         'parameters': {component_param1_dictionary_input: component_param1,
-                                                        component_param2_dictionary_input: component_param2}
-                                         }
-                                         }
-
-                                        )
+        # -------------------------- removing duplicates and storing in a list of dictionaries -----------------------------
         appending_flag = 0
+        for parameters in range(len(all_component_parameters)):
+            if component_name == list(all_component_parameters[parameters].keys())[-1]:
+                # If the last entered component is similar to the previously entered one then,
+                # replace the old parameters with the new ones
+                all_component_parameters[parameters] = ({component_name:
+                                                             {'distribution': component_distribution,
+                                                              'parameters': {
+                                                                  component_param1_dictionary_input: component_param1,
+                                                                  component_param2_dictionary_input: component_param2}
+                                                              }
+                                                         }
 
-    print(all_component_parameters)
-    # --------------------------------- Displaying entered parameters on root window -----------------------------------
-    print(component_index)
-    full_name_labels[index].config(text='')
-    full_name_labels[index] = Label(component_parameters_frame,
-                                    text=component_name +
-                                    '\nDistribution: ' + component_distribution +
-                                    '\n' + component_param1_label + '=' + component_param1 +
-                                    '\n' + component_param2_label + '=' + component_param2,
-                                    highlightcolor='black',
-                                    highlightthickness=2)
+                )
+                # Ensures no appending takes place
+                appending_flag = 0
+                break
+            else:
+                # If the last entered component is NOT similar to the previously entered one then,
+                # ensure to add the component to the end of the list
+                appending_flag = 1
+
+        if appending_flag == 1:
+            all_component_parameters.append({component_name:
+                                                 {'distribution': component_distribution,
+                                                  'parameters': {component_param1_dictionary_input: component_param1,
+                                                                 component_param2_dictionary_input: component_param2}
+                                                  }
+                                             }
+
+                                            )
+            appending_flag = 0
+
+        print(all_component_parameters)
+        # --------------------------------- Displaying entered parameters on root window -----------------------------------
+        print(component_index)
+        full_name_labels[index].config(text='')
+        full_name_labels[index] = Label(component_parameters_frame,
+                                        text=component_name +
+                                             '\nDistribution: ' + component_distribution +
+                                             '\n' + component_param1_label + '=' + component_param1 +
+                                             '\n' + component_param2_label + '=' + component_param2,
+                                        highlightcolor='black',
+                                        highlightthickness=2)
+    elif value.get() == 'Constant':
+        print('Constant')
 
     full_name_labels[component_index].grid(row=component_index, column=1)
 
@@ -677,6 +684,7 @@ def save_entered_parameters(entering_parameters_window,
 # ---------------------------------------- Function for saving all parameters ------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def save_all_entered_parameters(component_name,
+                                value,
                                 component_distribution_array,
                                 component_param1_label_array,
                                 component_param2_label_array,
@@ -689,49 +697,53 @@ def save_all_entered_parameters(component_name,
     component_param1_dictionary_input = [None] * len(component_param1_label_array)
     component_param2_dictionary_input = [None] * len(component_param2_label_array)
 
-    for distributions in range(len(component_distribution_array)):
-        if component_distribution_array[distributions].get('1.0', END).strip('\n') == 'Normal':
-            component_param1_dictionary_input[distributions] = 'mean'
-            component_param2_dictionary_input[distributions] = 'standard deviation'
-        elif component_distribution_array[distributions].get('1.0', END).strip('\n') == 'Gamma':
-            component_param1_dictionary_input[distributions] = 'shape'
-            component_param2_dictionary_input[distributions] = 'theta'
-        elif component_distribution_array[distributions].get('1.0', END).strip('\n') == 'Beta':
-            component_param1_dictionary_input[distributions] = 'alpha'
-            component_param2_dictionary_input[distributions] = 'beta'
+    if value.get() == 'Random':
+        for distributions in range(len(component_distribution_array)):
+            if component_distribution_array[distributions].get('1.0', END).strip('\n') == 'Normal':
+                component_param1_dictionary_input[distributions] = 'mean'
+                component_param2_dictionary_input[distributions] = 'standard deviation'
+            elif component_distribution_array[distributions].get('1.0', END).strip('\n') == 'Gamma':
+                component_param1_dictionary_input[distributions] = 'shape'
+                component_param2_dictionary_input[distributions] = 'theta'
+            elif component_distribution_array[distributions].get('1.0', END).strip('\n') == 'Beta':
+                component_param1_dictionary_input[distributions] = 'alpha'
+                component_param2_dictionary_input[distributions] = 'beta'
 
-    print(component_name)
-    for circuit_component in range(len(circuit_components)):
-        # clearing the name label of all parameters
-        full_name_labels[circuit_component].config(text='')
+        print(component_name)
+        for circuit_component in range(len(circuit_components)):
+            # clearing the name label of all parameters
+            full_name_labels[circuit_component].config(text='')
 
-        # Storing the name label of all parameters
-        full_name_labels[circuit_component] = \
-            Label(component_parameters_frame,
-                  text=component_name[circuit_component] +
-                  '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0', END).strip('\n') +
-                  '\n' + component_param1_label_array[circuit_component]['text'] +
-                  '=' + component_param1_array[circuit_component].get('1.0', END).strip('\n') +
-                  '\n' + component_param2_label_array[circuit_component]['text'] +
-                  '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'))
+            # Storing the name label of all parameters
+            full_name_labels[circuit_component] = \
+                Label(component_parameters_frame,
+                      text=component_name[circuit_component] +
+                           '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0', END).strip(
+                          '\n') +
+                           '\n' + component_param1_label_array[circuit_component]['text'] +
+                           '=' + component_param1_array[circuit_component].get('1.0', END).strip('\n') +
+                           '\n' + component_param2_label_array[circuit_component]['text'] +
+                           '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'))
 
-        # Placing the name label of all parameters on the root window
-        full_name_labels[circuit_component].grid(row=circuit_component, column=1)
+            # Placing the name label of all parameters on the root window
+            full_name_labels[circuit_component].grid(row=circuit_component, column=1)
 
-        # Storing all components with their parameters in a dictionary
-        all_component_parameters.append(
-            {component_name[circuit_component]:
-                 {'distribution': component_distribution_array[circuit_component].get('1.0', END).strip('\n'),
+            # Storing all components with their parameters in a dictionary
+            all_component_parameters.append(
+                {component_name[circuit_component]:
+                     {'distribution': component_distribution_array[circuit_component].get('1.0', END).strip('\n'),
 
-                  'parameters': {  # Parameter 1 label and user entered number
-                                 component_param1_dictionary_input[circuit_component]:
-                                 component_param1_array[circuit_component].get('1.0', END).strip('\n'),
-                                   # Parameter 2 label and user entered number
-                                 component_param2_dictionary_input[circuit_component]:
-                                 component_param2_array[circuit_component].get('1.0', END).strip('\n')}
-                  }
-             }
-        )
+                      'parameters': {  # Parameter 1 label and user entered number
+                          component_param1_dictionary_input[circuit_component]:
+                              component_param1_array[circuit_component].get('1.0', END).strip('\n'),
+                          # Parameter 2 label and user entered number
+                          component_param2_dictionary_input[circuit_component]:
+                              component_param2_array[circuit_component].get('1.0', END).strip('\n')}
+                      }
+                 }
+            )
+    elif value.get() == 'Constant':
+        print('Constant')
 
     print(all_component_parameters)
 
