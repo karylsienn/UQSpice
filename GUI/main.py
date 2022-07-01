@@ -107,10 +107,17 @@ class ResizingCanvas(Canvas):
         self.scale("all", 0, 0, width_scale, height_scale)
 
 
-# create the root window
-customtkinter.set_appearance_mode("dark")  # Modes: system (default), light, dark
-customtkinter.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
+# Set the colour of the background
+Mode = 'dark'
+if Mode == 'light':
+    theme_colour = 'green'
+if Mode == 'dark':
+    theme_colour = 'blue'
 
+customtkinter.set_appearance_mode(Mode)  # Modes: system (default), light, dark
+customtkinter.set_default_color_theme(theme_colour)  # Themes: blue (default), dark-blue, green
+
+# create the root window
 root = customtkinter.CTk()
 root.title('EMC Analysis')
 root.geometry('1100x750+250+200')
@@ -123,8 +130,8 @@ graphs = ttk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = Frame(schematic_params, width=200, height=100)
-component_parameters_frame.pack(side='right', fill=Y, padx=40)
+component_parameters_frame = Frame(schematic_params, width=400, height=100)
+
 
 canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickness=0)
 
@@ -139,7 +146,7 @@ def on_enter(e, element_to_change):
 
 
 def on_leave(e, element_to_change):
-    canvas.itemconfig(element_to_change, fill='white')
+    canvas.itemconfig(element_to_change, fill='#F0F0F0')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -286,6 +293,16 @@ def open_new_window(component):
     # Creating a new window for entering parameters
     entering_parameters_window = customtkinter.CTkToplevel(root)
 
+    global Mode
+    if Mode == 'dark':
+        label_background = '#212325'
+        outline = '#212325'
+        text_colour = 'white'
+    elif Mode == 'light':
+        label_background = '#EBEBEB'
+        outline = '#EBEBEB'
+        text_colour = 'black'
+
     # sets the title of the new window created for entering parameters
     entering_parameters_window.title("Enter Component Parameters")
 
@@ -294,6 +311,8 @@ def open_new_window(component):
 
     component_name_array = [None] * len(circuit_components)
     component_distribution_array = [None] * len(circuit_components)
+    component_param1_entry_box = [None] * len(circuit_components)
+
     component_param1_label_array = [None] * len(circuit_components)
     component_param2_label_array = [None] * len(circuit_components)
     component_param1_array = [None] * len(circuit_components)
@@ -312,16 +331,19 @@ def open_new_window(component):
     # Distribution:
     # param1=
     # param2=
-    component_name_array_label = customtkinter.CTkLabel(entering_parameters_window,
+    component_name_array_label = Label(entering_parameters_window,
                                        height=1,
                                        width=20,
-                                       text='Component Name:'
+                                       text='Component Name:',
+                                       background=label_background,
+                                       foreground=text_colour
                                        )
-
-    component_distribution_label = customtkinter.CTkLabel(entering_parameters_window,
+    component_distribution_label = Label(entering_parameters_window,
                                          height=1,
                                          width=20,
-                                         text='Distribution'
+                                         text='Distribution',
+                                         background=label_background,
+                                         foreground=text_colour
                                          )
 
     for circuit_component in range(len(circuit_components)):
@@ -329,7 +351,9 @@ def open_new_window(component):
         component_name_array[circuit_component] = Label(entering_parameters_window,
                                                         height=1,
                                                         width=20,
-                                                        text=circuit_components[circuit_component]
+                                                        text=circuit_components[circuit_component],
+                                                        background=label_background,
+                                                        foreground=text_colour
                                                         )
 
         component_distribution_array[circuit_component] = Text(entering_parameters_window,
@@ -341,13 +365,24 @@ def open_new_window(component):
         component_param1_label_array[circuit_component] = Label(entering_parameters_window,
                                                                 height=1,
                                                                 width=20,
-                                                                text=''
+                                                                text='',
+                                                                background=label_background,
+                                                                foreground=text_colour
                                                                 )
+
+        # component_param1_entry_box[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
+        #                                                                        height=1,
+        #                                                                        width=40,
+        #                                                                        text='',
+        #                                                                        validatecommand=vcmd
+        #                                                                        )
 
         component_param2_label_array[circuit_component] = Label(entering_parameters_window,
                                                                 height=1,
                                                                 width=20,
-                                                                text=''
+                                                                text='',
+                                                                background=label_background,
+                                                                foreground=text_colour
                                                                 )
 
         component_param1_array[circuit_component] = Text(entering_parameters_window,
@@ -371,7 +406,7 @@ def open_new_window(component):
         # Standard Deviation = 2
         component_distribution_array[circuit_component].insert(INSERT, 'Normal')
         component_param1_label_array[circuit_component]['text'] = 'Mean (μ)'
-        component_param2_label_array[circuit_component]['text'] = 'Standard Deviation (σ)'
+        component_param2_label_array[circuit_component]['text'] = 'Standard deviation (σ)'
         component_param1_array[circuit_component].insert(INSERT, '1')
         component_param2_array[circuit_component].insert(INSERT, '2')
 
@@ -397,6 +432,9 @@ def open_new_window(component):
                                                                                    component_param2_array
                                                                                    ))
 
+    component_drop_down_list.config(background=label_background, foreground=text_colour)
+    component_drop_down_list["menu"].config(background=label_background, foreground=text_colour)
+
     # Drop down list for selecting the type of distribution for random components
     distribution_drop_down_list = OptionMenu(entering_parameters_window,
                                              distribution_selected,
@@ -409,6 +447,9 @@ def open_new_window(component):
                                                                                         component_param1_array,
                                                                                         component_param2_array
                                                                                         ))
+
+    distribution_drop_down_list.config(background=label_background, foreground=text_colour)
+    distribution_drop_down_list["menu"].config(background=label_background, foreground=text_colour)
 
     # Button for saving parameters
     save_parameters_button = customtkinter.CTkButton(
@@ -652,7 +693,8 @@ def get_file_path():
     # img = Image.open('temp_schematic.png')
     # pimg = ImageTk.PhotoImage(img)
     # size = img.size
-    # canvas.create_image(20, 20, anchor=NW, image=pimg, tags='schematic')
+    # canvas.create_image(96 + 150, 224 + 150, image=pimg)
+    #canvas.create_line(96-13+150, 224+150, 128 + 13 + 150, 224+150)
 
     # TODO: Make sure that micro gets replaced as it gives error to code
     fpath = file_path[0]
@@ -682,8 +724,8 @@ def get_file_path():
 # Function to sketch the schematic which has been opened
 def sketch_schematic_asc(schematic):
     # Remove all previous schematic drawings
-    canvas.delete('schematic')
-    canvas.delete('all')
+    #canvas.delete('schematic')
+    #canvas.delete('all')
     # Clear all previous labels in root window of component parameters
     for labels in component_parameters_frame.winfo_children():
         labels.destroy()
@@ -895,7 +937,9 @@ sketch_graphs(value)
 enter_parameters_button.pack(padx=0, pady=10, side=BOTTOM)
 openfile_button.pack(padx=0, pady=2, side=BOTTOM)
 tabControl.pack(expand=True, fill=BOTH)
+component_parameters_frame.pack(side='right', fill=BOTH)
 canvas.pack(fill=BOTH, expand=True)
+
 # run the application
 root.mainloop()
 >>>>>>> 7798878 (Made Distribution and components into drop down lists)
