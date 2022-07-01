@@ -121,6 +121,7 @@ customtkinter.set_default_color_theme(theme_colour)  # Themes: blue (default), d
 root = customtkinter.CTk()
 root.title('EMC Analysis')
 root.geometry('1100x750+250+200')
+root.minsize(root.winfo_width(), root.winfo_height())
 
 tabControl = ttk.Notebook(root)
 
@@ -271,13 +272,13 @@ def sketch_graphs(data):
     figure = plt.Figure(figsize=(10, 6), dpi=100)
     ax = figure.add_subplot(111)
     chart_type = FigureCanvasTkAgg(figure, graphs)
-    chart_type.get_tk_widget().pack(pady=0)
+    chart_type.get_tk_widget().pack(pady=0, fill=BOTH)
     data_frame_plot = data_frame_plot[['Country', 'GDP_Per_Capita']].groupby('Country').sum()
     data_frame_plot.plot(kind='line', legend=True, ax=ax)
     ax.set_title('Example Plot')
     toolbar = NavigationToolbar2Tk(chart_type, graphs, pack_toolbar=False)
     toolbar.update()
-    toolbar.pack(side=BOTTOM, fill=X)
+    toolbar.pack(side=BOTTOM, fill=BOTH)
 
     # fig = go.Figure(
     #     data=[go.Bar(y=[2, 1, 3])],
