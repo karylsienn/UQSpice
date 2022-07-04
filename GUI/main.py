@@ -333,7 +333,9 @@ def open_new_window(component):
         entering_parameters_window.title("Enter Component Parameters")
 
         # sets the size of the new window created for entering parameters
-        # entering_parameters_window.geometry("500x300")
+        entering_parameters_window.geometry("600x200")
+
+
 
         component_name_array = [None] * len(circuit_components)
         component_distribution_array = [None] * len(circuit_components)
@@ -563,28 +565,22 @@ def open_new_window(component):
         )
 
         # Component drop down list and component name label
-        component_name_array_label.grid(row=3, column=5)
+        component_name_array_label.grid(row=3, column=5, sticky='news')
         component_drop_down_list.grid(row=3, column=6)
 
         # Placing label and dropdown for component value
-        component_value_label.grid(row=4, column=5)
+        component_value_label.grid(row=4, column=5, sticky='news')
         component_value_drop_down_list.grid(row=4, column=6)
 
         # Saving Parameters button location in new window
         save_parameters_button.grid(row=9, column=7)
-        save_parameters_button.grid_rowconfigure(9, weight=1)
-        save_parameters_button.grid_columnconfigure(6, weight=1)
 
         # Saving All Parameters button location in new window
         save_all_parameters_button.grid(row=9, column=8)
-        save_all_parameters_button.grid_rowconfigure(9, weight=1)
-        save_all_parameters_button.grid_columnconfigure(8, weight=1)
 
-        component_name_array_label.grid_rowconfigure(3, weight=1)
-        component_name_array_label.grid_columnconfigure(5, weight=1)
-        component_drop_down_list.grid_rowconfigure(3, weight=1)
-        component_drop_down_list.grid_columnconfigure(6, weight=1)
-        entering_parameters_window.resizable(False, False)
+        entering_parameters_window.grid_rowconfigure(tuple(range(10)), weight=1)
+        entering_parameters_window.grid_columnconfigure(tuple(range(10)), weight=1)
+        #entering_parameters_window.resizable(False, False)
         enter_parameters_button.wait_window(entering_parameters_window)
 
 
@@ -664,18 +660,25 @@ def save_entered_parameters(entering_parameters_window,
             appending_flag = 0
 
         print(all_component_parameters)
-        # --------------------------------- Displaying entered parameters on root window -----------------------------------
+        # --------------------------------- Displaying entered parameters on root window -------------------------------
         print(component_index)
         full_name_labels[index].config(text='')
         full_name_labels[index] = Label(component_parameters_frame,
                                         text=component_name +
-                                             '\nDistribution: ' + component_distribution +
-                                             '\n' + component_param1_label + '=' + component_param1 +
-                                             '\n' + component_param2_label + '=' + component_param2,
+                                        '\nDistribution: ' + component_distribution +
+                                        '\n' + component_param1_label + '=' + component_param1 +
+                                        '\n' + component_param2_label + '=' + component_param2,
                                         highlightcolor='black',
                                         highlightthickness=2)
     elif value.get() == 'Constant':
         print('Constant')
+
+        full_name_labels[index].config(text='')
+        full_name_labels[index] = Label(component_parameters_frame,
+                                        text=component_name +
+                                        '\nValue: ' + '5',
+                                        highlightcolor='black',
+                                        highlightthickness=2)
 
     full_name_labels[component_index].grid(row=component_index, column=1)
 
@@ -718,12 +721,11 @@ def save_all_entered_parameters(component_name,
             full_name_labels[circuit_component] = \
                 Label(component_parameters_frame,
                       text=component_name[circuit_component] +
-                           '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0', END).strip(
-                          '\n') +
-                           '\n' + component_param1_label_array[circuit_component]['text'] +
-                           '=' + component_param1_array[circuit_component].get('1.0', END).strip('\n') +
-                           '\n' + component_param2_label_array[circuit_component]['text'] +
-                           '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'))
+                      '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0', END).strip('\n') +
+                      '\n' + component_param1_label_array[circuit_component]['text'] +
+                      '=' + component_param1_array[circuit_component].get('1.0', END).strip('\n') +
+                      '\n' + component_param2_label_array[circuit_component]['text'] +
+                      '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'))
 
             # Placing the name label of all parameters on the root window
             full_name_labels[circuit_component].grid(row=circuit_component, column=1)
