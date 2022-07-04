@@ -919,7 +919,6 @@ def sketch_schematic_asc(schematic):
     # Clear all previous component parameters
     all_component_parameters.clear()
 
-
     # Clear all previous drawn wires, components, power flags, voltage sources, etc.
     wires = ''
     canvas_size = ''
@@ -953,6 +952,7 @@ def sketch_schematic_asc(schematic):
     # Removing new lines from components
     components = components.split('\n')
     components.pop()
+    print(components)
     global circuit_components
     circuit_components = components
     # for component_number in range(len(components)):
@@ -1085,10 +1085,19 @@ def sketch_schematic_asc(schematic):
                            tags='schematic')
 
     # -------------------------------------------- Drawing Grounds -----------------------------------------------------
+    ground_line = 10
     for flag_coordinates in range(0, len(ground_flags), 2):
-        canvas.create_polygon(modified_ground_flags[flag_coordinates] - 25, modified_ground_flags[flag_coordinates + 1],
-                              modified_ground_flags[flag_coordinates] + 25, modified_ground_flags[flag_coordinates + 1],
-                              modified_ground_flags[flag_coordinates], modified_ground_flags[flag_coordinates + 1] + 25,
+        canvas.create_line(modified_ground_flags[flag_coordinates],
+                           modified_ground_flags[flag_coordinates + 1],
+                           modified_ground_flags[flag_coordinates],
+                           modified_ground_flags[flag_coordinates + 1] + ground_line)
+
+        canvas.create_polygon(modified_ground_flags[flag_coordinates] - 25,
+                              modified_ground_flags[flag_coordinates + 1] + ground_line,
+                              modified_ground_flags[flag_coordinates] + 25,
+                              modified_ground_flags[flag_coordinates + 1] + ground_line,
+                              modified_ground_flags[flag_coordinates],
+                              modified_ground_flags[flag_coordinates + 1] + 25 + ground_line,
                               fill='',
                               outline='black',
                               tags='schematic')
