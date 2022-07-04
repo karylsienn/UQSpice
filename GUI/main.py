@@ -205,7 +205,6 @@ def draw_inductor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
                                        activefill='#F0F0F0',
                                        tags='Inductor'
                                        )
-
     # # Highlighting shape still not working
     # canvas_to_draw_in.create_rectangle(start_coordinate_x - radius/2 + x_adjustment,
     #                                    start_coordinate_y - radius + y_adjustment,
@@ -216,6 +215,42 @@ def draw_inductor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
     #                                    tags='Inductor Highlight',
     #                                    activefill='green',
     #                                    )
+
+
+def draw_diode(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
+    ground_line = 10
+    x_adjustment = 16
+
+    # wire before diode
+    canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
+                                  start_coordinate_y,
+                                  start_coordinate_x + x_adjustment,
+                                  start_coordinate_y + ground_line)
+
+    # wire after diode
+    canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
+                                  start_coordinate_y + 35 + ground_line,
+                                  start_coordinate_x + x_adjustment,
+                                  start_coordinate_y + 35 + ground_line + 20)
+
+    # triangle shape of diode
+    canvas_to_draw_in.create_polygon(start_coordinate_x - 25 + x_adjustment,
+                                     start_coordinate_y + ground_line,
+                                     start_coordinate_x + 25 + x_adjustment,
+                                     start_coordinate_y + ground_line,
+                                     start_coordinate_x + x_adjustment,
+                                     start_coordinate_y + 35 + ground_line,
+                                     fill='',
+                                     outline='black',
+                                     tags='schematic')
+
+    # Diode line in front of triangle shape
+    canvas_to_draw_in.create_line(start_coordinate_x - 25 + x_adjustment,
+                                  start_coordinate_y + 35 + ground_line,
+                                  start_coordinate_x + 25 + x_adjustment,
+                                  start_coordinate_y + 35 + ground_line)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------- Functions for drop down lists --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -686,9 +721,6 @@ def save_entered_parameters(entering_parameters_window,
     global all_component_parameters
     global component_index
 
-    print("Index:", end='')
-    print(component_index)
-
     if value.get() == 'Random':
         if component_distribution == 'Normal':
             component_param1_dictionary_input = 'mean'
@@ -797,7 +829,9 @@ def save_entered_parameters(entering_parameters_window,
                                         highlightcolor='black',
                                         highlightthickness=2,
                                         borderwidth=1,
-                                        relief='solid')
+                                        relief='solid',
+                                        height=4,
+                                        width=22)
 
     full_name_labels[component_index].grid(row=component_index, column=1, sticky='nsew')
 
@@ -850,8 +884,12 @@ def save_all_entered_parameters(component_name,
                            '=' + component_param1_array[circuit_component].get('1.0', END).strip('\n') +
                            '\n' + component_param2_label_array[circuit_component]['text'] +
                            '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'),
+                      highlightcolor='black',
+                      highlightthickness=2,
                       borderwidth=1,
-                      relief='solid'
+                      relief='solid',
+                      height=4,
+                      width=22
                       )
 
             # Placing the name label of all parameters on the root window
@@ -885,9 +923,13 @@ def save_all_entered_parameters(component_name,
             # Storing the name label of all parameters
             full_name_labels[circuit_component] = \
                 Label(component_parameters_frame,
-                      text=component_name[circuit_component] + '\nDistribution: ' + '5',
+                      text=component_name[circuit_component] + '\nValue: ' + '5',
+                      highlightcolor='black',
+                      highlightthickness=2,
                       borderwidth=1,
-                      relief='solid'
+                      relief='solid',
+                      height=4,
+                      width=22
                       )
 
             # Placing the name label of all parameters on the root window
@@ -1007,6 +1049,7 @@ def sketch_schematic_asc(schematic):
     resistors = ''
     capacitors = ''
     inductors = ''
+    diodes = ''
     # finds the connection wires in the circuit
     for lines in schematic:
         if "WIRE" in lines:
@@ -1021,12 +1064,14 @@ def sketch_schematic_asc(schematic):
             capacitors += lines.replace("SYMBOL cap ", '')
         if "SYMBOL ind " in lines:
             inductors += lines.replace("SYMBOL ind ", '')
+        if "SYMBOL diode " in lines:
+            diodes += lines.replace("SYMBOL diode ", '')
         if "SYMATTR InstName" in lines:
             components += lines.replace("SYMATTR InstName ", '')
         if "FLAG" in lines:
             power_flags += lines.replace("FLAG ", '')
-    # ------------------------------------------Cleaning and filtering of elements--------------------------------------
 
+    # ------------------------------------------Cleaning and filtering of elements--------------------------------------
     # Find canvas size to center image
     ############################# Not yet implemented ##################################################################
     canvas_size = canvas_size.split(" ")
@@ -1069,12 +1114,20 @@ def sketch_schematic_asc(schematic):
 
     # ------------------------------------------ Separating Inductors --------------------------------------------------
     inductors = inductors.split('\n')
-    inductors = [cap for capacitor in inductors for cap in capacitor.split(' ')]
+    inductors = [ind for inductor in inductors for ind in inductor.split(' ')]
     inductors = [x for x in inductors if "R" not in x]
     inductors.pop()
     inductors = [int(inductor) for inductor in inductors]
     modified_inductors = [modification + adjustment for modification in inductors]
-    print(modified_inductors)
+
+    # ------------------------------------------ Separating Diodes --------------------------------------------------
+    diodes = diodes.split('\n')
+    diodes = [dio for diode in diodes for dio in diode.split(' ')]
+    diodes = [x for x in diodes if "R" not in x]
+    diodes.pop()
+    diodes = [int(diode) for diode in diodes]
+    modified_diodes = [modification + adjustment for modification in diodes]
+    print(modified_diodes)
 
     # ------------------------------------------ Separating voltage sources --------------------------------------------
     voltage_sources = voltage_sources.split('\n')
@@ -1161,6 +1214,11 @@ def sketch_schematic_asc(schematic):
     drawn_inductors = len(modified_inductors) * [None]
     for inductor in range(0, len(modified_inductors), 2):
         draw_inductor(modified_inductors[inductor], modified_inductors[inductor + 1], canvas)
+
+    # ------------------------------------------------ Drawing Diodes --------------------------------------------------
+    drawn_inductors = len(modified_diodes) * [None]
+    for diode in range(0, len(modified_diodes), 2):
+        draw_diode(modified_diodes[diode], modified_diodes[diode + 1], canvas)
 
     # -------------------------------------------------Drawing voltage sources------------------------------------------
     drawn_voltage_sources = len(modified_voltage_sources) * [None]
