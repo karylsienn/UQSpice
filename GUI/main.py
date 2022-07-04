@@ -114,8 +114,7 @@ graphs = ttk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = Frame(schematic_params, width=280, height=100)
-component_parameters_frame.propagate(False)
+component_parameters_frame = Frame(schematic_params, width=280, height=100, background='white')
 
 canvas_frame = Frame(schematic_params, width=700, height=500, background='white')
 canvas = ResizingCanvas(canvas_frame, width=1000, height=600, highlightthickness=0)
@@ -168,6 +167,55 @@ def draw_capacitor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
                                        start_coordinate_y + y_adjustment + 12 + 5)
 
 
+def draw_inductor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
+    radius = 12
+    x_adjustment = 16
+    y_adjustment = 30
+    canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
+                                  start_coordinate_y + y_adjustment - 20,
+                                  start_coordinate_x + x_adjustment,
+                                  start_coordinate_y + y_adjustment - 20 + 8)
+
+    canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
+                                  start_coordinate_y + 5 * radius + y_adjustment,
+                                  start_coordinate_x + x_adjustment,
+                                  start_coordinate_y + 5 * radius + y_adjustment + 8)
+
+    canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
+                                    start_coordinate_y + y_adjustment,
+                                    radius,
+                                    tags='Inductor')
+
+    canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
+                                    start_coordinate_y + 2 * radius + y_adjustment,
+                                    radius,
+                                    tags='Inductor')
+
+    canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
+                                    start_coordinate_y + 4 * radius + y_adjustment,
+                                    radius,
+                                    tags='Inductor')
+
+    canvas_to_draw_in.create_rectangle(start_coordinate_x - radius + x_adjustment - 0.2,
+                                       start_coordinate_y - radius + y_adjustment,
+                                       start_coordinate_x + x_adjustment - 0.2,
+                                       start_coordinate_y + 5 * radius + y_adjustment + 1,
+                                       fill='#F0F0F0',
+                                       outline='#F0F0F0',
+                                       activefill='#F0F0F0',
+                                       tags='Inductor'
+                                       )
+
+    # # Highlighting shape still not working
+    # canvas_to_draw_in.create_rectangle(start_coordinate_x - radius/2 + x_adjustment,
+    #                                    start_coordinate_y - radius + y_adjustment,
+    #                                    start_coordinate_x + radius + radius/2 + x_adjustment,
+    #                                    start_coordinate_y + 5 * radius + y_adjustment,
+    #                                    outline='#F0F0F0',
+    #                                    disabledfill='#F0F0F0',
+    #                                    tags='Inductor Highlight',
+    #                                    activefill='green',
+    #                                    )
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------- Functions for drop down lists --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -374,6 +422,7 @@ def open_new_window(component):
         component_param1_array = [None] * len(circuit_components)
         component_param2_array = [None] * len(circuit_components)
         name_label_array = [None] * len(circuit_components)
+        component_full_information_array = [None] * len(circuit_components)
 
         # Example Structure
         # name: L1
@@ -460,10 +509,12 @@ def open_new_window(component):
                                                              width=20,
                                                              bg="white")
 
-            name_label_array[circuit_component] = Label(canvas,
+            name_label_array[circuit_component] = Label(component_parameters_frame,
                                                         text='',
                                                         width=22,
                                                         height=4)
+
+            component_full_information_array[circuit_component] = Entry(component_parameters_frame)
 
             # Default parameters which are:
             # distribution: Normal
@@ -748,7 +799,7 @@ def save_entered_parameters(entering_parameters_window,
                                         borderwidth=1,
                                         relief='solid')
 
-    full_name_labels[component_index].grid(row=component_index, column=1)
+    full_name_labels[component_index].grid(row=component_index, column=1, sticky='nsew')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -955,6 +1006,7 @@ def sketch_schematic_asc(schematic):
     power_flags = ''
     resistors = ''
     capacitors = ''
+    inductors = ''
     # finds the connection wires in the circuit
     for lines in schematic:
         if "WIRE" in lines:
@@ -967,6 +1019,8 @@ def sketch_schematic_asc(schematic):
             resistors += lines.replace("SYMBOL res ", '')
         if "SYMBOL cap " in lines:
             capacitors += lines.replace("SYMBOL cap ", '')
+        if "SYMBOL ind " in lines:
+            inductors += lines.replace("SYMBOL ind ", '')
         if "SYMATTR InstName" in lines:
             components += lines.replace("SYMATTR InstName ", '')
         if "FLAG" in lines:
@@ -1010,9 +1064,18 @@ def sketch_schematic_asc(schematic):
     capacitors = [cap for capacitor in capacitors for cap in capacitor.split(' ')]
     capacitors = [x for x in capacitors if "R" not in x]
     capacitors.pop()
-    capacitors = [int(resistor) for resistor in capacitors]
+    capacitors = [int(capacitor) for capacitor in capacitors]
     modified_capacitors = [modification + adjustment for modification in capacitors]
-    print(modified_capacitors)
+
+    # ------------------------------------------ Separating Inductors --------------------------------------------------
+    inductors = inductors.split('\n')
+    inductors = [cap for capacitor in inductors for cap in capacitor.split(' ')]
+    inductors = [x for x in inductors if "R" not in x]
+    inductors.pop()
+    inductors = [int(inductor) for inductor in inductors]
+    modified_inductors = [modification + adjustment for modification in inductors]
+    print(modified_inductors)
+
     # ------------------------------------------ Separating voltage sources --------------------------------------------
     voltage_sources = voltage_sources.split('\n')
     voltage_sources = [voltage for source in voltage_sources for voltage in source.split(' ')]
@@ -1093,6 +1156,11 @@ def sketch_schematic_asc(schematic):
     drawn_capacitors = len(modified_capacitors) * [None]
     for capacitor in range(0, len(modified_capacitors), 2):
         draw_capacitor(modified_capacitors[capacitor], modified_capacitors[capacitor + 1], canvas)
+
+    # ------------------------------------------------ Drawing Inductors -----------------------------------------------
+    drawn_inductors = len(modified_inductors) * [None]
+    for inductor in range(0, len(modified_inductors), 2):
+        draw_inductor(modified_inductors[inductor], modified_inductors[inductor + 1], canvas)
 
     # -------------------------------------------------Drawing voltage sources------------------------------------------
     drawn_voltage_sources = len(modified_voltage_sources) * [None]
@@ -1175,6 +1243,7 @@ tabControl.pack(expand=True, fill=BOTH)
 canvas_frame.pack(side='left', fill=BOTH)
 canvas.pack(fill=BOTH, expand=True)
 component_parameters_frame.pack(side='right', fill=BOTH)
+component_parameters_frame.propagate(False)
 
 
 # run the application
