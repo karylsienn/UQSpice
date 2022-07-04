@@ -114,10 +114,11 @@ graphs = ttk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = Frame(schematic_params, width=400, height=100)
+component_parameters_frame = Frame(schematic_params, width=280, height=100)
+component_parameters_frame.propagate(False)
 
-
-canvas = ResizingCanvas(schematic_params, width=700, height=500, highlightthickness=0)
+canvas_frame = Frame(schematic_params, width=700, height=500, background='white')
+canvas = ResizingCanvas(canvas_frame, width=1000, height=600, highlightthickness=0)
 
 all_component_parameters = []
 entering_parameters_window = None
@@ -138,6 +139,33 @@ def on_resistor_press(event, arg):
     print(circuit_components)
     print(circuit_components[arg])
     print(arg)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------- Component Drawings ------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def draw_capacitor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
+
+    y_adjustment = 25
+    canvas_to_draw_in.create_line(start_coordinate_x + 16,
+                                  start_coordinate_y,
+                                  start_coordinate_x + 16,
+                                  start_coordinate_y + y_adjustment)
+
+    canvas_to_draw_in.create_line(start_coordinate_x + 16,
+                                  start_coordinate_y + y_adjustment + 12 + 5,
+                                  start_coordinate_x + 16,
+                                  start_coordinate_y + y_adjustment + y_adjustment + 12 + 5)
+
+    canvas_to_draw_in.create_rectangle(start_coordinate_x - 10,
+                                       start_coordinate_y + y_adjustment,
+                                       start_coordinate_x + 40,
+                                       start_coordinate_y + y_adjustment + 5)
+
+    canvas_to_draw_in.create_rectangle(start_coordinate_x - 10,
+                                       start_coordinate_y + y_adjustment + 12,
+                                       start_coordinate_x + 40,
+                                       start_coordinate_y + y_adjustment + 12 + 5)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -926,6 +954,7 @@ def sketch_schematic_asc(schematic):
     components = ''
     power_flags = ''
     resistors = ''
+    capacitors = ''
     # finds the connection wires in the circuit
     for lines in schematic:
         if "WIRE" in lines:
@@ -936,11 +965,12 @@ def sketch_schematic_asc(schematic):
             voltage_sources += lines.replace("SYMBOL voltage ", '')
         if "SYMBOL res " in lines:
             resistors += lines.replace("SYMBOL res ", '')
+        if "SYMBOL cap " in lines:
+            capacitors += lines.replace("SYMBOL cap ", '')
         if "SYMATTR InstName" in lines:
             components += lines.replace("SYMATTR InstName ", '')
         if "FLAG" in lines:
             power_flags += lines.replace("FLAG ", '')
-
     # ------------------------------------------Cleaning and filtering of elements--------------------------------------
 
     # Find canvas size to center image
@@ -958,7 +988,7 @@ def sketch_schematic_asc(schematic):
     # for component_number in range(len(components)):
 
     adjustment = 150
-    # Separating Resistors
+    # ------------------------------------------ Separating Resistors --------------------------------------------------
     resistor_x_adjustment = 6
     resistor_y_adjustment = 16
     resistors = resistors.split('\n')
@@ -968,12 +998,22 @@ def sketch_schematic_asc(schematic):
     resistors = [int(resistor) for resistor in resistors]
     modified_resistors = [modification + adjustment for modification in resistors]
 
+    # adjusting the x and y coordinates of the resistors
     for resistor_start in range(1, len(modified_resistors), 2):
         modified_resistors[resistor_start] = modified_resistors[resistor_start] + resistor_y_adjustment
 
     for resistor_start in range(0, len(modified_resistors), 2):
         modified_resistors[resistor_start] = modified_resistors[resistor_start] + resistor_x_adjustment
-    # Separating voltage sources
+
+    # ------------------------------------------ Separating Capacitors -------------------------------------------------
+    capacitors = capacitors.split('\n')
+    capacitors = [cap for capacitor in capacitors for cap in capacitor.split(' ')]
+    capacitors = [x for x in capacitors if "R" not in x]
+    capacitors.pop()
+    capacitors = [int(resistor) for resistor in capacitors]
+    modified_capacitors = [modification + adjustment for modification in capacitors]
+    print(modified_capacitors)
+    # ------------------------------------------ Separating voltage sources --------------------------------------------
     voltage_sources = voltage_sources.split('\n')
     voltage_sources = [voltage for source in voltage_sources for voltage in source.split(' ')]
     # removing anything which has 'R'
@@ -982,14 +1022,14 @@ def sketch_schematic_asc(schematic):
     voltage_sources = [int(sources) for sources in voltage_sources]
     modified_voltage_sources = [modification + adjustment for modification in voltage_sources]
 
-    # Separating Wires
+    # -------------------------------------------- Separating Wires ----------------------------------------------------
     coordinates_one_line = wires.split('\n')
     coordinates_one_line.remove('')
     single_coordinates = [coordinate for singleCoord in coordinates_one_line for coordinate in singleCoord.split(' ')]
     single_coordinates = [int(coordinate) for coordinate in single_coordinates]
     modified_coordinates = [modification + adjustment for modification in single_coordinates]
 
-    # Separating Power Flags
+    # ------------------------------------------- Separating Power Flags -----------------------------------------------
     ground_flags = []
     other_power_flags = []
     power_flags = power_flags.split('\n')
@@ -1011,22 +1051,7 @@ def sketch_schematic_asc(schematic):
     ############################# Not yet implemented ##################################################################
     modified_other_power_flags = [modification + adjustment for modification in other_power_flags]
 
-    # -------------------------------------------------Drawing voltage sources------------------------------------------
-    drawn_voltage_sources = len(modified_voltage_sources) * [None]
-    for vol_sources in range(0, len(modified_voltage_sources), 2):
-        if (vol_sources + 1) >= len(modified_voltage_sources):
-            drawn_voltage_sources[vol_sources] = canvas.create_circle(modified_voltage_sources[vol_sources - 2],
-                                                                      modified_voltage_sources[vol_sources - 1] + 56,
-                                                                      40,
-                                                                      tags='schematic'
-                                                                      )
-            break
-        drawn_voltage_sources[vol_sources] = canvas.create_circle(modified_voltage_sources[vol_sources],
-                                                                  modified_voltage_sources[vol_sources + 1] + 56,
-                                                                  40,
-                                                                  tags='schematic')
-
-    # -------------------------------------------------Drawing resistors------------------------------------------
+    # -------------------------------------------------Drawing resistors------------------------------------------------
     drawn_resistors = len(modified_resistors) * [None]
 
     for resistor in range(0, len(modified_resistors), 2):
@@ -1063,6 +1088,19 @@ def sketch_schematic_asc(schematic):
                                                           activefill='green',
                                                           disabledfill='',
                                                           tags='schematic')
+
+    # ------------------------------------------------ Drawing Capacitors ----------------------------------------------
+    drawn_capacitors = len(modified_capacitors) * [None]
+    for capacitor in range(0, len(modified_capacitors), 2):
+        draw_capacitor(modified_capacitors[capacitor], modified_capacitors[capacitor + 1], canvas)
+
+    # -------------------------------------------------Drawing voltage sources------------------------------------------
+    drawn_voltage_sources = len(modified_voltage_sources) * [None]
+    for vol_sources in range(0, len(modified_voltage_sources), 2):
+        drawn_voltage_sources[vol_sources] = canvas.create_circle(modified_voltage_sources[vol_sources],
+                                                                  modified_voltage_sources[vol_sources + 1] + 56,
+                                                                  40,
+                                                                  tags='schematic')
 
     while None in drawn_voltage_sources: drawn_voltage_sources.remove(None)
 
@@ -1109,11 +1147,11 @@ def sketch_schematic_asc(schematic):
         canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg))
         canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg))
 
-    # --------------------------- Making resistors change colour when hovered over -------------------------------
-    for resistor_elements in drawn_resistors:
-        canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
-                        lambda event,
-                        arg=resistor_elements: on_resistor_press(event, arg))
+    # # --------------------------- Making resistors change colour when hovered over -------------------------------
+    # for resistor_elements in drawn_resistors:
+    #     canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
+    #                     lambda event,
+    #                     arg=resistor_elements: on_resistor_press(event, arg))
 
 
 # Select a schematic using a button
@@ -1134,8 +1172,10 @@ sketch_graphs(value)
 enter_parameters_button.pack(padx=0, pady=10, side=BOTTOM)
 openfile_button.pack(padx=0, pady=2, side=BOTTOM)
 tabControl.pack(expand=True, fill=BOTH)
-component_parameters_frame.pack(side='right', fill=BOTH)
+canvas_frame.pack(side='left', fill=BOTH)
 canvas.pack(fill=BOTH, expand=True)
+component_parameters_frame.pack(side='right', fill=BOTH)
+
 
 # run the application
 root.mainloop()
