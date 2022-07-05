@@ -2,12 +2,14 @@
 from tkinter import ttk
 from tkinter import filedialog as fd
 import customtkinter
+import math
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
-from pandas import DataFrame
-import mplcursors
-# import plotly.graph_objects as go
 import numpy as np; np.random.seed(1)
+
+# from pandas import DataFrame
+# import mplcursors
+# import plotly.graph_objects as go
 # from matplotlib.figure import Figure
 # from matplotlib.widgets import Slider
 # from svglib.svglib import svg2rlg
@@ -476,7 +478,7 @@ def sketch_graphs(data):
     #         'GDP_Per_Capita': [45000, 42000, 52000, 49000, 47000]
     #         }
     # data_frame_plot = DataFrame(data, columns=['Country', 'GDP_Per_Capita'])
-    figure = plt.Figure(figsize=(10, 6), dpi=100)
+    figure = plt.Figure(figsize=(8, 6), dpi=100)
     ax = figure.add_subplot(111)
     x = np.sort(np.random.rand(15))
     y = np.sort(np.random.rand(15))
@@ -484,8 +486,8 @@ def sketch_graphs(data):
 
     line, = ax.plot(x, y)
 
-    chart_type= FigureCanvasTkAgg(figure,master=graphs)
-    chart_type.get_tk_widget().pack(side='top', fill='both', expand=1)
+    chart_type = FigureCanvasTkAgg(figure, master=graphs)
+    chart_type.get_tk_widget().pack(side='top', fill='both')
     # chart_type = FigureCanvasTkAgg(figure, graphs)
     # chart_type.get_tk_widget().pack(pady=0, fill=BOTH)
     # data_frame_plot = data_frame_plot[['Country', 'GDP_Per_Capita']].groupby('Country').sum()
@@ -497,6 +499,10 @@ def sketch_graphs(data):
                         bbox=dict(boxstyle="round", fc="w"),
                         arrowprops=dict(arrowstyle="->"))
     annot.set_visible(False)
+
+
+
+
 
     def update_annot(ind):
         x, y = line.get_data()
@@ -521,9 +527,9 @@ def sketch_graphs(data):
 
     chart_type.mpl_connect("motion_notify_event", hover)
 
+    global toolbar
     toolbar = NavigationToolbar2Tk(chart_type, graphs, pack_toolbar=False)
-    toolbar.update()
-    toolbar.pack(side=BOTTOM, fill=BOTH)
+
 
     # fig = go.Figure(
     #     data=[go.Bar(y=[2, 1, 3])],
@@ -1160,7 +1166,7 @@ def sketch_schematic_asc(schematic):
     canvas_size = ''
     voltage_sources = ''
     components = ''
-    component_constant_values = ''
+    component_name_and_values = ''
     comp_values_list = []
     power_flags = ''
     resistors = ''
@@ -1199,10 +1205,10 @@ def sketch_schematic_asc(schematic):
         # Store all component names and values
         if "SYMATTR InstName" in lines:
             components += lines.replace("SYMATTR InstName ", '')
+            component_name_and_values += lines.replace("SYMATTR InstName ", '')
             comp_index = comp_index + 1
         if "SYMATTR Value" in lines:
-            component_constant_values += lines.replace("SYMATTR Value ", '')
-            comp_values_list.append(component_constant_values.split('\n'))
+            component_name_and_values += lines.replace("SYMATTR Value ", '')
             # print(comp_index - 1, end='')
             # print(':' + component_constant_values)
 
@@ -1213,6 +1219,20 @@ def sketch_schematic_asc(schematic):
     canvas_size = [int(size) for size in canvas_size]
     # canvas.configure(scrollregion=(-canvas_size[0]//4, -canvas_size[1]//4, canvas_size[0]//4, canvas_size[1]//4))
 
+    # Store all component names and values
+    component_name_and_values = component_name_and_values.split('\n')
+    component_name_and_values.pop()
+    component_details_dictionary = {}
+
+    print(component_name_and_values)
+    # for comps in range(0, len(component_name_and_values) + 1, 2):
+    #     if (comps + 1) >= len(component_name_and_values):
+    #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
+    #         break
+    #     else:
+    #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
+
+    print(component_details_dictionary)
     # Store all component names in a list after removing new lines
     components = components.split('\n')
     # Remove last element which is empty
@@ -1346,7 +1366,7 @@ enter_parameters_button = customtkinter.CTkButton(root,
                                                   )
 
 value = 0
-sketch_graphs(value)
+
 # open file button, tab control and canvas location in root window
 enter_parameters_button.pack(padx=0, pady=10, side=BOTTOM)
 openfile_button.pack(padx=0, pady=2, side=BOTTOM)
@@ -1355,6 +1375,9 @@ canvas_frame.pack(side='left', fill=BOTH)
 canvas.pack(fill=BOTH, expand=True)
 component_parameters_frame.pack(side='right', fill=BOTH)
 component_parameters_frame.propagate(False)
+sketch_graphs(value)
+toolbar.update()
+toolbar.pack(side=BOTTOM, fill=BOTH, expand=1)
 
 
 # run the application
