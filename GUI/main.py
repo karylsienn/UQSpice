@@ -141,9 +141,56 @@ def on_resistor_press(event, arg):
     print(arg)
 
 
+# ------------------------------------------- Component Filtering ------------------------------------------------------
+def filter_components(components, adjustment):
+    # Store all components coordinates in a list on the same line
+    components = components.split('\n')
+    # Split each element into its list of coordinates
+    components = [comp for component in components for comp in component.split(' ')]
+    # Remove anything containing R at the end
+    components = [x for x in components if "R" not in x]
+    # Remove last element which is empty
+    components.pop()
+    # convert all stored strings into integers values
+    components = [int(component) for component in components]
+    # add a small adjustment to all coordinates, so it appears on centre of screen
+    modified_components = [modification + adjustment for modification in components]
+    return modified_components
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------- Component Drawings ------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+def draw_resistor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
+
+    # adjusting the x and y coordinates of the resistors so that they match on schematic
+    resistor_x_adjustment = 6
+    resistor_y_adjustment = 16
+
+    # wire before start of resistor
+    canvas_to_draw_in.create_line(start_coordinate_x + 16,
+                                  start_coordinate_y + resistor_y_adjustment,
+                                  start_coordinate_x + resistor_y_adjustment,
+                                  start_coordinate_y + resistor_y_adjustment + 5)
+
+    # wire at end of resistor
+    canvas_to_draw_in.create_line(start_coordinate_x + 16,
+                                  start_coordinate_y + 65 + resistor_y_adjustment + 5,
+                                  start_coordinate_x + 16,
+                                  start_coordinate_y + 65 + 2 * resistor_y_adjustment)
+
+    # resistor shape: rectangle
+    return canvas_to_draw_in.create_rectangle(start_coordinate_x + resistor_x_adjustment,
+                                              start_coordinate_y + resistor_y_adjustment + 5,
+                                              start_coordinate_x + 20 + resistor_x_adjustment,
+                                              start_coordinate_y + 65 + resistor_y_adjustment + 5,
+                                              fill='',
+                                              outline='black',
+                                              activefill='green',
+                                              disabledfill='',
+                                              tags='schematic')
+
+
 def draw_capacitor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
 
     y_adjustment = 25
@@ -1120,6 +1167,7 @@ def sketch_schematic_asc(schematic):
     capacitors = ''
     inductors = ''
     diodes = ''
+    npn_transistor = ''
     comp_index = 0
     # finds the connection wires in the circuit
     for lines in schematic:
@@ -1141,6 +1189,8 @@ def sketch_schematic_asc(schematic):
             inductors += lines.replace("SYMBOL ind ", '')
         if "SYMBOL diode " in lines:
             diodes += lines.replace("SYMBOL diode ", '')
+        if "SYMBOL npn " in lines:
+            npn_transistor += lines.replace("SYMBOL npn ", '')
 
         # Store all power flags used in the circuit
         if "FLAG" in lines:
@@ -1153,9 +1203,8 @@ def sketch_schematic_asc(schematic):
         if "SYMATTR Value" in lines:
             component_constant_values += lines.replace("SYMATTR Value ", '')
             comp_values_list.append(component_constant_values.split('\n'))
-            print(comp_index - 1, end='')
-            print(':' + component_constant_values)
-    print(comp_values_list)
+            # print(comp_index - 1, end='')
+            # print(':' + component_constant_values)
 
     # ------------------------------------------Cleaning and filtering of elements--------------------------------------
     # Find canvas size to center image
@@ -1172,84 +1221,24 @@ def sketch_schematic_asc(schematic):
     circuit_components = components
 
     adjustment = 150
+
+    # ------------------------------------ Separating npn transistors --------------------------------------------------
+    modified_npn_transistor = filter_components(npn_transistor, adjustment)
+
     # ------------------------------------------ Separating Resistors --------------------------------------------------
-    resistor_x_adjustment = 6
-    resistor_y_adjustment = 16
-    # Store all resistors coordinates in a list on the same line
-    resistors = resistors.split('\n')
-    # Split each element into its list of coordinates
-    resistors = [res for resistor in resistors for res in resistor.split(' ')]
-    # Remove anything containing R at the end
-    resistors = [x for x in resistors if "R" not in x]
-    # Remove last element which is empty
-    resistors.pop()
-    # convert all stored strings into integers values
-    resistors = [int(resistor) for resistor in resistors]
-    # add a small adjustment to all coordinates, so it appears on centre of screen
-    modified_resistors = [modification + adjustment for modification in resistors]
-
-    # adjusting the x and y coordinates of the resistors so that they match on schematic
-    for resistor_start in range(1, len(modified_resistors), 2):
-        modified_resistors[resistor_start] = modified_resistors[resistor_start] + resistor_y_adjustment
-
-    for resistor_start in range(0, len(modified_resistors), 2):
-        modified_resistors[resistor_start] = modified_resistors[resistor_start] + resistor_x_adjustment
+    modified_resistors = filter_components(resistors, adjustment)
 
     # ------------------------------------------ Separating Capacitors -------------------------------------------------
-    # Store all capacitors coordinates in a list on the same line
-    capacitors = capacitors.split('\n')
-    # Split each element into its list of coordinates
-    capacitors = [cap for capacitor in capacitors for cap in capacitor.split(' ')]
-    # Remove anything containing R at the end
-    capacitors = [x for x in capacitors if "R" not in x]
-    # Remove last element which is empty
-    capacitors.pop()
-    # convert all stored strings into integers values
-    capacitors = [int(capacitor) for capacitor in capacitors]
-    # add a small adjustment to all coordinates, so it appears on centre of screen
-    modified_capacitors = [modification + adjustment for modification in capacitors]
+    modified_capacitors = filter_components(capacitors, adjustment)
 
     # ------------------------------------------ Separating Inductors --------------------------------------------------
-    # Store all inductors coordinates in a list on the same line
-    inductors = inductors.split('\n')
-    # Split each element into its list of coordinates
-    inductors = [ind for inductor in inductors for ind in inductor.split(' ')]
-    # Remove anything containing R at the end
-    inductors = [x for x in inductors if "R" not in x]
-    # Remove last element which is empty
-    inductors.pop()
-    # convert all stored strings into integers values
-    inductors = [int(inductor) for inductor in inductors]
-    # add a small adjustment to all coordinates, so it appears on centre of screen
-    modified_inductors = [modification + adjustment for modification in inductors]
+    modified_inductors = filter_components(inductors, adjustment)
 
     # ------------------------------------------ Separating Diodes -----------------------------------------------------
-    # Store all diodes coordinates in a list on the same line
-    diodes = diodes.split('\n')
-    # Split each element into its list of coordinates
-    diodes = [dio for diode in diodes for dio in diode.split(' ')]
-    # Remove anything containing R at the end
-    diodes = [x for x in diodes if "R" not in x]
-    # Remove last element which is empty
-    diodes.pop()
-    # convert all stored strings into integers values
-    diodes = [int(diode) for diode in diodes]
-    # add a small adjustment to all coordinates, so it appears on centre of screen
-    modified_diodes = [modification + adjustment for modification in diodes]
+    modified_diodes = filter_components(diodes, adjustment)
 
     # ------------------------------------------ Separating voltage sources --------------------------------------------
-    # Store all voltage source coordinates in a list on the same line
-    voltage_sources = voltage_sources.split('\n')
-    # Split each element into its list of coordinates
-    voltage_sources = [voltage for source in voltage_sources for voltage in source.split(' ')]
-    # removing anything which has 'R'
-    voltage_sources = [x for x in voltage_sources if "R" not in x]
-    # Remove last element which is empty
-    voltage_sources.pop()
-    # convert all stored strings into integers values
-    voltage_sources = [int(sources) for sources in voltage_sources]
-    # add a small adjustment to all coordinates, so it appears on centre of screen
-    modified_voltage_sources = [modification + adjustment for modification in voltage_sources]
+    modified_voltage_sources = filter_components(voltage_sources, adjustment)
 
     # -------------------------------------------- Separating Wires ----------------------------------------------------
     coordinates_one_line = wires.split('\n')
@@ -1286,21 +1275,9 @@ def sketch_schematic_asc(schematic):
     drawn_resistors = len(modified_resistors) * [None]
 
     for resistor in range(0, len(modified_resistors), 2):
-        drawn_resistors[resistor] = canvas.create_polygon(modified_resistors[resistor],
-                                                          modified_resistors[resistor + 1],
-                                                          modified_resistors[resistor] + 20,
-                                                          modified_resistors[resistor + 1],
-                                                          modified_resistors[resistor] + 20,
-                                                          modified_resistors[resistor + 1] + 80,
-                                                          modified_resistors[resistor],
-                                                          modified_resistors[resistor + 1] + 80,
-                                                          modified_resistors[resistor],
-                                                          modified_resistors[resistor + 1],
-                                                          fill='',
-                                                          outline='black',
-                                                          activefill='green',
-                                                          disabledfill='',
-                                                          tags='schematic')
+        drawn_resistors[resistor] = draw_resistor(modified_resistors[resistor],
+                                                  modified_resistors[resistor + 1],
+                                                  canvas)
 
     # ------------------------------------------------ Drawing Capacitors ----------------------------------------------
     drawn_capacitors = len(modified_capacitors) * [None]
