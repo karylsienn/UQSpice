@@ -1,8 +1,9 @@
-﻿from tkinter import *
+﻿import fileinput
+from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog as fd
 import customtkinter
-import math
+import ntpath
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import numpy as np; np.random.seed(1)
@@ -106,11 +107,28 @@ customtkinter.set_default_color_theme(theme_colour)  # Themes: blue (default), d
 # create the root window
 root = customtkinter.CTk()
 root.title('EMC Analysis')
-root.geometry('1100x750+250+200')
+width = 1100  # width for the Tk root
+height = 750  # height for the Tk root
+
+# get screen width and height
+screen_width = root.winfo_screenwidth()  # width of the screen
+screen_height = root.winfo_screenheight()  # height of the screen
+
+# calculate x and y coordinates for the Tk root window
+x = (screen_width/2) - (width/2) - (width/5)
+y = (screen_height/2) - (height/2) - (height/5)
+
+# set the dimensions of the screen
+# and where it is placed
+root.geometry('%dx%d+%d+%d' % (width, height, x, y))
+#root.geometry('1100x750')
+# Set minimum width and height of root window
 root.minsize(root.winfo_width(), root.winfo_height())
 
+# Creating tabs in tkinter root window
 tabControl = ttk.Notebook(root)
 
+# Creating a tab for drawing schematics and another tab for graphs
 schematic_params = ttk.Frame(tabControl)
 graphs = ttk.Frame(tabControl)
 
@@ -119,8 +137,8 @@ tabControl.add(graphs, text='Graphs')
 
 component_parameters_frame = Frame(schematic_params, width=280, height=100)
 
-canvas_frame = Frame(schematic_params, width=700, height=500, background='white')
-canvas = ResizingCanvas(canvas_frame, width=1000, height=600, highlightthickness=0)
+schematic_canvas_frame = Frame(schematic_params, width=700, height=500, background='white')
+canvas = ResizingCanvas(schematic_canvas_frame, width=1000, height=600, highlightthickness=0)
 
 all_component_parameters = []
 entering_parameters_window = None
@@ -242,17 +260,17 @@ def draw_inductor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
     canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
                                     start_coordinate_y + y_adjustment,
                                     radius,
-                                    tags='Inductor')
+                                    tags='Schematic')
 
     canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
                                     start_coordinate_y + 2 * radius + y_adjustment,
                                     radius,
-                                    tags='Inductor')
+                                    tags='Schematic')
 
     canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
                                     start_coordinate_y + 4 * radius + y_adjustment,
                                     radius,
-                                    tags='Inductor')
+                                    tags='Schematic')
 
     canvas_to_draw_in.create_rectangle(start_coordinate_x - radius + x_adjustment - 0.2,
                                        start_coordinate_y - radius + y_adjustment,
@@ -261,9 +279,10 @@ def draw_inductor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
                                        fill='#F0F0F0',
                                        outline='#F0F0F0',
                                        activefill='#F0F0F0',
-                                       tags='Inductor'
+                                       tags='Schematic'
                                        )
-    # # Highlighting shape still not working
+
+    # # TODO: Highlighting shape still not working
     # canvas_to_draw_in.create_rectangle(start_coordinate_x - radius/2 + x_adjustment,
     #                                    start_coordinate_y - radius + y_adjustment,
     #                                    start_coordinate_x + radius + radius/2 + x_adjustment,
@@ -500,10 +519,6 @@ def sketch_graphs(data):
                         arrowprops=dict(arrowstyle="->"))
     annot.set_visible(False)
 
-
-
-
-
     def update_annot(ind):
         x, y = line.get_data()
         annot.xy = (x[ind["ind"][0]], y[ind["ind"][0]])
@@ -527,8 +542,9 @@ def sketch_graphs(data):
 
     chart_type.mpl_connect("motion_notify_event", hover)
 
-    global toolbar
     toolbar = NavigationToolbar2Tk(chart_type, graphs, pack_toolbar=False)
+    toolbar.update()
+    toolbar.pack(side=BOTTOM, fill=BOTH, expand=1)
 
 
     # fig = go.Figure(
@@ -768,8 +784,7 @@ def open_new_window(component):
                                                       activeforeground=label_background
                                                       )
 
-
-        # Button for saving parameters
+        # Button for saving individual parameters
         save_parameters_button = customtkinter.CTkButton(
             entering_parameters_window,
             text='Save Parameters',
@@ -788,7 +803,7 @@ def open_new_window(component):
                                                     component_value_array)
         )
 
-        # Button for saving parameters
+        # Button for saving all parameters
         save_all_parameters_button = customtkinter.CTkButton(
             entering_parameters_window,
             text='Save All Parameters',
@@ -803,24 +818,36 @@ def open_new_window(component):
                                                         component_value_array)
         )
 
+        component_name_row = 3
+        component_value_row = 4
+        button_row = 10
+
+        # Button for closing window
+        cancel_button = customtkinter.CTkButton(entering_parameters_window,
+                                                text='Cancel',
+                                                command=lambda: close_window(entering_parameters_window))
+
         # Component drop down list and component name label
-        component_name_array_label.grid(row=3, column=5, sticky='news')
-        component_drop_down_list.grid(row=3, column=6)
+        component_name_array_label.grid(row=component_name_row, column=5, sticky='news')
+        component_drop_down_list.grid(row=component_name_row, column=6)
 
         # Placing label and dropdown for component value
-        component_value_label.grid(row=4, column=5, sticky='news')
-        component_value_drop_down_list.grid(row=4, column=6)
+        component_value_label.grid(row=component_value_row, column=5, sticky='news')
+        component_value_drop_down_list.grid(row=component_value_row, column=6)
+
+        # Closing parameters window
+        cancel_button.grid(row=button_row, column=5)
 
         # Saving Parameters button location in new window
-        save_parameters_button.grid(row=10, column=6)
+        save_parameters_button.grid(row=button_row, column=6)
 
         # Saving All Parameters button location in new window
-        save_all_parameters_button.grid(row=10, column=7)
+        save_all_parameters_button.grid(row=button_row, column=7)
 
         entering_parameters_window.grid_rowconfigure(tuple(range(10)), weight=1)
         entering_parameters_window.grid_columnconfigure(tuple(range(10)), weight=1)
         #entering_parameters_window.resizable(False, False)
-        enter_parameters_button.wait_window(entering_parameters_window)
+        #enter_parameters_button.wait_window(entering_parameters_window)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1060,6 +1087,13 @@ def save_all_entered_parameters(component_name,
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------- Function for closing parameters window -------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def close_window(window_to_close):
+    window_to_close.destroy()
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------- Function for entering component parameters ---------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Entering Component Parameters for all elements
@@ -1125,8 +1159,12 @@ def get_file_path():
     # canvas.create_image(96 + 150, 224 + 150, image=pimg)
     #canvas.create_line(96-13+150, 224+150, 128 + 13 + 150, 224+150)
 
-    # TODO: Make sure that micro gets replaced as it gives error to code
     fpath = file_path[0]
+    file_name = ntpath.basename(fpath)
+    folder_location = fpath.removesuffix(file_name)
+    file_name_no_extension = file_name.replace('.asc', '.txt')
+    new_schematic_file = folder_location + file_name_no_extension
+
     with open(fpath, 'rb') as ltspiceascfile:
         first_line = ltspiceascfile.read(4)
         if first_line.decode('utf-8') == "Vers":
@@ -1137,7 +1175,18 @@ def get_file_path():
             raise ValueError("Unknown encoding.")
     ltspiceascfile.close()
 
-    with open(fpath, mode='r', encoding=encoding) as ltspiceascfile:
+    # Open and store all file data
+    with open(fpath, mode='r') as file:
+        schematic_data = file.read()
+    file.close()
+
+    # Remove all 'µ' and replace them with 'u'
+    with open(new_schematic_file, mode='w') as clean_schematic_file:
+        clean_schematic_file.write(schematic_data.replace('µ', 'u'))
+    clean_schematic_file.close()
+
+    # Read clean file
+    with open(new_schematic_file, mode='r', encoding=encoding) as ltspiceascfile:
         schematic = ltspiceascfile.readlines()
     ltspiceascfile.close()
 
@@ -1371,14 +1420,14 @@ value = 0
 enter_parameters_button.pack(padx=0, pady=10, side=BOTTOM)
 openfile_button.pack(padx=0, pady=2, side=BOTTOM)
 tabControl.pack(expand=True, fill=BOTH)
-canvas_frame.pack(side='left', fill=BOTH)
+schematic_canvas_frame.pack(side='left', fill=BOTH)
 canvas.pack(fill=BOTH, expand=True)
 component_parameters_frame.pack(side='right', fill=BOTH)
 component_parameters_frame.propagate(False)
 sketch_graphs(value)
-toolbar.update()
-toolbar.pack(side=BOTTOM, fill=BOTH, expand=1)
+
 
 
 # run the application
+root.columnconfigure(0, weight=1)
 root.mainloop()
