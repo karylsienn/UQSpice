@@ -115,7 +115,7 @@ graphs = ttk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = Frame(schematic_params, width=280, height=100, background='white')
+component_parameters_frame = Frame(schematic_params, width=280, height=100)
 
 canvas_frame = Frame(schematic_params, width=700, height=500, background='white')
 canvas = ResizingCanvas(canvas_frame, width=1000, height=600, highlightthickness=0)
@@ -147,16 +147,20 @@ def on_resistor_press(event, arg):
 def draw_capacitor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
 
     y_adjustment = 25
+
+    # Wire before capacitor
     canvas_to_draw_in.create_line(start_coordinate_x + 16,
                                   start_coordinate_y,
                                   start_coordinate_x + 16,
                                   start_coordinate_y + y_adjustment)
 
+    # Wire after capacitor
     canvas_to_draw_in.create_line(start_coordinate_x + 16,
                                   start_coordinate_y + y_adjustment + 12 + 5,
                                   start_coordinate_x + 16,
                                   start_coordinate_y + y_adjustment + y_adjustment + 12 + 5)
 
+    # Capacitor shape - 2 rectangles
     canvas_to_draw_in.create_rectangle(start_coordinate_x - 10,
                                        start_coordinate_y + y_adjustment,
                                        start_coordinate_x + 40,
@@ -172,16 +176,20 @@ def draw_inductor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
     radius = 12
     x_adjustment = 16
     y_adjustment = 30
+
+    # wire before inductor
     canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
                                   start_coordinate_y + y_adjustment - 20,
                                   start_coordinate_x + x_adjustment,
                                   start_coordinate_y + y_adjustment - 20 + 8)
 
+    # wire after inductor
     canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
                                   start_coordinate_y + 5 * radius + y_adjustment,
                                   start_coordinate_x + x_adjustment,
                                   start_coordinate_y + 5 * radius + y_adjustment + 8)
 
+    # Inductor shape: 3 circles + 1 rectangle to hide half of circles
     canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
                                     start_coordinate_y + y_adjustment,
                                     radius,
@@ -250,6 +258,27 @@ def draw_diode(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
                                   start_coordinate_y + 35 + ground_line,
                                   start_coordinate_x + 25 + x_adjustment,
                                   start_coordinate_y + 35 + ground_line)
+
+
+def draw_ground_flags(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
+    ground_line = 10
+
+    # Wire above ground
+    canvas_to_draw_in.create_line(start_coordinate_x,
+                                  start_coordinate_y,
+                                  start_coordinate_x,
+                                  start_coordinate_y + ground_line)
+
+    # Triangle shape of ground
+    canvas_to_draw_in.create_polygon(start_coordinate_x - 25,
+                                     start_coordinate_y + ground_line,
+                                     start_coordinate_x + 25,
+                                     start_coordinate_y + ground_line,
+                                     start_coordinate_x,
+                                     start_coordinate_y + 25 + ground_line,
+                                     fill='',
+                                     outline='black',
+                                     tags='schematic')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1084,17 +1113,24 @@ def sketch_schematic_asc(schematic):
     canvas_size = ''
     voltage_sources = ''
     components = ''
+    component_constant_values = ''
+    comp_values_list = []
     power_flags = ''
     resistors = ''
     capacitors = ''
     inductors = ''
     diodes = ''
+    comp_index = 0
     # finds the connection wires in the circuit
     for lines in schematic:
+
+        # Store all connection wires
         if "WIRE" in lines:
             wires += lines.replace("WIRE ", '')
         if "SHEET" in lines:
             canvas_size += lines.replace("SHEET 1 ", '')
+
+        # Store all components
         if "SYMBOL voltage " in lines:
             voltage_sources += lines.replace("SYMBOL voltage ", '')
         if "SYMBOL res " in lines:
@@ -1105,10 +1141,21 @@ def sketch_schematic_asc(schematic):
             inductors += lines.replace("SYMBOL ind ", '')
         if "SYMBOL diode " in lines:
             diodes += lines.replace("SYMBOL diode ", '')
-        if "SYMATTR InstName" in lines:
-            components += lines.replace("SYMATTR InstName ", '')
+
+        # Store all power flags used in the circuit
         if "FLAG" in lines:
             power_flags += lines.replace("FLAG ", '')
+
+        # Store all component names and values
+        if "SYMATTR InstName" in lines:
+            components += lines.replace("SYMATTR InstName ", '')
+            comp_index = comp_index + 1
+        if "SYMATTR Value" in lines:
+            component_constant_values += lines.replace("SYMATTR Value ", '')
+            comp_values_list.append(component_constant_values.split('\n'))
+            print(comp_index - 1, end='')
+            print(':' + component_constant_values)
+    print(comp_values_list)
 
     # ------------------------------------------Cleaning and filtering of elements--------------------------------------
     # Find canvas size to center image
@@ -1117,26 +1164,31 @@ def sketch_schematic_asc(schematic):
     canvas_size = [int(size) for size in canvas_size]
     # canvas.configure(scrollregion=(-canvas_size[0]//4, -canvas_size[1]//4, canvas_size[0]//4, canvas_size[1]//4))
 
-    # Removing new lines from components
+    # Store all component names in a list after removing new lines
     components = components.split('\n')
+    # Remove last element which is empty
     components.pop()
-    print(components)
     global circuit_components
     circuit_components = components
-    # for component_number in range(len(components)):
 
     adjustment = 150
     # ------------------------------------------ Separating Resistors --------------------------------------------------
     resistor_x_adjustment = 6
     resistor_y_adjustment = 16
+    # Store all resistors coordinates in a list on the same line
     resistors = resistors.split('\n')
+    # Split each element into its list of coordinates
     resistors = [res for resistor in resistors for res in resistor.split(' ')]
+    # Remove anything containing R at the end
     resistors = [x for x in resistors if "R" not in x]
+    # Remove last element which is empty
     resistors.pop()
+    # convert all stored strings into integers values
     resistors = [int(resistor) for resistor in resistors]
+    # add a small adjustment to all coordinates, so it appears on centre of screen
     modified_resistors = [modification + adjustment for modification in resistors]
 
-    # adjusting the x and y coordinates of the resistors
+    # adjusting the x and y coordinates of the resistors so that they match on schematic
     for resistor_start in range(1, len(modified_resistors), 2):
         modified_resistors[resistor_start] = modified_resistors[resistor_start] + resistor_y_adjustment
 
@@ -1144,37 +1196,59 @@ def sketch_schematic_asc(schematic):
         modified_resistors[resistor_start] = modified_resistors[resistor_start] + resistor_x_adjustment
 
     # ------------------------------------------ Separating Capacitors -------------------------------------------------
+    # Store all capacitors coordinates in a list on the same line
     capacitors = capacitors.split('\n')
+    # Split each element into its list of coordinates
     capacitors = [cap for capacitor in capacitors for cap in capacitor.split(' ')]
+    # Remove anything containing R at the end
     capacitors = [x for x in capacitors if "R" not in x]
+    # Remove last element which is empty
     capacitors.pop()
+    # convert all stored strings into integers values
     capacitors = [int(capacitor) for capacitor in capacitors]
+    # add a small adjustment to all coordinates, so it appears on centre of screen
     modified_capacitors = [modification + adjustment for modification in capacitors]
 
     # ------------------------------------------ Separating Inductors --------------------------------------------------
+    # Store all inductors coordinates in a list on the same line
     inductors = inductors.split('\n')
+    # Split each element into its list of coordinates
     inductors = [ind for inductor in inductors for ind in inductor.split(' ')]
+    # Remove anything containing R at the end
     inductors = [x for x in inductors if "R" not in x]
+    # Remove last element which is empty
     inductors.pop()
+    # convert all stored strings into integers values
     inductors = [int(inductor) for inductor in inductors]
+    # add a small adjustment to all coordinates, so it appears on centre of screen
     modified_inductors = [modification + adjustment for modification in inductors]
 
-    # ------------------------------------------ Separating Diodes --------------------------------------------------
+    # ------------------------------------------ Separating Diodes -----------------------------------------------------
+    # Store all diodes coordinates in a list on the same line
     diodes = diodes.split('\n')
+    # Split each element into its list of coordinates
     diodes = [dio for diode in diodes for dio in diode.split(' ')]
+    # Remove anything containing R at the end
     diodes = [x for x in diodes if "R" not in x]
+    # Remove last element which is empty
     diodes.pop()
+    # convert all stored strings into integers values
     diodes = [int(diode) for diode in diodes]
+    # add a small adjustment to all coordinates, so it appears on centre of screen
     modified_diodes = [modification + adjustment for modification in diodes]
-    print(modified_diodes)
 
     # ------------------------------------------ Separating voltage sources --------------------------------------------
+    # Store all voltage source coordinates in a list on the same line
     voltage_sources = voltage_sources.split('\n')
+    # Split each element into its list of coordinates
     voltage_sources = [voltage for source in voltage_sources for voltage in source.split(' ')]
     # removing anything which has 'R'
     voltage_sources = [x for x in voltage_sources if "R" not in x]
+    # Remove last element which is empty
     voltage_sources.pop()
+    # convert all stored strings into integers values
     voltage_sources = [int(sources) for sources in voltage_sources]
+    # add a small adjustment to all coordinates, so it appears on centre of screen
     modified_voltage_sources = [modification + adjustment for modification in voltage_sources]
 
     # -------------------------------------------- Separating Wires ----------------------------------------------------
@@ -1192,9 +1266,11 @@ def sketch_schematic_asc(schematic):
     power_flags.pop()
 
     for flag_coordinates in range(2, len(power_flags), 3):
+        # Store all ground power flags
         if power_flags[flag_coordinates] == '0':
             ground_flags.append(power_flags[flag_coordinates - 2])
             ground_flags.append(power_flags[flag_coordinates - 1])
+        # Store all other power flags
         elif power_flags[flag_coordinates] != '0':
             other_power_flags.append(power_flags[flag_coordinates - 2])
             other_power_flags.append(power_flags[flag_coordinates - 1])
@@ -1206,28 +1282,10 @@ def sketch_schematic_asc(schematic):
     ############################# Not yet implemented ##################################################################
     modified_other_power_flags = [modification + adjustment for modification in other_power_flags]
 
-    # -------------------------------------------------Drawing resistors------------------------------------------------
+    # ------------------------------------------------ Drawing resistors -----------------------------------------------
     drawn_resistors = len(modified_resistors) * [None]
 
     for resistor in range(0, len(modified_resistors), 2):
-        if (resistor + 1) >= len(modified_resistors):
-            drawn_resistors[resistor] = canvas.create_polygon(modified_resistors[resistor - 2],
-                                                              modified_resistors[resistor - 1],
-                                                              modified_resistors[resistor - 2] + 20,
-                                                              modified_resistors[resistor - 1],
-                                                              modified_resistors[resistor - 2] + 20,
-                                                              modified_resistors[resistor - 1] + 80,
-                                                              modified_resistors[resistor - 2],
-                                                              modified_resistors[resistor - 1] + 80,
-                                                              modified_resistors[resistor - 2],
-                                                              modified_resistors[resistor - 1],
-                                                              fill='',
-                                                              activefill='green',
-                                                              outline='black',
-                                                              disabledfill='',
-                                                              tags='schematic',
-                                                              )
-            break
         drawn_resistors[resistor] = canvas.create_polygon(modified_resistors[resistor],
                                                           modified_resistors[resistor + 1],
                                                           modified_resistors[resistor] + 20,
@@ -1259,7 +1317,7 @@ def sketch_schematic_asc(schematic):
     for diode in range(0, len(modified_diodes), 2):
         draw_diode(modified_diodes[diode], modified_diodes[diode + 1], canvas)
 
-    # -------------------------------------------------Drawing voltage sources------------------------------------------
+    # ----------------------------------------------- Drawing voltage sources ------------------------------------------
     drawn_voltage_sources = len(modified_voltage_sources) * [None]
     for vol_sources in range(0, len(modified_voltage_sources), 2):
         drawn_voltage_sources[vol_sources] = canvas.create_circle(modified_voltage_sources[vol_sources],
@@ -1267,20 +1325,12 @@ def sketch_schematic_asc(schematic):
                                                                   40,
                                                                   tags='schematic')
 
-    while None in drawn_voltage_sources: drawn_voltage_sources.remove(None)
+    while None in drawn_voltage_sources:
+        drawn_voltage_sources.remove(None)
 
     # ---------------------------------------------- Drawing Wires -----------------------------------------------------
     for coordinate in range(0, len(modified_coordinates), 4):
 
-        # in case of last wire to prevent exceeding loop size
-        if (coordinate + 3) >= len(modified_coordinates):
-            canvas.create_line(modified_coordinates[coordinate - 4],
-                               modified_coordinates[coordinate - 3],
-                               modified_coordinates[coordinate - 2],
-                               modified_coordinates[coordinate - 1],
-                               tags='schematic')
-            break
-        # drawing of all wires except last wire
         canvas.create_line(modified_coordinates[coordinate],
                            modified_coordinates[coordinate + 1],
                            modified_coordinates[coordinate + 2],
@@ -1290,20 +1340,7 @@ def sketch_schematic_asc(schematic):
     # -------------------------------------------- Drawing Grounds -----------------------------------------------------
     ground_line = 10
     for flag_coordinates in range(0, len(ground_flags), 2):
-        canvas.create_line(modified_ground_flags[flag_coordinates],
-                           modified_ground_flags[flag_coordinates + 1],
-                           modified_ground_flags[flag_coordinates],
-                           modified_ground_flags[flag_coordinates + 1] + ground_line)
-
-        canvas.create_polygon(modified_ground_flags[flag_coordinates] - 25,
-                              modified_ground_flags[flag_coordinates + 1] + ground_line,
-                              modified_ground_flags[flag_coordinates] + 25,
-                              modified_ground_flags[flag_coordinates + 1] + ground_line,
-                              modified_ground_flags[flag_coordinates],
-                              modified_ground_flags[flag_coordinates + 1] + 25 + ground_line,
-                              fill='',
-                              outline='black',
-                              tags='schematic')
+        draw_ground_flags(modified_ground_flags[flag_coordinates], modified_ground_flags[flag_coordinates + 1], canvas)
 
     # --------------------------------------------Binding events--------------------------------------------------------
 
