@@ -7,15 +7,15 @@ import ntpath
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import numpy as np; np.random.seed(1)
-
-# from pandas import DataFrame
-# import mplcursors
-# import plotly.graph_objects as go
-# from matplotlib.figure import Figure
-# from matplotlib.widgets import Slider
-# from svglib.svglib import svg2rlg
-# from reportlab.graphics import renderPDF, renderPM
-# from PIL import Image, ImageTk
+import component_sketcher as comp
+from pandas import DataFrame
+import mplcursors
+import plotly.graph_objects as go
+from matplotlib.figure import Figure
+from matplotlib.widgets import Slider
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF, renderPM
+from PIL import Image, ImageTk
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -23,38 +23,9 @@ import numpy as np; np.random.seed(1)
 # -------------------------------------------------GUI Program beta v0.1------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+
+BACKGROUND_COLOUR = '#F0F0F0'
 circuit_components = []
-
-
-class IndexTracker(object):
-    def __init__(self, ax, X, smax):
-        self.ax = ax
-        ax.set_title('use scroll wheel to navigate images')
-        self.X = X
-        rows, cols, self.slices = X.shape
-        self.ind = self.slices//2
-        self.im = ax.imshow(self.X[:, :, self.ind], cmap='gray')
-        self.smax = smax
-        self.update()
-
-    def onscroll(self, event):
-        print("%s %s" % (event.button, event.step))
-        if event.button == 'up':
-            self.ind = (self.ind + 1) % self.slices
-        else:
-            self.ind = (self.ind - 1) % self.slices
-        self.update()
-
-    def contrast(self, event):
-        print('Changing contrast')
-        print(self.smax.val)
-        self.im.set_clim([0, self.smax.val])
-        self.update()
-
-    def update(self):
-        self.im.set_data(self.X[:, :, self.ind])
-        self.ax.set_ylabel('slice %s' % self.ind)
-        self.im.axes.figure.canvas.draw()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -104,29 +75,31 @@ if Mode == 'dark':
 customtkinter.set_appearance_mode(Mode)  # Modes: system (default), light, dark
 customtkinter.set_default_color_theme(theme_colour)  # Themes: blue (default), dark-blue, green
 
-# create the root window
-root = customtkinter.CTk()
-root.title('EMC Analysis')
-width = 1100  # width for the Tk root
-height = 750  # height for the Tk root
+# create the schematic_analysis window
+# root = customtkinter.CTk()
+schematic_analysis = customtkinter.CTk()
+schematic_analysis.title('EMC Analysis')
+width = 1100  # width for the Tk schematic_analysis
+height = 750  # height for the Tk schematic_analysis
 
+global delete_image
 # get screen width and height
-screen_width = root.winfo_screenwidth()  # width of the screen
-screen_height = root.winfo_screenheight()  # height of the screen
+screen_width = schematic_analysis.winfo_screenwidth()  # width of the screen
+screen_height = schematic_analysis.winfo_screenheight()  # height of the screen
 
-# calculate x and y coordinates for the Tk root window
+# calculate x and y coordinates for the Tk schematic_analysis window
 x = (screen_width/2) - (width/2) - (width/5)
 y = (screen_height/2) - (height/2) - (height/5)
 
 # set the dimensions of the screen
 # and where it is placed
-root.geometry('%dx%d+%d+%d' % (width, height, x, y))
-#root.geometry('1100x750')
-# Set minimum width and height of root window
-root.minsize(root.winfo_width(), root.winfo_height())
+schematic_analysis.geometry('%dx%d+%d+%d' % (width, height, x, y))
+# schematic_analysis.geometry('1100x750')
+# Set minimum width and height of schematic_analysis window
+schematic_analysis.minsize(schematic_analysis.winfo_width(), schematic_analysis.winfo_height())
 
-# Creating tabs in tkinter root window
-tabControl = ttk.Notebook(root)
+# Creating tabs in tkinter schematic_analysis window
+tabControl = ttk.Notebook(schematic_analysis)
 
 # Creating a tab for drawing schematics and another tab for graphs
 schematic_params = ttk.Frame(tabControl)
@@ -145,6 +118,23 @@ entering_parameters_window = None
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Functions for Root starting window ------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def open_asc_file():
+    print('Open schematic')
+    # root.destroy()
+
+
+def open_raw_file():
+    print('Open raw File')
+
+
+def exit_application():
+    print('Quit Application')
+    # root.destroy()
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for hovering over components --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def on_enter(e, element_to_change):
@@ -152,7 +142,7 @@ def on_enter(e, element_to_change):
 
 
 def on_leave(e, element_to_change):
-    canvas.itemconfig(element_to_change, fill='#F0F0F0')
+    canvas.itemconfig(element_to_change, fill=BACKGROUND_COLOUR)
 
 
 def on_resistor_press(event, arg):
@@ -161,7 +151,9 @@ def on_resistor_press(event, arg):
     print(arg)
 
 
+# ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------- Component Filtering ------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 def filter_components(components, adjustment):
     # Store all components coordinates in a list on the same line
     components = components.split('\n')
@@ -171,183 +163,11 @@ def filter_components(components, adjustment):
     components = [x for x in components if "R" not in x]
     # Remove last element which is empty
     components.pop()
-    # convert all stored strings into integers values
+    # convert all stored strings into integer values
     components = [int(component) for component in components]
     # add a small adjustment to all coordinates, so it appears on centre of screen
     modified_components = [modification + adjustment for modification in components]
     return modified_components
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# -------------------------------------------- Component Drawings ------------------------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
-def draw_resistor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
-
-    # adjusting the x and y coordinates of the resistors so that they match on schematic
-    resistor_x_adjustment = 6
-    resistor_y_adjustment = 16
-
-    # wire before start of resistor
-    canvas_to_draw_in.create_line(start_coordinate_x + 16,
-                                  start_coordinate_y + resistor_y_adjustment,
-                                  start_coordinate_x + resistor_y_adjustment,
-                                  start_coordinate_y + resistor_y_adjustment + 5)
-
-    # wire at end of resistor
-    canvas_to_draw_in.create_line(start_coordinate_x + 16,
-                                  start_coordinate_y + 65 + resistor_y_adjustment + 5,
-                                  start_coordinate_x + 16,
-                                  start_coordinate_y + 65 + 2 * resistor_y_adjustment)
-
-    # resistor shape: rectangle
-    return canvas_to_draw_in.create_rectangle(start_coordinate_x + resistor_x_adjustment,
-                                              start_coordinate_y + resistor_y_adjustment + 5,
-                                              start_coordinate_x + 20 + resistor_x_adjustment,
-                                              start_coordinate_y + 65 + resistor_y_adjustment + 5,
-                                              fill='',
-                                              outline='black',
-                                              activefill='green',
-                                              disabledfill='',
-                                              tags='schematic')
-
-
-def draw_capacitor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
-
-    y_adjustment = 25
-
-    # Wire before capacitor
-    canvas_to_draw_in.create_line(start_coordinate_x + 16,
-                                  start_coordinate_y,
-                                  start_coordinate_x + 16,
-                                  start_coordinate_y + y_adjustment)
-
-    # Wire after capacitor
-    canvas_to_draw_in.create_line(start_coordinate_x + 16,
-                                  start_coordinate_y + y_adjustment + 12 + 5,
-                                  start_coordinate_x + 16,
-                                  start_coordinate_y + y_adjustment + y_adjustment + 12 + 5)
-
-    # Capacitor shape - 2 rectangles
-    canvas_to_draw_in.create_rectangle(start_coordinate_x - 10,
-                                       start_coordinate_y + y_adjustment,
-                                       start_coordinate_x + 40,
-                                       start_coordinate_y + y_adjustment + 5)
-
-    canvas_to_draw_in.create_rectangle(start_coordinate_x - 10,
-                                       start_coordinate_y + y_adjustment + 12,
-                                       start_coordinate_x + 40,
-                                       start_coordinate_y + y_adjustment + 12 + 5)
-
-
-def draw_inductor(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
-    radius = 12
-    x_adjustment = 16
-    y_adjustment = 30
-
-    # wire before inductor
-    canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
-                                  start_coordinate_y + y_adjustment - 20,
-                                  start_coordinate_x + x_adjustment,
-                                  start_coordinate_y + y_adjustment - 20 + 8)
-
-    # wire after inductor
-    canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
-                                  start_coordinate_y + 5 * radius + y_adjustment,
-                                  start_coordinate_x + x_adjustment,
-                                  start_coordinate_y + 5 * radius + y_adjustment + 8)
-
-    # Inductor shape: 3 circles + 1 rectangle to hide half of circles
-    canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
-                                    start_coordinate_y + y_adjustment,
-                                    radius,
-                                    tags='Schematic')
-
-    canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
-                                    start_coordinate_y + 2 * radius + y_adjustment,
-                                    radius,
-                                    tags='Schematic')
-
-    canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
-                                    start_coordinate_y + 4 * radius + y_adjustment,
-                                    radius,
-                                    tags='Schematic')
-
-    canvas_to_draw_in.create_rectangle(start_coordinate_x - radius + x_adjustment - 0.2,
-                                       start_coordinate_y - radius + y_adjustment,
-                                       start_coordinate_x + x_adjustment - 0.2,
-                                       start_coordinate_y + 5 * radius + y_adjustment + 1,
-                                       fill='#F0F0F0',
-                                       outline='#F0F0F0',
-                                       activefill='#F0F0F0',
-                                       tags='Schematic'
-                                       )
-
-    # # TODO: Highlighting shape still not working
-    # canvas_to_draw_in.create_rectangle(start_coordinate_x - radius/2 + x_adjustment,
-    #                                    start_coordinate_y - radius + y_adjustment,
-    #                                    start_coordinate_x + radius + radius/2 + x_adjustment,
-    #                                    start_coordinate_y + 5 * radius + y_adjustment,
-    #                                    outline='#F0F0F0',
-    #                                    disabledfill='#F0F0F0',
-    #                                    tags='Inductor Highlight',
-    #                                    activefill='green',
-    #                                    )
-
-
-def draw_diode(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
-    ground_line = 10
-    x_adjustment = 16
-
-    # wire before diode
-    canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
-                                  start_coordinate_y,
-                                  start_coordinate_x + x_adjustment,
-                                  start_coordinate_y + ground_line)
-
-    # wire after diode
-    canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
-                                  start_coordinate_y + 35 + ground_line,
-                                  start_coordinate_x + x_adjustment,
-                                  start_coordinate_y + 35 + ground_line + 20)
-
-    # triangle shape of diode
-    canvas_to_draw_in.create_polygon(start_coordinate_x - 25 + x_adjustment,
-                                     start_coordinate_y + ground_line,
-                                     start_coordinate_x + 25 + x_adjustment,
-                                     start_coordinate_y + ground_line,
-                                     start_coordinate_x + x_adjustment,
-                                     start_coordinate_y + 35 + ground_line,
-                                     fill='',
-                                     outline='black',
-                                     tags='schematic')
-
-    # Diode line in front of triangle shape
-    canvas_to_draw_in.create_line(start_coordinate_x - 25 + x_adjustment,
-                                  start_coordinate_y + 35 + ground_line,
-                                  start_coordinate_x + 25 + x_adjustment,
-                                  start_coordinate_y + 35 + ground_line)
-
-
-def draw_ground_flags(start_coordinate_x, start_coordinate_y, canvas_to_draw_in):
-    ground_line = 10
-
-    # Wire above ground
-    canvas_to_draw_in.create_line(start_coordinate_x,
-                                  start_coordinate_y,
-                                  start_coordinate_x,
-                                  start_coordinate_y + ground_line)
-
-    # Triangle shape of ground
-    canvas_to_draw_in.create_polygon(start_coordinate_x - 25,
-                                     start_coordinate_y + ground_line,
-                                     start_coordinate_x + 25,
-                                     start_coordinate_y + ground_line,
-                                     start_coordinate_x,
-                                     start_coordinate_y + 25 + ground_line,
-                                     fill='',
-                                     outline='black',
-                                     tags='schematic')
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------- Functions for drop down lists --------------------------------------------
@@ -478,25 +298,6 @@ def select_distribution_type(distribution_type,
 # ---------------------------------------- Function for sketching graphs on tab 2 --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def sketch_graphs(data):
-    # im = np.array(np.random.rand(10, 10, 10))
-    # graph = Figure()
-    # canvas = FigureCanvasTkAgg(graph, root)
-    # canvas.get_tk_widget().pack(fill="both", expand=True)
-    #
-    # im = np.array(np.random.rand(10, 10, 10))
-    #
-    # ax = graph.subplots(1, 1)
-    #
-    # axmax = graph.add_axes([0.25, 0.01, 0.65, 0.03])
-    # smax = Slider(axmax, 'Max', 0, np.max(im), valinit=50)
-    # tracker = IndexTracker(ax, im)
-    # canvas.mpl_connect('scroll_event', tracker.onscroll)
-    # canvas.mpl_connect('button_release_event', tracker.contrast)  # add this for contrast change
-
-    # data = {'Country': ['US', 'CA', 'GER', 'UK', 'FR'],
-    #         'GDP_Per_Capita': [45000, 42000, 52000, 49000, 47000]
-    #         }
-    # data_frame_plot = DataFrame(data, columns=['Country', 'GDP_Per_Capita'])
     figure = plt.Figure(figsize=(8, 6), dpi=100)
     ax = figure.add_subplot(111)
     x = np.sort(np.random.rand(15))
@@ -565,7 +366,7 @@ def open_new_window(component):
     if entering_parameters_window is not None and entering_parameters_window.winfo_exists():
         entering_parameters_window.lift()
     else:
-        entering_parameters_window = customtkinter.CTkToplevel(root)
+        entering_parameters_window = customtkinter.CTkToplevel(schematic_analysis)
 
         label_background = ''
         text_colour = ''
@@ -583,7 +384,7 @@ def open_new_window(component):
         entering_parameters_window.title("Enter Component Parameters")
 
         # sets the size of the new window created for entering parameters
-        entering_parameters_window.geometry("400x210")
+        entering_parameters_window.geometry("450x210")
 
         component_name_array = [None] * len(circuit_components)
         component_distribution_array = [None] * len(circuit_components)
@@ -595,7 +396,7 @@ def open_new_window(component):
         component_param2_array = [None] * len(circuit_components)
         name_label_array = [None] * len(circuit_components)
         component_full_information_array = [None] * len(circuit_components)
-
+        delete_button = [None] * len(circuit_components)
         # Example Structure
         # name: L1
         # distribution: normal
@@ -683,8 +484,23 @@ def open_new_window(component):
 
             name_label_array[circuit_component] = Label(component_parameters_frame,
                                                         text='',
-                                                        width=22,
-                                                        height=4)
+                                                        width=25,
+                                                        height=5,
+                                                        highlightcolor='black',
+                                                        highlightthickness=2,
+                                                        borderwidth=1,
+                                                        justify='center',
+                                                        relief='solid'
+                                                        )
+
+            delete_button[circuit_component] = Button(name_label_array[circuit_component],
+                                                      text='',
+                                                      background=BACKGROUND_COLOUR,
+                                                      activebackground='red',
+                                                      relief='flat',
+                                                      #image=delete_image,
+                                                      command=delete_label
+                                                      )
 
             component_full_information_array[circuit_component] = Entry(component_parameters_frame)
 
@@ -698,13 +514,13 @@ def open_new_window(component):
             component_param1_array[circuit_component].insert(INSERT, '1')
             component_param2_array[circuit_component].insert(INSERT, '2')
 
-        component_selected = StringVar(root)
+        component_selected = StringVar(entering_parameters_window)
         component_selected.set(circuit_components[0])
         distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
-        distribution_selected = StringVar(root)
+        distribution_selected = StringVar(entering_parameters_window)
         distribution_selected.set(distributions[0])
         values = ['Constant', 'Random']
-        values_selected = StringVar(root)
+        values_selected = StringVar(entering_parameters_window)
         values_selected.set(values[0])
 
         global component_index
@@ -800,6 +616,7 @@ def open_new_window(component):
                                                     component_param2_array[component_index].get('1.0', END).strip('\n'),
                                                     component_index,
                                                     name_label_array,
+                                                    delete_button,
                                                     component_value_array)
         )
 
@@ -853,6 +670,13 @@ def open_new_window(component):
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for saving a single parameter --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+def delete_label():
+    print('sweat')
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Function for saving a single parameter --------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 # Function for closing new windows using a  button
 def save_entered_parameters(entering_parameters_window,
                             value,
@@ -865,6 +689,7 @@ def save_entered_parameters(entering_parameters_window,
                             component_param2,
                             index,
                             full_name_labels,
+                            delete_label_button,
                             component_value_array):
     global all_component_parameters
     global component_index
@@ -926,23 +751,18 @@ def save_entered_parameters(entering_parameters_window,
             appending_flag = 0
 
         print(all_component_parameters)
-        # --------------------------------- Displaying entered parameters on root window -------------------------------
+        # --------------------------------- Displaying entered parameters on schematic_analysis window -------------------------------
         print(component_index)
+
         full_name_labels[index].config(text='')
-        full_name_labels[index].config(borderwidth=0)
-        full_name_labels[index].config(relief='flat')
-        full_name_labels[index] = Label(component_parameters_frame,
-                                        text=component_name +
+        full_name_labels[index].config(width=25)
+        full_name_labels[index].config(height=5)
+
+        full_name_labels[index].config(text=component_name +
                                         '\nDistribution: ' + component_distribution +
                                         '\n' + component_param1_label + '=' + component_param1 +
-                                        '\n' + component_param2_label + '=' + component_param2,
-                                        highlightcolor='black',
-                                        highlightthickness=2,
-                                        borderwidth=1,
-                                        relief='solid',
-                                        height=4,
-                                        width=22
-                                        )
+                                        '\n' + component_param2_label + '=' + component_param2)
+
     elif value.get() == 'Constant':
         if len(all_component_parameters) == 0:
             all_component_parameters.append({component_name: {'Value': 'Constant'}})
@@ -967,21 +787,29 @@ def save_entered_parameters(entering_parameters_window,
         if appending_flag == 1:
             all_component_parameters.append({component_name: {'Value': 'Constant'}})
             appending_flag = 0
-        full_name_labels[index].config(text='')
-        full_name_labels[index].config(borderwidth=0)
-        full_name_labels[index].config(relief='flat')
 
-        full_name_labels[index] = Label(component_parameters_frame,
-                                        text=component_name +
-                                        '\nValue: ' + '5',
-                                        highlightcolor='black',
-                                        highlightthickness=2,
-                                        borderwidth=1,
-                                        relief='solid',
-                                        height=4,
-                                        width=22)
+        full_name_labels[index].config(text='')
+        full_name_labels[index].config(width=25)
+        full_name_labels[index].config(height=5)
+
+        full_name_labels[index].config(text=component_name +
+                                            '\nDistribution: ' + component_distribution +
+                                            '\n' + component_param1_label + '=' + component_param1 +
+                                            '\n' + component_param2_label + '=' + component_param2)
+
+    # for comp in range(len(circuit_components)):
+    #     delete_label_button[comp] = Button(full_name_labels[comp],
+    #                                         text='',
+    #                                         background=BACKGROUND_COLOUR,
+    #                                         activebackground='red',
+    #                                         relief='flat',
+    #                                         image=delete_image,
+    #                                         command=delete_label
+    #                                         )
+    #     delete_label_button[comp].pack(side=LEFT, anchor=NW, expand=False)
 
     full_name_labels[component_index].grid(row=component_index, column=1, sticky='nsew')
+    #delete_label_button[component_index].pack(side=LEFT, anchor=NW, expand=False)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1025,22 +853,21 @@ def save_all_entered_parameters(component_name,
             full_name_labels[circuit_component] = \
                 Label(component_parameters_frame,
                       text=component_name[circuit_component] +
-                           '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0',
-                                                                                                    END).strip(
-                          '\n') +
-                           '\n' + component_param1_label_array[circuit_component]['text'] +
-                           '=' + component_param1_array[circuit_component].get('1.0', END).strip('\n') +
-                           '\n' + component_param2_label_array[circuit_component]['text'] +
-                           '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'),
+                      '\nDistribution: ' + component_distribution_array[circuit_component].get('1.0', END).strip('\n')
+                      + '\n' + component_param1_label_array[circuit_component]['text'] + '=' +
+                      component_param1_array[circuit_component].get('1.0', END).strip('\n') +
+                      '\n' + component_param2_label_array[circuit_component]['text'] +
+                      '=' + component_param2_array[circuit_component].get('1.0', END).strip('\n'),
                       highlightcolor='black',
                       highlightthickness=2,
                       borderwidth=1,
                       relief='solid',
-                      height=4,
-                      width=22
+                      justify='center',
+                      height=5,
+                      width=25
                       )
 
-            # Placing the name label of all parameters on the root window
+            # Placing the name label of all parameters on the schematic_analysis window
             full_name_labels[circuit_component].grid(row=circuit_component, column=1)
 
             # Storing all components with their parameters in a dictionary
@@ -1076,11 +903,12 @@ def save_all_entered_parameters(component_name,
                       highlightthickness=2,
                       borderwidth=1,
                       relief='solid',
-                      height=4,
-                      width=22
+                      justify='center',
+                      height=5,
+                      width=25
                       )
 
-            # Placing the name label of all parameters on the root window
+            # Placing the name label of all parameters on the schematic_analysis window
             full_name_labels[circuit_component].grid(row=circuit_component, column=1)
 
     print(all_component_parameters)
@@ -1150,14 +978,16 @@ def get_file_path():
 
         )
 
-    # # Image Implementation - not yet working
-    # svg_schematic = svg2rlg(file_path[1])
-    # renderPM.drawToFile(svg_schematic, "temp_schematic.png", fmt="PNG")
-    # img = Image.open('temp_schematic.png')
-    # pimg = ImageTk.PhotoImage(img)
+    # Image Implementation - not yet working
+    svg_schematic = svg2rlg('C:/Users/moaik/OneDrive - The University of Nottingham/NSERP/LTspice to latex/Delete.svg')
+    renderPM.drawToFile(svg_schematic, "temp_schematic.png", fmt="PNG")
+    img = Image.open('temp_schematic.png')
+    pimg = ImageTk.PhotoImage(img)
+    global delete_image
+    delete_image = ImageTk.PhotoImage(img)
     # size = img.size
     # canvas.create_image(96 + 150, 224 + 150, image=pimg)
-    #canvas.create_line(96-13+150, 224+150, 128 + 13 + 150, 224+150)
+    # #canvas.create_line(96-13+150, 224+150, 128 + 13 + 150, 224+150)
 
     fpath = file_path[0]
     file_name = ntpath.basename(fpath)
@@ -1193,7 +1023,7 @@ def get_file_path():
     sketch_schematic_asc(schematic)
 
     # Display file path at the bottom of the window
-    # l1 = Label(root, text="File path: " + file_path).pack()
+    # l1 = Label(schematic_analysis, text="File path: " + file_path).pack()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1204,7 +1034,7 @@ def sketch_schematic_asc(schematic):
     # Remove all previous schematic drawings
     canvas.delete('schematic')
     canvas.delete('all')
-    # Clear all previous labels in root window of component parameters
+    # Clear all previous labels in schematic_analysis window of component parameters
     for labels in component_parameters_frame.winfo_children():
         labels.destroy()
     # Clear all previous component parameters
@@ -1336,32 +1166,34 @@ def sketch_schematic_asc(schematic):
     ground_flags = [int(coordinate) for coordinate in ground_flags]
     other_power_flags = [int(coordinate) for coordinate in other_power_flags]
     modified_ground_flags = [modification + adjustment for modification in ground_flags]
-    # ------------------------------Power flags other than ground, not yet implemented----------------------------------
-    ############################# Not yet implemented ##################################################################
+
+    # -------------------------------------- Power flags other than ground ---------------------------------------------
+    # TODO: Implement remaining power flags
     modified_other_power_flags = [modification + adjustment for modification in other_power_flags]
 
     # ------------------------------------------------ Drawing resistors -----------------------------------------------
     drawn_resistors = len(modified_resistors) * [None]
 
+    drawing_components = comp.ComponentSketcher()
     for resistor in range(0, len(modified_resistors), 2):
-        drawn_resistors[resistor] = draw_resistor(modified_resistors[resistor],
-                                                  modified_resistors[resistor + 1],
-                                                  canvas)
+        drawn_resistors[resistor] = drawing_components.draw_resistor(modified_resistors[resistor],
+                                                                     modified_resistors[resistor + 1],
+                                                                     canvas)
 
     # ------------------------------------------------ Drawing Capacitors ----------------------------------------------
     drawn_capacitors = len(modified_capacitors) * [None]
     for capacitor in range(0, len(modified_capacitors), 2):
-        draw_capacitor(modified_capacitors[capacitor], modified_capacitors[capacitor + 1], canvas)
+        drawing_components.draw_capacitor(modified_capacitors[capacitor], modified_capacitors[capacitor + 1], canvas)
 
     # ------------------------------------------------ Drawing Inductors -----------------------------------------------
     drawn_inductors = len(modified_inductors) * [None]
     for inductor in range(0, len(modified_inductors), 2):
-        draw_inductor(modified_inductors[inductor], modified_inductors[inductor + 1], canvas)
+        drawing_components.draw_inductor(modified_inductors[inductor], modified_inductors[inductor + 1], canvas)
 
     # ------------------------------------------------ Drawing Diodes --------------------------------------------------
     drawn_inductors = len(modified_diodes) * [None]
     for diode in range(0, len(modified_diodes), 2):
-        draw_diode(modified_diodes[diode], modified_diodes[diode + 1], canvas)
+        drawing_components.draw_diode(modified_diodes[diode], modified_diodes[diode + 1], canvas)
 
     # ----------------------------------------------- Drawing voltage sources ------------------------------------------
     drawn_voltage_sources = len(modified_voltage_sources) * [None]
@@ -1386,7 +1218,9 @@ def sketch_schematic_asc(schematic):
     # -------------------------------------------- Drawing Grounds -----------------------------------------------------
     ground_line = 10
     for flag_coordinates in range(0, len(ground_flags), 2):
-        draw_ground_flags(modified_ground_flags[flag_coordinates], modified_ground_flags[flag_coordinates + 1], canvas)
+        drawing_components.draw_ground_flags(modified_ground_flags[flag_coordinates],
+                                             modified_ground_flags[flag_coordinates + 1],
+                                             canvas)
 
     # --------------------------------------------Binding events--------------------------------------------------------
 
@@ -1395,7 +1229,7 @@ def sketch_schematic_asc(schematic):
         canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg))
         canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg))
 
-    # # --------------------------- Making resistors change colour when hovered over -------------------------------
+    # # --------------------------- Making resistors open new window when hovered over ---------------------------------
     # for resistor_elements in drawn_resistors:
     #     canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
     #                     lambda event,
@@ -1403,20 +1237,31 @@ def sketch_schematic_asc(schematic):
 
 
 # Select a schematic using a button
-openfile_button = customtkinter.CTkButton(root,
+openfile_button = customtkinter.CTkButton(schematic_analysis,
                                           text='Open a Schematic',
                                           command=get_file_path
                                           )
 
 # Button for entering the parameters of the circuit
-enter_parameters_button = customtkinter.CTkButton(root,
+enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
                                                   text='Enter All Parameters',
                                                   command=component_parameters
                                                   )
 
 value = 0
+# open_asc_file_button = customtkinter.CTkButton(root,
+#                                                text='Open LTspice .asc file',
+#                                                command=open_asc_file)
+#
+# open_raw_file_button = customtkinter.CTkButton(root,
+#                                                text='Open LTspice .raw file',
+#                                                command=open_raw_file)
+#
+# exit_app_button = customtkinter.CTkButton(root,
+#                                                text='Exit EMC Analysis',
+#                                                command=exit_application)
 
-# open file button, tab control and canvas location in root window
+# open file button, tab control and canvas location in schematic_analysis window
 enter_parameters_button.pack(padx=0, pady=10, side=BOTTOM)
 openfile_button.pack(padx=0, pady=2, side=BOTTOM)
 tabControl.pack(expand=True, fill=BOTH)
@@ -1426,8 +1271,11 @@ component_parameters_frame.pack(side='right', fill=BOTH)
 component_parameters_frame.propagate(False)
 sketch_graphs(value)
 
-
+# open_raw_file_button.pack(pady=6)
+# open_asc_file_button.pack(pady=6)
+# exit_app_button.pack(pady=6)
 
 # run the application
-root.columnconfigure(0, weight=1)
-root.mainloop()
+schematic_analysis.columnconfigure(0, weight=1)
+schematic_analysis.mainloop()
+#root.mainloop()
