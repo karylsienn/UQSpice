@@ -1,16 +1,18 @@
-from email.policy import default
-from logging import warning
-from multiprocessing.sharedctypes import Value
-from matplotlib.pyplot import plot
 import numpy as np
 import re, mmap, warnings, os
 from datetime import datetime
+import argparse
+import pandas as pd
 
 ENC_UTF16LE = 'utf-16 le'
 ENC_UTF8 = 'utf8'
 
 
-class RawReader:
+class LTSpiceReader:
+    """Base class for the readers"""
+    pass
+
+class RawReader(LTSpiceReader):
     """RawReader parses the raw LTSpice file given in 'raw_path'.
 
     It implements three methods for returning the data:
@@ -52,7 +54,7 @@ class RawReader:
         else: # For unit testing purposes
             self.raw_path = None
 
-    def get_pandas(self, columns='all', steps='all', interpolated=False, **kwargs):
+    def get_pandas(self, columns='all', steps='all', interpolated=False, **kwargs) -> pd.DataFrame:
         """Returns a copy of the raw data as `pandas.DataFrame`.
 
         Parameter `columns` can be either a list of column names or 'all'.
@@ -99,7 +101,6 @@ class RawReader:
 
 
         """
-        import pandas as pd
         try:
             xvar, data, stepnp, colnames = self._get_data_array(columns, steps, interpolated, **kwargs)
             xname = 'time' if self.get_analysis_type() == 'transient' else 'frequency'
@@ -113,7 +114,7 @@ class RawReader:
     def get_numpy(self, columns='all', steps='all', interpolated=False, **kwargs):
         """Returns a copy of the raw data as `numpy.array`.
 
-        Parameter `columns` can be either a list of column names or 'all'.
+        Parameter `columns` can be either a tuple of column names or 'all'.
         `steps` can be a list, numpy.array, an integer or 'all'. If the data is stepped 
         only a required portion of the data will be returned and a column `step` added 
         to a data frame. In case the required steps are not in the data, a warning will
@@ -480,8 +481,130 @@ class RawReader:
     def _is_complex(self):
         return any(re.match('complex', line, re.IGNORECASE ) for line in self.header['Flags'])
 
-class LogReader:
-
+class LogReader(LTSpiceReader):
+    
     def __init__(self, log_path) -> None:
         self.log_path = log_path
+
+class MeasurementReader(LogReader):
+
+    def __init__(self, log_path) -> None:
+        self.super().__init__(log_path)
+    
+    def get_pandas():
+        pass
+
+class FourierAnalysisReader(LogReader):
+
+    def __init__(self, log_path) -> None:
+        self.super().__init__(log_path)
+
+    def get_pandas():
+        pass
+
+
+def parse_and_save(
+    objstr: str,
+    infile: str,
+    outfile: str, 
+    **kwargs):
+    """The main function. Reads the file and saves the results to a csv file."""
+    import pandas as pd
+
+    if objstr == "RawReader" and re.search (r"\.raw$", infile):
+        
+        # Create an instance of a reader
+        reader = RawReader(infile)
+        
+        # Parse the keyword arguments
+        columns = kwargs.get("columns", 'all')
+        steps = kwargs.get("steps", 'all')
+        interpolated = kwargs.get("interpolated", False)
+        rest = {k: v for k, v in kwargs.items() if k not in ('columns', 'steps', 'interpolated')}
+        
+        # Get the resulting dataframe.
+        data = reader.get_pandas(columns=columns, steps=steps, interpolated=interpolated, **rest)
+
+        # Store the dataframe in a file
+        if len(outfile) == 0:
+            outfile = re.sub(".raw", ".csv", infile)
+        data.to_csv(outfile, index=False)
+        print("Saved.")
+
+    elif objstr == "MeasurementReader" and re.search(r"\.log$", infile):
+        pass
+    elif objstr == "FourierAnalysisReader" and re.search(r"\.log$", infile):
+        pass
+    else:
+        raise ValueError("""Reader must be one of: RawReader, MeasurementReader, FourierAnalysisReader.
+                            Make sure that the .log and .raw files match the reader.""")
+
+
+if __name__=="__main__":
+
+    parser = argparse.ArgumentParser("Read a file using the LTSpiceReader and return pandas or numpy.")
+    # TODO: Maybe it will be better with subcommands?
+    # subparsers = parser.add_subparsers()
+    # parser_raw = subparsers.add_parser(name="raw", help="Read the raw file using RawReader")
+
+    parser.add_argument("-r", "--reader",
+                        required=True,
+                        type=str,
+                        choices=("RawReader", "MeasurementReader", "FourierAnalysisReader"),
+                        help="""A name of the class to read the file. 
+                        This should be either RawReader, MeasurementReader or FourierAnalysisReader.""")
+    parser.add_argument("-f","--file",
+                        required=True,
+                        type=str,
+                        help="The file you want to read.")
+    parser.add_argument("-o", "--outfile",
+                        required=False,
+                        type=str,
+                        help="Output file where to store the results",
+                        default="")
+
+    # Group for numpy or pandas -- Maybe not really needed.
+    # group = parser.add_mutually_exclusive_group(required=True)
+    # group.add_argument("--numpy", "-np", action="store_true")
+    # group.add_argument("--pandas", "-pd", action="store_true")
+
+    # Further arguments for RawReader
+    raw_group = parser.add_argument_group("Raw")
+    raw_group.add_argument("--columns", "-col",
+                            required=False,
+                            nargs='*',
+                            default='all')
+    raw_group.add_argument("--steps", "-s",
+                            required=False,
+                            nargs="*",
+                            default='all')
+    raw_group.add_argument("--interpolated", "-i",
+                            required=False,
+                            action='store_true')
+    raw_group.add_argument("--tmin",
+                            required=False,
+                            type=float)
+    raw_group.add_argument("--tmax",
+                            required=False,
+                            type=float)
+    raw_group.add_argument("--n",
+                            required=False,
+                            type=int)
+
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Get the main arguments
+    objstr = args.reader
+    infile = args.file
+    outfile = args.outfile
+    # result = 'pandas' if args.pandas else 'numpy'
+    rest = {k: v for k, v in args._get_kwargs() if k not in ('reader', 'file', 'outfile', 'numpy', 'pandas')}
+
+    # Run the main function
+    parse_and_save(
+        objstr=objstr,
+        infile=infile,
+        outfile=outfile,
+        **rest)
 
