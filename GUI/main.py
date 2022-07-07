@@ -145,7 +145,7 @@ def on_leave(e, element_to_change):
     canvas.itemconfig(element_to_change, fill=BACKGROUND_COLOUR)
 
 
-def on_resistor_press(event, arg):
+def on_resistor_press(event, arg, circuit_components):
     print(circuit_components)
     print(circuit_components[arg])
     print(arg)
@@ -168,6 +168,7 @@ def filter_components(components, adjustment):
     # add a small adjustment to all coordinates, so it appears on centre of screen
     modified_components = [modification + adjustment for modification in components]
     return modified_components
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------- Functions for drop down lists --------------------------------------------
@@ -195,8 +196,6 @@ def random_or_constant(value_selected,
             component_param1_array[labels].grid_remove()
             component_param2_array[labels].grid_remove()
 
-    print(value_selected.get())
-
 
 # Function when the selected component has been changed from dropdown list
 def change_component_index(component_selected,
@@ -206,11 +205,12 @@ def change_component_index(component_selected,
                            component_param1_label_array,
                            component_param2_label_array,
                            component_param1_array,
-                           component_param2_array
+                           component_param2_array,
+                           components
                            ):
     global component_index
-    for comp_index in range(len(circuit_components)):
-        if component_selected.get() == circuit_components[comp_index]:
+    for comp_index in range(len(components)):
+        if component_selected.get() == components[comp_index]:
             component_index = comp_index
 
     component_param1_array[component_index].grid_remove()
@@ -308,10 +308,6 @@ def sketch_graphs(data):
 
     chart_type = FigureCanvasTkAgg(figure, master=graphs)
     chart_type.get_tk_widget().pack(side='top', fill='both')
-    # chart_type = FigureCanvasTkAgg(figure, graphs)
-    # chart_type.get_tk_widget().pack(pady=0, fill=BOTH)
-    # data_frame_plot = data_frame_plot[['Country', 'GDP_Per_Capita']].groupby('Country').sum()
-    # data_frame_plot.plot(kind='line', legend=True, ax=ax)
     ax.set_title('Example Plot')
     ax.grid('on')
     names = np.array(list("ABCDEFGHIJKLMNO"))
@@ -348,23 +344,17 @@ def sketch_graphs(data):
     toolbar.pack(side=BOTTOM, fill=BOTH, expand=1)
 
 
-    # fig = go.Figure(
-    #     data=[go.Bar(y=[2, 1, 3])],
-    #     layout_title_text="A Figure Displayed with fig.show()"
-    # )
-    # fig.show()
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Function for enter all parameters button --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for entering parameters
-def open_new_window(component):
+def open_new_window(components):
     # Creating a new window for entering parameters
     global entering_parameters_window
 
     if entering_parameters_window is not None and entering_parameters_window.winfo_exists():
-        entering_parameters_window.lift()
+        entering_parameters_window.lift(schematic_analysis)
+        entering_parameters_window.wm_transient(schematic_analysis)
     else:
         entering_parameters_window = customtkinter.CTkToplevel(schematic_analysis)
 
@@ -383,20 +373,25 @@ def open_new_window(component):
         # sets the title of the new window created for entering parameters
         entering_parameters_window.title("Enter Component Parameters")
 
-        # sets the size of the new window created for entering parameters
-        entering_parameters_window.geometry("450x210")
+        # Find the location of the main schematic analysis window
+        schematic_analysis_x = schematic_analysis.winfo_x()
+        schematic_analysis_y = schematic_analysis.winfo_y()
+        # set the size and location of the new window created for entering parameters
+        entering_parameters_window.geometry("460x210+%d+%d" % (schematic_analysis_x + 40, schematic_analysis_y + 100))
+        # make the entering parameters window on top of the main schematic analysis window
+        entering_parameters_window.wm_transient(schematic_analysis)
 
-        component_name_array = [None] * len(circuit_components)
-        component_distribution_array = [None] * len(circuit_components)
-        component_param1_entry_box = [None] * len(circuit_components)
-        component_value_array = ['Constant'] * len(circuit_components)
-        component_param1_label_array = [None] * len(circuit_components)
-        component_param2_label_array = [None] * len(circuit_components)
-        component_param1_array = [None] * len(circuit_components)
-        component_param2_array = [None] * len(circuit_components)
-        name_label_array = [None] * len(circuit_components)
-        component_full_information_array = [None] * len(circuit_components)
-        delete_button = [None] * len(circuit_components)
+        component_name_array = [None] * len(components)
+        component_distribution_array = [None] * len(components)
+        component_param1_entry_box = [None] * len(components)
+        component_value_array = ['Constant'] * len(components)
+        component_param1_label_array = [None] * len(components)
+        component_param2_label_array = [None] * len(components)
+        component_param1_array = [None] * len(components)
+        component_param2_array = [None] * len(components)
+        name_label_array = [None] * len(components)
+        component_full_information_array = [None] * len(components)
+        delete_button = [None] * len(components)
         # Example Structure
         # name: L1
         # distribution: normal
@@ -425,6 +420,7 @@ def open_new_window(component):
                                            foreground=text_colour,
                                            highlightbackground=label_background
                                            )
+
         component_distribution_label = Label(entering_parameters_window,
                                              height=1,
                                              width=20,
@@ -434,11 +430,11 @@ def open_new_window(component):
                                              highlightbackground=label_background
                                              )
 
-        for circuit_component in range(len(circuit_components)):
+        for circuit_component in range(len(components)):
             component_name_array[circuit_component] = Label(entering_parameters_window,
                                                             height=1,
                                                             width=20,
-                                                            text=circuit_components[circuit_component],
+                                                            text=components[circuit_component],
                                                             background=label_background,
                                                             foreground=text_colour
                                                             )
@@ -515,7 +511,7 @@ def open_new_window(component):
             component_param2_array[circuit_component].insert(INSERT, '2')
 
         component_selected = StringVar(entering_parameters_window)
-        component_selected.set(circuit_components[0])
+        component_selected.set(components[0])
         distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
         distribution_selected = StringVar(entering_parameters_window)
         distribution_selected.set(distributions[0])
@@ -529,7 +525,7 @@ def open_new_window(component):
         # Drop down list for selecting which component to enter parameters for
         component_drop_down_list = OptionMenu(entering_parameters_window,
                                               component_selected,
-                                              *circuit_components,
+                                              *components,
                                               command=lambda _: change_component_index(component_selected,
                                                                                        values_selected,
                                                                                        distribution_selected,
@@ -537,7 +533,8 @@ def open_new_window(component):
                                                                                        component_param1_label_array,
                                                                                        component_param2_label_array,
                                                                                        component_param1_array,
-                                                                                       component_param2_array
+                                                                                       component_param2_array,
+                                                                                       components
                                                                                        ))
 
         component_drop_down_list.config(background=label_background,
@@ -624,7 +621,7 @@ def open_new_window(component):
         save_all_parameters_button = customtkinter.CTkButton(
             entering_parameters_window,
             text='Save All Parameters',
-            command=lambda: save_all_entered_parameters(component,
+            command=lambda: save_all_entered_parameters(components,
                                                         values_selected,
                                                         component_distribution_array,
                                                         component_param1_label_array,
@@ -663,15 +660,15 @@ def open_new_window(component):
 
         entering_parameters_window.grid_rowconfigure(tuple(range(10)), weight=1)
         entering_parameters_window.grid_columnconfigure(tuple(range(10)), weight=1)
-        #entering_parameters_window.resizable(False, False)
-        #enter_parameters_button.wait_window(entering_parameters_window)
+        # entering_parameters_window.resizable(False, False)
+        # enter_parameters_button.wait_window(entering_parameters_window)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------- Function for saving a single parameter --------------------------------------
+# ---------------------------------------- Function for deleting entered parameters ------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def delete_label():
-    print('sweat')
+    print('Deleting label')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -751,7 +748,7 @@ def save_entered_parameters(entering_parameters_window,
             appending_flag = 0
 
         print(all_component_parameters)
-        # --------------------------------- Displaying entered parameters on schematic_analysis window -------------------------------
+        # --------------------------------- Displaying entered parameters on schematic_analysis window -----------------
         print(component_index)
 
         full_name_labels[index].config(text='')
@@ -797,7 +794,7 @@ def save_entered_parameters(entering_parameters_window,
                                             '\n' + component_param1_label + '=' + component_param1 +
                                             '\n' + component_param2_label + '=' + component_param2)
 
-    # for comp in range(len(circuit_components)):
+    # for comp in range(len(components)):
     #     delete_label_button[comp] = Button(full_name_labels[comp],
     #                                         text='',
     #                                         background=BACKGROUND_COLOUR,
@@ -823,7 +820,8 @@ def save_all_entered_parameters(component_name,
                                 component_param1_array,
                                 component_param2_array,
                                 full_name_labels,
-                                component_value_array):
+                                component_value_array
+                                ):
     global all_component_parameters
     all_component_parameters.clear()
 
@@ -841,7 +839,7 @@ def save_all_entered_parameters(component_name,
             component_param1_dictionary_input[distributions] = 'alpha'
             component_param2_dictionary_input[distributions] = 'beta'
 
-    for circuit_component in range(len(circuit_components)):
+    for circuit_component in range(len(component_name)):
         if component_value_array[circuit_component] == 'Random':
             print(component_name)
             # clearing the name label of all parameters
@@ -925,12 +923,11 @@ def close_window(window_to_close):
 # ----------------------------------- Function for entering component parameters ---------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Entering Component Parameters for all elements
-def component_parameters():
+def component_parameters(components):
     global all_component_parameters
-    global circuit_components
 
-    if len(circuit_components) != 0:
-        open_new_window(circuit_components)
+    if len(components) != 0:
+        open_new_window(components)
     else:
         error_for_not_entering_schematic = \
             canvas.create_window(400, 300,
@@ -952,13 +949,12 @@ Canvas.create_circle = _create_circle
 
 # Function for opening a ltspice schematic file
 def get_file_path():
-    global file_path
     # Open and return file path
     file_path = fd.askopenfilenames(
         title="Select a Schematic",
 
         filetypes=(
-            ("LTspice Schematic", "*.asc"),
+            ("Schematic", "*.asc"),
             ("All files", "*.*")
         )
 
@@ -972,7 +968,7 @@ def get_file_path():
             title="Select a Schematic",
 
             filetypes=(
-                ("LTspice Schematic", "*.asc"),
+                ("Schematic", "*.asc"),
                 ("All files", "*.*")
             )
 
@@ -1120,7 +1116,6 @@ def sketch_schematic_asc(schematic):
     circuit_components = components
 
     adjustment = 150
-
     # ------------------------------------ Separating npn transistors --------------------------------------------------
     modified_npn_transistor = filter_components(npn_transistor, adjustment)
 
@@ -1140,11 +1135,7 @@ def sketch_schematic_asc(schematic):
     modified_voltage_sources = filter_components(voltage_sources, adjustment)
 
     # -------------------------------------------- Separating Wires ----------------------------------------------------
-    coordinates_one_line = wires.split('\n')
-    coordinates_one_line.remove('')
-    single_coordinates = [coordinate for singleCoord in coordinates_one_line for coordinate in singleCoord.split(' ')]
-    single_coordinates = [int(coordinate) for coordinate in single_coordinates]
-    modified_coordinates = [modification + adjustment for modification in single_coordinates]
+    modified_coordinates = filter_components(wires, adjustment)
 
     # ------------------------------------------- Separating Power Flags -----------------------------------------------
     ground_flags = []
@@ -1174,26 +1165,29 @@ def sketch_schematic_asc(schematic):
     # ------------------------------------------------ Drawing resistors -----------------------------------------------
     drawn_resistors = len(modified_resistors) * [None]
 
-    drawing_components = comp.ComponentSketcher()
-    for resistor in range(0, len(modified_resistors), 2):
-        drawn_resistors[resistor] = drawing_components.draw_resistor(modified_resistors[resistor],
-                                                                     modified_resistors[resistor + 1],
-                                                                     canvas)
+    drawing_components = comp.ComponentSketcher(canvas)
+    drawing_components.sketch_components(modified_resistors, drawn_resistors, drawing_components.draw_resistor)
 
     # ------------------------------------------------ Drawing Capacitors ----------------------------------------------
     drawn_capacitors = len(modified_capacitors) * [None]
-    for capacitor in range(0, len(modified_capacitors), 2):
-        drawing_components.draw_capacitor(modified_capacitors[capacitor], modified_capacitors[capacitor + 1], canvas)
+    drawing_components.sketch_components(modified_capacitors, drawn_capacitors, drawing_components.draw_capacitor)
 
     # ------------------------------------------------ Drawing Inductors -----------------------------------------------
     drawn_inductors = len(modified_inductors) * [None]
-    for inductor in range(0, len(modified_inductors), 2):
-        drawing_components.draw_inductor(modified_inductors[inductor], modified_inductors[inductor + 1], canvas)
+    drawing_components.sketch_components(modified_inductors, drawn_inductors, drawing_components.draw_inductor)
 
     # ------------------------------------------------ Drawing Diodes --------------------------------------------------
-    drawn_inductors = len(modified_diodes) * [None]
-    for diode in range(0, len(modified_diodes), 2):
-        drawing_components.draw_diode(modified_diodes[diode], modified_diodes[diode + 1], canvas)
+    drawn_diodes = len(modified_diodes) * [None]
+    drawing_components.sketch_components(modified_diodes, drawn_diodes, drawing_components.draw_diode)
+
+    # --------------------------------------------- Drawing npn transistors --------------------------------------------
+    drawn_inductors = len(modified_npn_transistor) * [None]
+    # for npn_transistor in range(0, len(modified_npn_transistor), 2):
+    #
+    #     canvas.create_line(modified_npn_transistor[npn_transistor],
+    #                        modified_npn_transistor[npn_transistor + 1],
+    #                        modified_npn_transistor[npn_transistor],
+    #                        modified_npn_transistor[npn_transistor + 1] + 10)
 
     # ----------------------------------------------- Drawing voltage sources ------------------------------------------
     drawn_voltage_sources = len(modified_voltage_sources) * [None]
@@ -1219,8 +1213,7 @@ def sketch_schematic_asc(schematic):
     ground_line = 10
     for flag_coordinates in range(0, len(ground_flags), 2):
         drawing_components.draw_ground_flags(modified_ground_flags[flag_coordinates],
-                                             modified_ground_flags[flag_coordinates + 1],
-                                             canvas)
+                                             modified_ground_flags[flag_coordinates + 1])
 
     # --------------------------------------------Binding events--------------------------------------------------------
 
@@ -1245,7 +1238,7 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
 # Button for entering the parameters of the circuit
 enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
                                                   text='Enter All Parameters',
-                                                  command=component_parameters
+                                                  command=lambda: component_parameters(circuit_components)
                                                   )
 
 value = 0
