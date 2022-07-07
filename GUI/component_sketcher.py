@@ -8,6 +8,45 @@ class ComponentSketcher:
         self.__component_parameters = kwargs
         self.canvas_to_draw_in = canvas
 
+    def draw_npn_transistor(self, start_coordinate_x, start_coordinate_y):
+        # npn transistor base (wire going into rectangle)
+        # 12, 48
+        y_adjustment = 48
+        self.canvas_to_draw_in.create_line(start_coordinate_x,
+                                           start_coordinate_y + y_adjustment,
+                                           start_coordinate_x + 12,
+                                           start_coordinate_y + y_adjustment)
+
+        # npn transistor collector (wire going upwards from rectangle)
+        self.canvas_to_draw_in.create_line(start_coordinate_x + 20,
+                                           start_coordinate_y - 10 + y_adjustment,
+                                           start_coordinate_x + 64,
+                                           start_coordinate_y - 48 + y_adjustment)
+
+        # Centre rectangle of npn transistor
+        self.canvas_to_draw_in.create_rectangle(start_coordinate_x + 12,
+                                                start_coordinate_y - 24 + y_adjustment,
+                                                start_coordinate_x + 20,
+                                                start_coordinate_y + 24 + y_adjustment)
+
+        # npn transistor emitter (wire going downwards from rectangle)
+        # Wire to arrow of emitter
+        # canvas.create_line(40, 80, 20, 64)
+        self.canvas_to_draw_in.create_line(start_coordinate_x + 20,
+                                           start_coordinate_y + 10 + y_adjustment,
+                                           start_coordinate_x + 64,
+                                           start_coordinate_y + 48 + y_adjustment)
+
+        # Triangle Shape of npn transistor
+        # self.canvas_to_draw_in.create_polygon(44, 76, 64, 96, 36, 84)
+
+        self.canvas_to_draw_in.create_polygon(start_coordinate_x + 34,
+                                              start_coordinate_y + 30 + y_adjustment,
+                                              start_coordinate_x + 34 + 10,
+                                              start_coordinate_y + 20  + y_adjustment,
+                                              start_coordinate_x + 64,
+                                              start_coordinate_y + 48 + y_adjustment)
+
     def draw_resistor(self, start_coordinate_x, start_coordinate_y):
         # adjusting the x and y coordinates of the resistors so that they match on schematic
         resistor_x_adjustment = 6
