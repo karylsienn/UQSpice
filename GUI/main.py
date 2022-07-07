@@ -25,7 +25,7 @@ from PIL import Image, ImageTk
 # ----------------------------------------------------------------------------------------------------------------------
 
 BACKGROUND_COLOUR = '#F0F0F0'
-circuit_components = []
+#circuit_components = []
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -145,9 +145,9 @@ def on_leave(e, element_to_change):
     canvas.itemconfig(element_to_change, fill=BACKGROUND_COLOUR)
 
 
-def on_resistor_press(event, arg, circuit_components):
-    print(circuit_components)
-    print(circuit_components[arg])
+def on_resistor_press(event, arg, components):
+    print(components)
+    print(components[arg])
     print(arg)
 
 
@@ -920,6 +920,19 @@ def close_window(window_to_close):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------- Function for no schematic selected -----------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def error_select_schematic():
+    canvas.create_window(400, 300,
+                         window=Label(canvas,
+                                      text="Please select a schematic",
+                                      width=40,
+                                      font=("Times New Roman", 20),
+                                      height=40),
+                         tags='Error if schematic not entered')
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------- Function for entering component parameters ---------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Entering Component Parameters for all elements
@@ -932,11 +945,11 @@ def component_parameters(components):
         error_for_not_entering_schematic = \
             canvas.create_window(400, 300,
                                  window=Label(canvas,
-                                              text="Please select a schematic first",
+                                              text="Please select a schematic with components",
                                               width=40,
                                               font=("Times New Roman", 20),
                                               height=40),
-                                 tags='Error if schematic not entered')
+                                 tags='Error if schematic has no components')
 
 
 # Replacing the oval function of tkinter with a simpler function for circles
@@ -1112,8 +1125,8 @@ def sketch_schematic_asc(schematic):
     components = components.split('\n')
     # Remove last element which is empty
     components.pop()
-    global circuit_components
-    circuit_components = components
+
+    enter_parameters_button.configure(command=lambda: open_new_window(components))
 
     adjustment = 150
     # ------------------------------------ Separating npn transistors --------------------------------------------------
@@ -1180,6 +1193,12 @@ def sketch_schematic_asc(schematic):
     drawn_diodes = len(modified_diodes) * [None]
     drawing_components.sketch_components(modified_diodes, drawn_diodes, drawing_components.draw_diode)
 
+    # -------------------------------------------- Drawing Grounds -----------------------------------------------------
+    drawn_ground_flags = len(ground_flags) * [None]
+    drawing_components.sketch_components(modified_ground_flags,
+                                         drawn_ground_flags,
+                                         drawing_components.draw_ground_flags)
+
     # --------------------------------------------- Drawing npn transistors --------------------------------------------
     drawn_inductors = len(modified_npn_transistor) * [None]
     # for npn_transistor in range(0, len(modified_npn_transistor), 2):
@@ -1209,13 +1228,7 @@ def sketch_schematic_asc(schematic):
                            modified_coordinates[coordinate + 3],
                            tags='schematic')
 
-    # -------------------------------------------- Drawing Grounds -----------------------------------------------------
-    ground_line = 10
-    for flag_coordinates in range(0, len(ground_flags), 2):
-        drawing_components.draw_ground_flags(modified_ground_flags[flag_coordinates],
-                                             modified_ground_flags[flag_coordinates + 1])
-
-    # --------------------------------------------Binding events--------------------------------------------------------
+    # ------------------------------------ Binding events to drawn shapes ----------------------------------------------
 
     # --------------------------- Making voltage sources change colour when hovered over -------------------------------
     for vol_elements in drawn_voltage_sources:
@@ -1238,7 +1251,7 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
 # Button for entering the parameters of the circuit
 enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
                                                   text='Enter All Parameters',
-                                                  command=lambda: component_parameters(circuit_components)
+                                                  command=error_select_schematic
                                                   )
 
 value = 0
