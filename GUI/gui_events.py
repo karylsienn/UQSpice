@@ -5,8 +5,8 @@ import tkinter as tk
 from tkinter import filedialog as fd
 import ntpath
 import component_sketcher as comp
-from svglib.svglib import svg2rlg
-from reportlab.graphics import renderPDF, renderPM
+# from svglib.svglib import svg2rlg
+# from reportlab.graphics import renderPDF, renderPM
 from PIL import Image, ImageTk
 import customtkinter
 
@@ -195,12 +195,12 @@ def get_file_path(component_parameters_frame,
         )
 
     # Image Implementation - not yet working
-    svg_schematic = svg2rlg('C:/Users/moaik/OneDrive - The University of Nottingham/NSERP/LTspice to latex/Delete.svg')
-    renderPM.drawToFile(svg_schematic, "temp_schematic.png", fmt="PNG")
-    img = Image.open('temp_schematic.png')
-    pimg = ImageTk.PhotoImage(img)
+    # svg_schematic = svg2rlg('C:/Users/moaik/OneDrive - The University of Nottingham/NSERP/LTspice to latex/Delete.svg')
+    # renderPM.drawToFile(svg_schematic, "temp_schematic.png", fmt="PNG")
+    # img = Image.open('temp_schematic.png')
+    # pimg = ImageTk.PhotoImage(img)
     # global delete_image
-    delete_image = ImageTk.PhotoImage(img)
+    # delete_image = ImageTk.PhotoImage(img)
     # size = img.size
     # canvas.create_image(96 + 150, 224 + 150, image=pimg)
     # #canvas.create_line(96-13+150, 224+150, 128 + 13 + 150, 224+150)
@@ -222,7 +222,7 @@ def get_file_path(component_parameters_frame,
     ltspiceascfile.close()
 
     # Open and store all file data
-    with open(fpath, mode='r') as file:
+    with open(fpath, mode='r', encoding=encoding) as file:
         schematic_data = file.read()
     file.close()
 
@@ -336,8 +336,8 @@ def sketch_schematic_asc(schematic,
     # ------------------------------------------Cleaning and filtering of elements--------------------------------------
     # Find canvas size to center image
     # TODO: USE CANVAS SIZE FROM LTSPICE SCHEMATIC
-    canvas_size = canvas_size.split(" ")
-    canvas_size = [int(size) for size in canvas_size]
+    # canvas_size = canvas_size.split(" ")
+    # canvas_size = [int(size) for size in canvas_size]
     # canvas.configure(scrollregion=(-canvas_size[0]//4, -canvas_size[1]//4, canvas_size[0]//4, canvas_size[1]//4))
 
     # Store all component names and values
