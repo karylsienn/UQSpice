@@ -130,6 +130,7 @@ logo.create_line(48 * factor + adjustment_x, 0 * factor + adjustment_y,
 # ----------------------------------------------------------------------------------------------------------------------
 menu = tkmod.CTkMenu(schematic_analysis)
 
+schematic_analysis.config(menu=menu)
 
 # File menu
 fileMenu = tkmod.CTkMenu(menu)
@@ -211,7 +212,6 @@ add_new_component_button = customtkinter.CTkButton(root,
 exit_app_button = customtkinter.CTkButton(root,
                                           text='Exit EMC Analysis',
                                           command=lambda: guievents.exit_application(root))
-
 
 # open file button, tab control and canvas location in schematic_analysis window
 enter_parameters_button.pack(padx=0, pady=10, side=tk.BOTTOM)
