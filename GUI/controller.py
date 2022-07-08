@@ -130,7 +130,6 @@ logo.create_line(48 * factor + adjustment_x, 0 * factor + adjustment_y,
 # ----------------------------------------------------------------------------------------------------------------------
 menu = tkmod.CTkMenu(schematic_analysis)
 
-schematic_analysis.config(menu=menu)
 
 # File menu
 fileMenu = tkmod.CTkMenu(menu)
