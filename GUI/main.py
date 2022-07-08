@@ -3,7 +3,7 @@ import controller as control
 
 
 def main():
-    control.schematic_analysis.mainloop()
+    control.root.mainloop()
 
 
 # Run main GUI application

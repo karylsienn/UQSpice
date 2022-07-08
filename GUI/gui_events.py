@@ -13,6 +13,7 @@ import customtkinter
 BACKGROUND_COLOUR = '#F0F0F0'
 Mode = 'dark'
 all_component_parameters = []
+entering_parameters_window = None
 
 
 # Replacing the oval function of tkinter with a simpler function for circles
@@ -26,18 +27,34 @@ tk.Canvas.create_circle = _create_circle
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for Root starting window ------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def open_asc_file():
-    print('Open schematic')
-    # root.destroy()
+def open_asc_file(root, schematic_analysis):
+    root.withdraw()
+    schematic_analysis_width = 1100  # width for the Tk schematic_analysis
+    schematic_analysis_height = 750  # height for the Tk schematic_analysis
+    # Find the location of the main schematic analysis window
+    screen_width = root.winfo_screenwidth()  # width of the screen
+    screen_height = root.winfo_screenheight()  # height of the screen
+    # calculate x and y coordinates for the Tk schematic_analysis window
+    analysis_x = (screen_width / 2) - (schematic_analysis_width / 2) - (schematic_analysis_width / 5)
+    analysis_y = (screen_height / 2) - (schematic_analysis_height / 2) - (schematic_analysis_height / 5)
+
+    # set the dimensions of schematic analysis window and its position
+    schematic_analysis.geometry('%dx%d+%d+%d' % (schematic_analysis_width,
+                                                 schematic_analysis_height,
+                                                 analysis_x,
+                                                 analysis_y))
+
+    # make the entering parameters window on top of the main schematic analysis window
+    schematic_analysis.wm_transient(root)
+    schematic_analysis.deiconify()
 
 
 def open_raw_file():
     print('Open raw File')
 
 
-def exit_application():
-    print('Quit Application')
-    # root.destroy()
+def exit_application(root):
+    root.destroy()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -248,6 +265,13 @@ def sketch_schematic_asc(schematic,
     Parameters
         ----------
         schematic : file path obtained from file dialog box with extension (.asc)
+        component_parameters_frame: frame in which the component parameters are placed after selection
+        all_component_parameters: List for storing parameters of all components
+        canvas: Canvas to draw the components inside
+        schematic_analysis: Window in which component parameters frame is placed inside
+        enter_parameters_button: button to open a new window for entering parameters
+        entering_parameters_window: Window displayed when button is clicked to enter parameters
+
     """
 
     # Remove all previous schematic drawings
@@ -579,10 +603,11 @@ def select_distribution_type(distribution_type,
 # -------------------------------------- Function for enter all parameters button --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for entering parameters
-def open_new_window(components, schematic_analysis, component_parameters_frame, entering_parameters_window):
+def open_new_window(components, schematic_analysis, component_parameters_frame, parameters_window):
     # Creating a new window for entering parameters
     # Check if entering parameters window is already open:
     # if TRUE: lift it on top of schematic analysis window
+    global entering_parameters_window
     if entering_parameters_window is not None and entering_parameters_window.winfo_exists():
         entering_parameters_window.lift(schematic_analysis)
         entering_parameters_window.wm_transient(schematic_analysis)
