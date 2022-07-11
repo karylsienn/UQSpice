@@ -6,13 +6,23 @@ class ComponentSketcher:
     OUTLINE_COLOUR = 'green'
 
     def __init__(self, canvas, **kwargs):
-        self.__component_parameters = kwargs
         self.canvas_to_draw_in = canvas
 
+    # Replacing the oval function of tkinter with a simpler function for circles
+    def _create_circle(self, x_coordinate, y_coordinate, r, **kwargs):
+        return self.create_oval(x_coordinate - r, y_coordinate - r, x_coordinate + r, y_coordinate + r, **kwargs)
+
+        self.canvas_to_draw_in.create_circle = _create_circle
+
     def draw_npn_transistor(self, start_coordinate_x, start_coordinate_y):
-        # npn transistor base (wire going into rectangle)
-        # 12, 48
         y_adjustment = 48
+
+        # npn transistor circle around shape
+        self.canvas_to_draw_in.create_circle(start_coordinate_x + 40,
+                                             start_coordinate_y + y_adjustment,
+                                             53)
+
+        # npn transistor base (wire going into rectangle)
         self.canvas_to_draw_in.create_line(start_coordinate_x,
                                            start_coordinate_y + y_adjustment,
                                            start_coordinate_x + 12,
@@ -32,21 +42,18 @@ class ComponentSketcher:
 
         # npn transistor emitter (wire going downwards from rectangle)
         # Wire to arrow of emitter
-        # canvas.create_line(40, 80, 20, 64)
         self.canvas_to_draw_in.create_line(start_coordinate_x + 20,
                                            start_coordinate_y + 10 + y_adjustment,
                                            start_coordinate_x + 64,
                                            start_coordinate_y + 48 + y_adjustment)
 
-        # Triangle Shape of npn transistor
-        # self.canvas_to_draw_in.create_polygon(44, 76, 64, 96, 36, 84)
-
+        # Triangle Shape of npn transistor (arrow showing direction of electrons)
         self.canvas_to_draw_in.create_polygon(start_coordinate_x + 34,
                                               start_coordinate_y + 30 + y_adjustment,
                                               start_coordinate_x + 34 + 10,
-                                              start_coordinate_y + 20  + y_adjustment,
-                                              start_coordinate_x + 64,
-                                              start_coordinate_y + 48 + y_adjustment)
+                                              start_coordinate_y + 20 + y_adjustment,
+                                              start_coordinate_x + 57,
+                                              start_coordinate_y + 42 + y_adjustment)
 
     def draw_resistor(self, start_coordinate_x, start_coordinate_y):
         # adjusting the x and y coordinates of the resistors so that they match on schematic
@@ -138,7 +145,10 @@ class ComponentSketcher:
                                            start_coordinate_x + x_adjustment,
                                            start_coordinate_y + 5 * radius + y_adjustment + 8)
 
-        # Inductor shape: 3 circles + 1 rectangle to hide half of circles
+        # Inductor shape: 3 circles + 1 rectangle to hide half of circle
+        """
+        
+        """
         self.canvas_to_draw_in.create_circle(start_coordinate_x + x_adjustment,
                                              start_coordinate_y + y_adjustment,
                                              radius,

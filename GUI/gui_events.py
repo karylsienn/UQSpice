@@ -1,3 +1,5 @@
+import locale
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import numpy as np; np.random.seed(1)
@@ -61,7 +63,7 @@ def exit_application(root):
 # ---------------------------------------- Functions for schematic analysis --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------- Function for sketching graphs on tab 2 --------------------------------------
+# -------------------------------------- Function for sketching graphs on tab 2 ----------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def sketch_graphs(data, frame_to_display):
     figure = plt.Figure(figsize=(8, 6), dpi=100)
@@ -221,13 +223,15 @@ def get_file_path(component_parameters_frame,
             raise ValueError("Unknown encoding.")
     ltspiceascfile.close()
 
+    read_encoding = locale.getpreferredencoding()
+
     # Open and store all file data
-    with open(fpath, mode='r', encoding=encoding) as file:
+    with open(fpath, mode='r', encoding=read_encoding) as file:
         schematic_data = file.read()
     file.close()
 
     # Remove all 'µ' and replace them with 'u'
-    with open(new_schematic_file, mode='w') as clean_schematic_file:
+    with open(new_schematic_file, mode='w', encoding=encoding) as clean_schematic_file:
         clean_schematic_file.write(schematic_data.replace('µ', 'u'))
     clean_schematic_file.close()
 
@@ -338,6 +342,7 @@ def sketch_schematic_asc(schematic,
     # TODO: USE CANVAS SIZE FROM LTSPICE SCHEMATIC
     # canvas_size = canvas_size.split(" ")
     # canvas_size = [int(size) for size in canvas_size]
+    # print(canvas_size)
     # canvas.configure(scrollregion=(-canvas_size[0]//4, -canvas_size[1]//4, canvas_size[0]//4, canvas_size[1]//4))
 
     # Store all component names and values
@@ -539,22 +544,17 @@ def change_component_index(component_selected,
         component_param1_label_array[component_index]['text'] = 'Mean (μ)'
         component_param2_label_array[component_index]['text'] = 'Standard deviation (σ)'
 
-    if value_selected == 'Random':
-        # Remove all labels for parameters, except the user selected component label
-        for labels in range(len(component_param1_label_array)):
-            if labels == component_index:
-                component_param1_label_array[labels].grid(row=6, column=5)
-                component_param2_label_array[labels].grid(row=7, column=5)
-                component_param1_array[labels].grid(row=6, column=6)
-                component_param2_array[labels].grid(row=7, column=6)
-            else:
-                component_param1_label_array[labels].grid_remove()
-                component_param2_label_array[labels].grid_remove()
-                component_param1_array[labels].grid_remove()
-                component_param2_array[labels].grid_remove()
-
-    elif value_selected == 'Constant':
-        print('constant value')
+    for labels in range(len(component_param1_label_array)):
+        if labels == component_index:
+            component_param1_label_array[labels].grid(row=6, column=5)
+            component_param2_label_array[labels].grid(row=7, column=5)
+            component_param1_array[labels].grid(row=6, column=6)
+            component_param2_array[labels].grid(row=7, column=6)
+        else:
+            component_param1_label_array[labels].grid_remove()
+            component_param2_label_array[labels].grid_remove()
+            component_param1_array[labels].grid_remove()
+            component_param2_array[labels].grid_remove()
 
 
 # Function when the selected distribution for the component has been changed from dropdown list
@@ -813,19 +813,19 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
                                                                  component_param2_array
                                                                  ))
         # Drop down list for selecting if component value is random or constant
-        component_value_drop_down_list = \
-            customtkinter.CTkOptionMenu(master=entering_parameters_window,
-                                        variable=values_selected,
-                                        values=comp_values,
-                                        width=max_distribution_width,
-                                        command=lambda _: random_or_constant(values_selected,
-                                                                             component_distribution_label,
-                                                                             distribution_drop_down_list,
-                                                                             component_param1_label_array,
-                                                                             component_param2_label_array,
-                                                                             component_param1_array,
-                                                                             component_param2_array
-                                                                             ))
+        # component_value_drop_down_list = \
+        #     customtkinter.CTkOptionMenu(master=entering_parameters_window,
+        #                                 variable=values_selected,
+        #                                 values=comp_values,
+        #                                 width=max_distribution_width,
+        #                                 command=lambda _: random_or_constant(values_selected,
+        #                                                                      component_distribution_label,
+        #                                                                      distribution_drop_down_list,
+        #                                                                      component_param1_label_array,
+        #                                                                      component_param2_label_array,
+        #                                                                      component_param1_array,
+        #                                                                      component_param2_array
+        #                                                                      ))
 
         # Button for saving individual parameters
         save_parameters_button = customtkinter.CTkButton(
@@ -864,7 +864,7 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
         )
 
         component_name_row = 3
-        component_value_row = 4
+        distribution_row = 4
         button_row = 10
 
         # Button for closing window
@@ -876,9 +876,9 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
         component_name_array_label.grid(row=component_name_row, column=5, sticky='news')
         component_drop_down_list.grid(row=component_name_row, column=6)
 
-        # Placing label and dropdown for component value
-        component_value_label.grid(row=component_value_row, column=5, sticky='news')
-        component_value_drop_down_list.grid(row=component_value_row, column=6)
+        # Placing label and dropdown for distributions
+        component_distribution_label.grid(row=distribution_row, column=5, sticky='news')
+        distribution_drop_down_list.grid(row=distribution_row, column=6)
 
         # Closing parameters window
         cancel_button.grid(row=button_row, column=5)
@@ -990,39 +990,19 @@ def save_entered_parameters(entering_parameters_window,
                                             '\n' + component_param1_label + '=' + component_param1 +
                                             '\n' + component_param2_label + '=' + component_param2)
 
+    # If value is constant just display the label only.
     elif component_value.get() == 'Constant':
-        if len(all_component_parameters) == 0:
-            all_component_parameters.append({component_name: {'Value': 'Constant'}})
-
-        # -------------------------- removing duplicates and storing in a list of dictionaries -------------------------
-        appending_flag = 0
-        for parameters in range(len(all_component_parameters)):
-            if component_name == list(all_component_parameters[parameters].keys())[-1]:
-                # If the last entered component is similar to the previously entered one then,
-                # replace the old parameters with the new ones
-                all_component_parameters[parameters] = ({component_name: {'Value': 'Constant'}}
-
-                )
-                # Ensures no appending takes place
-                appending_flag = 0
-                break
-            else:
-                # If the last entered component is NOT similar to the previously entered one then,
-                # ensure to add the component to the end of the list
-                appending_flag = 1
-
-        if appending_flag == 1:
-            all_component_parameters.append({component_name: {'Value': 'Constant'}})
-            appending_flag = 0
-
         full_name_labels[index].config(text='')
         full_name_labels[index].config(width=25)
         full_name_labels[index].config(height=5)
 
+        # Store that component as a constant
+        component_value_array[index] = 'Constant'
+
         full_name_labels[index].config(text=component_name +
-                                            '\nDistribution: ' + component_distribution +
-                                            '\n' + component_param1_label + '=' + component_param1 +
-                                            '\n' + component_param2_label + '=' + component_param2)
+                                       '\nDistribution: ' + component_distribution +
+                                       '\n' + component_param1_label + '=' + component_param1 +
+                                       '\n' + component_param2_label + '=' + component_param2)
 
     # for comp in range(len(components)):
     #     delete_label_button[comp] = Button(full_name_labels[comp],
@@ -1070,6 +1050,7 @@ def save_all_entered_parameters(component_name,
             component_param1_dictionary_input[distributions] = 'alpha'
             component_param2_dictionary_input[distributions] = 'beta'
 
+    # If value is Random, display label and store in dictionary
     for circuit_component in range(len(component_name)):
         if component_value_array[circuit_component] == 'Random':
             print(component_name)
@@ -1081,13 +1062,13 @@ def save_all_entered_parameters(component_name,
             # Storing the name label of all parameters
             full_name_labels[circuit_component] = \
                 tk.Label(component_parameters_frame,
-                         text=component_name[circuit_component] +
-                              '\nDistribution: ' +
-                              component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n')
-                              + '\n' + component_param1_label_array[circuit_component]['text'] + '=' +
-                              component_param1_array[circuit_component].get('1.0', tk.END).strip('\n') +
-                              '\n' + component_param2_label_array[circuit_component]['text'] +
-                              '=' + component_param2_array[circuit_component].get('1.0', tk.END).strip('\n'),
+                         text=component_name[circuit_component]
+                         + '\nDistribution: ' +
+                         component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n')
+                         + '\n' + component_param1_label_array[circuit_component]['text'] + '='
+                         + component_param1_array[circuit_component].get('1.0', tk.END).strip('\n')
+                         + '\n' + component_param2_label_array[circuit_component]['text'] +
+                         '=' + component_param2_array[circuit_component].get('1.0', tk.END).strip('\n'),
                          highlightcolor='black',
                          highlightthickness=2,
                          borderwidth=1,
@@ -1115,11 +1096,8 @@ def save_all_entered_parameters(component_name,
                  }
             )
 
+        # If value is Constant, display label only. DO NOT store in dictionary
         elif component_value_array[circuit_component] == 'Constant':
-            # Storing all components with their parameters in a dictionary
-            all_component_parameters.append(
-                {component_name[circuit_component]: {'Value': '5'}}
-            )
 
             full_name_labels[circuit_component].config(text='')
             full_name_labels[circuit_component].config(borderwidth=0)
@@ -1152,7 +1130,7 @@ def close_window(window_to_close):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# ----------------------------------- Function for no schematic selected -----------------------------------------------
+# ----------------------------------- Function when no schematic selected ----------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def error_select_schematic(canvas):
     canvas.create_window(400, 300,
