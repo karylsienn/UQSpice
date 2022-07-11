@@ -1,5 +1,5 @@
 import locale
-
+from tkinter import messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import numpy as np; np.random.seed(1)
@@ -34,11 +34,11 @@ def open_asc_file(root, schematic_analysis):
     schematic_analysis_width = 1100  # width for the Tk schematic_analysis
     schematic_analysis_height = 750  # height for the Tk schematic_analysis
     # Find the location of the main schematic analysis window
-    screen_width = root.winfo_screenwidth()  # width of the screen
-    screen_height = root.winfo_screenheight()  # height of the screen
+    screen_width = schematic_analysis.winfo_screenwidth()  # width of the screen
+    screen_height = schematic_analysis.winfo_screenheight()  # height of the screen
     # calculate x and y coordinates for the Tk schematic_analysis window
-    analysis_x = (screen_width / 2) - (schematic_analysis_width / 2) - (schematic_analysis_width / 5)
-    analysis_y = (screen_height / 2) - (schematic_analysis_height / 2) - (schematic_analysis_height / 5)
+    analysis_x = (screen_width / 2) - (schematic_analysis_width / 2) - (schematic_analysis_width / 3)
+    analysis_y = (screen_height / 2) - (schematic_analysis_height / 2) - (schematic_analysis_height / 3)
 
     # set the dimensions of schematic analysis window and its position
     schematic_analysis.geometry('%dx%d+%d+%d' % (schematic_analysis_width,
@@ -46,7 +46,9 @@ def open_asc_file(root, schematic_analysis):
                                                  analysis_x,
                                                  analysis_y))
 
-    # make the entering parameters window on top of the main schematic analysis window
+    # Removing the root window if schematic analysis has been destroyed
+    schematic_analysis.protocol("WM_DELETE_WINDOW", root.destroy)
+    # make the entering parameters window on top of the main schematic analysis window and showing it
     schematic_analysis.wm_transient(root)
     schematic_analysis.deiconify()
 
@@ -546,10 +548,10 @@ def change_component_index(component_selected,
 
     for labels in range(len(component_param1_label_array)):
         if labels == component_index:
-            component_param1_label_array[labels].grid(row=6, column=5)
-            component_param2_label_array[labels].grid(row=7, column=5)
-            component_param1_array[labels].grid(row=6, column=6)
-            component_param2_array[labels].grid(row=7, column=6)
+            component_param1_label_array[labels].grid(row=6, column=5, sticky='nsew')
+            component_param2_label_array[labels].grid(row=7, column=5, sticky='nsew')
+            component_param1_array[labels].grid(row=6, column=6, sticky='nsew')
+            component_param2_array[labels].grid(row=7, column=6, sticky='nsew')
         else:
             component_param1_label_array[labels].grid_remove()
             component_param2_label_array[labels].grid_remove()
@@ -586,10 +588,10 @@ def select_distribution_type(distribution_type,
     # Remove all labels for parameters, except the user selected component label
     for labels in range(len(param1_array)):
         if labels == index_of_selected_component:
-            parameter1_label[labels].grid(row=6, column=5)
-            parameter2_label[labels].grid(row=7, column=5)
-            param1_array[labels].grid(row=6, column=6)
-            param2_array[labels].grid(row=7, column=6)
+            parameter1_label[labels].grid(row=6, column=5, sticky='nsew')
+            parameter2_label[labels].grid(row=7, column=5, sticky='nsew')
+            param1_array[labels].grid(row=6, column=6, sticky='nsew')
+            param2_array[labels].grid(row=7, column=6, sticky='nsew')
         else:
             parameter1_label[labels].grid_remove()
             parameter2_label[labels].grid_remove()
@@ -597,6 +599,29 @@ def select_distribution_type(distribution_type,
             param2_array[labels].grid_remove()
 
     print(distribution_type.get())
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------- Check if entered parameters are numbers ---------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def if_number(parameter_to_check, component_selected, components):
+    parameter_value = parameter_to_check[components.index(component_selected.get())].get()
+    msg = ''
+
+    if len(parameter_value) == 0:
+        msg = 'parameter can\'t be empty'
+    else:
+        try:
+            if any(ch.isdigit() for ch in parameter_value):
+                msg = 'Success!'
+            elif any(ch.isalpha() for ch in parameter_value):
+                msg = 'parameter can\'t have letters'
+            else:
+                msg = 'Success!'
+        except Exception as ep:
+            messagebox.showerror('error', ep)
+
+    messagebox.showinfo('message', msg)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -640,12 +665,13 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
 
         component_name_array = [None] * len(components)
         component_distribution_array = [None] * len(components)
-        component_param1_entry_box = [None] * len(components)
+        component_param1_entry_box_array = [None] * len(components)
+        component_param2_entry_box_array = [None] * len(components)
         component_value_array = ['Constant'] * len(components)
         component_param1_label_array = [None] * len(components)
         component_param2_label_array = [None] * len(components)
-        component_param1_array = [None] * len(components)
-        component_param2_array = [None] * len(components)
+        # component_param1_array = [None] * len(components)
+        # component_param2_array = [None] * len(components)
         name_label_array = [None] * len(components)
         component_full_information_array = [None] * len(components)
         delete_button = [None] * len(components)
@@ -687,6 +713,33 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
                                                 highlightbackground=label_background
                                                 )
 
+        component_selected = tk.StringVar(entering_parameters_window)
+        component_selected.set(components[0])
+        distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
+        distribution_selected = tk.StringVar(entering_parameters_window)
+        distribution_selected.set(distributions[0])
+        comp_values = ['Constant', 'Random']
+        values_selected = tk.StringVar(entering_parameters_window)
+        values_selected.set(comp_values[0])
+        max_distribution_width = len(max(distributions, key=len))
+
+        # Drop down list for selecting which component to enter parameters for
+        component_drop_down_list = \
+            customtkinter.CTkOptionMenu(master=entering_parameters_window,
+                                        variable=component_selected,
+                                        values=components,
+                                        width=max_distribution_width,
+                                        command=lambda _: change_component_index(component_selected,
+                                                                                 values_selected,
+                                                                                 distribution_selected,
+                                                                                 component_distribution_array,
+                                                                                 component_param1_label_array,
+                                                                                 component_param2_label_array,
+                                                                                 component_param1_entry_box_array,
+                                                                                 component_param2_entry_box_array,
+                                                                                 components
+                                                                                 ))
+
         for circuit_component in range(len(components)):
             component_name_array[circuit_component] = tk.Label(entering_parameters_window,
                                                                height=1,
@@ -710,12 +763,23 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
                                                                        foreground=text_colour
                                                                        )
 
-            # component_param1_entry_box[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
-            #                                                                        height=1,
-            #                                                                        width=40,
-            #                                                                        text='',
-            #                                                                        validatecommand=vcmd
-            #                                                                        )
+            component_param1_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
+                                                                                         height=1,
+                                                                                         width=20,
+                                                                                         text='',
+                                                                                         validate='focusout'
+                                                                                         )
+            component_param1_entry_box_array[circuit_component].configure(
+                validatecommand=lambda: if_number(component_param1_entry_box_array, component_selected, components))
+
+            component_param2_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
+                                                                                         height=1,
+                                                                                         width=20,
+                                                                                         text='',
+                                                                                         validate='focusout'
+                                                                                         )
+            component_param2_entry_box_array[circuit_component].configure(
+                validatecommand=lambda: if_number(component_param2_entry_box_array, component_selected, components))
 
             component_param2_label_array[circuit_component] = tk.Label(entering_parameters_window,
                                                                        height=1,
@@ -725,26 +789,24 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
                                                                        foreground=text_colour
                                                                        )
 
-            component_param1_array[circuit_component] = tk.Text(entering_parameters_window,
-                                                                height=1,
-                                                                width=20,
-                                                                bg="white")
+            # component_param1_array[circuit_component] = tk.Text(entering_parameters_window,
+            #                                                     height=1,
+            #                                                     width=20,
+            #                                                     bg="white")
+            #
+            # component_param2_array[circuit_component] = tk.Text(entering_parameters_window,
+            #                                                     height=1,
+            #                                                     width=20,
+            #                                                     bg="white")
 
-            component_param2_array[circuit_component] = tk.Text(entering_parameters_window,
-                                                                height=1,
-                                                                width=20,
-                                                                bg="white")
-
-            name_label_array[circuit_component] = tk.Label(component_parameters_frame,
-                                                           text='',
-                                                           width=25,
-                                                           height=5,
-                                                           highlightcolor='black',
-                                                           highlightthickness=2,
-                                                           borderwidth=1,
-                                                           justify='center',
-                                                           relief='solid'
-                                                           )
+            name_label_array[circuit_component] = customtkinter.CTkLabel(component_parameters_frame,
+                                                                         width=100,
+                                                                         height=25,
+                                                                         highlightcolor='black',
+                                                                         borderwidth=1,
+                                                                         relief='solid',
+                                                                         text_color='black'
+                                                                         )
 
             delete_button[circuit_component] = tk.Button(name_label_array[circuit_component],
                                                          text='',
@@ -764,38 +826,13 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
             component_distribution_array[circuit_component].insert(tk.INSERT, 'Normal')
             component_param1_label_array[circuit_component]['text'] = 'Mean (μ)'
             component_param2_label_array[circuit_component]['text'] = 'Standard deviation (σ)'
-            component_param1_array[circuit_component].insert(tk.INSERT, '1')
-            component_param2_array[circuit_component].insert(tk.INSERT, '2')
+            component_param1_entry_box_array[circuit_component].insert(0, '1')
+            component_param2_entry_box_array[circuit_component].insert(0, '2')
 
-        component_selected = tk.StringVar(entering_parameters_window)
-        component_selected.set(components[0])
-        distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
-        distribution_selected = tk.StringVar(entering_parameters_window)
-        distribution_selected.set(distributions[0])
-        comp_values = ['Constant', 'Random']
-        values_selected = tk.StringVar(entering_parameters_window)
-        values_selected.set(comp_values[0])
-        max_distribution_width = len(max(distributions, key=len))
+
 
         global component_index
         component_index = 0
-
-        # Drop down list for selecting which component to enter parameters for
-        component_drop_down_list = \
-            customtkinter.CTkOptionMenu(master=entering_parameters_window,
-                                        variable=component_selected,
-                                        values=components,
-                                        width=max_distribution_width,
-                                        command=lambda _: change_component_index(component_selected,
-                                                                                 values_selected,
-                                                                                 distribution_selected,
-                                                                                 component_distribution_array,
-                                                                                 component_param1_label_array,
-                                                                                 component_param2_label_array,
-                                                                                 component_param1_array,
-                                                                                 component_param2_array,
-                                                                                 components
-                                                                                 ))
 
         # Drop down list for selecting the type of distribution for random components
         distribution_drop_down_list = \
@@ -809,8 +846,8 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
                                                                  component_distribution_array,
                                                                  component_param1_label_array,
                                                                  component_param2_label_array,
-                                                                 component_param1_array,
-                                                                 component_param2_array
+                                                                 component_param1_entry_box_array,
+                                                                 component_param2_entry_box_array
                                                                  ))
         # Drop down list for selecting if component value is random or constant
         # component_value_drop_down_list = \
@@ -839,8 +876,8 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
                                     component_distribution_array[component_index].get('1.0', tk.END).strip('\n'),
                                     component_param1_label_array[component_index]['text'],
                                     component_param2_label_array[component_index]['text'],
-                                    component_param1_array[component_index].get('1.0', tk.END).strip('\n'),
-                                    component_param2_array[component_index].get('1.0', tk.END).strip('\n'),
+                                    component_param1_entry_box_array[component_index].get(),
+                                    component_param2_entry_box_array[component_index].get(),
                                     component_index,
                                     name_label_array,
                                     delete_button,
@@ -856,8 +893,8 @@ def open_new_window(components, schematic_analysis, component_parameters_frame, 
                                                         component_distribution_array,
                                                         component_param1_label_array,
                                                         component_param2_label_array,
-                                                        component_param1_array,
-                                                        component_param2_array,
+                                                        component_param1_entry_box_array,
+                                                        component_param2_entry_box_array,
                                                         name_label_array,
                                                         component_value_array,
                                                         component_parameters_frame)
@@ -936,13 +973,13 @@ def save_entered_parameters(entering_parameters_window,
 
         if len(all_component_parameters) == 0:
             all_component_parameters.append({component_name:
-                                                 {'distribution': component_distribution,
-                                                  'parameters': {component_param1_dictionary_input: component_param1,
-                                                                 component_param2_dictionary_input: component_param2}
-                                                  }
+                                            {'distribution': component_distribution,
+                                             'parameters': {component_param1_dictionary_input: component_param1,
+                                                            component_param2_dictionary_input: component_param2}
+                                             }
                                              }
                                             )
-
+        print(all_component_parameters)
         # -------------------------- removing duplicates and storing in a list of dictionaries -------------------------
         appending_flag = 0
         for parameters in range(len(all_component_parameters)):
@@ -950,11 +987,11 @@ def save_entered_parameters(entering_parameters_window,
                 # If the last entered component is similar to the previously entered one then,
                 # replace the old parameters with the new ones
                 all_component_parameters[parameters] = ({component_name:
-                                                             {'distribution': component_distribution,
-                                                              'parameters': {
-                                                                  component_param1_dictionary_input: component_param1,
-                                                                  component_param2_dictionary_input: component_param2}
-                                                              }
+                                                        {'distribution': component_distribution,
+                                                         'parameters': {
+                                                          component_param1_dictionary_input: component_param1,
+                                                          component_param2_dictionary_input: component_param2}
+                                                         }
                                                          }
 
                 )
@@ -968,41 +1005,41 @@ def save_entered_parameters(entering_parameters_window,
 
         if appending_flag == 1:
             all_component_parameters.append({component_name:
-                                                 {'distribution': component_distribution,
-                                                  'parameters': {component_param1_dictionary_input: component_param1,
-                                                                 component_param2_dictionary_input: component_param2}
-                                                  }
+                                            {'distribution': component_distribution,
+                                             'parameters': {component_param1_dictionary_input: component_param1,
+                                                            component_param2_dictionary_input: component_param2}
                                              }
-
+                                             }
                                             )
             appending_flag = 0
 
-        print(all_component_parameters)
         # --------------------------------- Displaying entered parameters on schematic_analysis window -----------------
         print(component_index)
 
-        full_name_labels[index].config(text='')
-        full_name_labels[index].config(width=25)
-        full_name_labels[index].config(height=5)
+        full_name_labels[index].configure(text='')
+        full_name_labels[index].configure(justify='left')
+        full_name_labels[index].configure(width=100)
+        full_name_labels[index].configure(height=5)
 
-        full_name_labels[index].config(text=component_name +
-                                            '\nDistribution: ' + component_distribution +
-                                            '\n' + component_param1_label + '=' + component_param1 +
-                                            '\n' + component_param2_label + '=' + component_param2)
+        full_name_labels[index].configure(text=component_name +
+                                          '\nDistribution: ' + component_distribution +
+                                          '\n' + component_param1_label + '=' + str(component_param1) +
+                                          '\n' + component_param2_label + '=' + component_param2)
 
     # If value is constant just display the label only.
     elif component_value.get() == 'Constant':
-        full_name_labels[index].config(text='')
-        full_name_labels[index].config(width=25)
-        full_name_labels[index].config(height=5)
+        full_name_labels[index].configure(text='')
+        full_name_labels[index].configure(justify='left')
+        full_name_labels[index].configure(width=100)
+        full_name_labels[index].configure(height=5)
 
         # Store that component as a constant
         component_value_array[index] = 'Constant'
 
-        full_name_labels[index].config(text=component_name +
-                                       '\nDistribution: ' + component_distribution +
-                                       '\n' + component_param1_label + '=' + component_param1 +
-                                       '\n' + component_param2_label + '=' + component_param2)
+        full_name_labels[index].configure(text=component_name +
+                                          '\nDistribution: ' + component_distribution +
+                                          '\n' + component_param1_label + '=' + str(component_param1) +
+                                          '\n' + component_param2_label + '=' + component_param2)
 
     # for comp in range(len(components)):
     #     delete_label_button[comp] = Button(full_name_labels[comp],
@@ -1014,8 +1051,8 @@ def save_entered_parameters(entering_parameters_window,
     #                                         command=delete_label
     #                                         )
     #     delete_label_button[comp].pack(side=LEFT, anchor=NW, expand=False)
-
-    full_name_labels[component_index].grid(row=component_index, column=1, sticky='nsew')
+    print(all_component_parameters)
+    full_name_labels[component_index].grid(row=component_index, column=1, sticky='nw')
     # delete_label_button[component_index].pack(side=LEFT, anchor=NW, expand=False)
 
 
@@ -1055,31 +1092,30 @@ def save_all_entered_parameters(component_name,
         if component_value_array[circuit_component] == 'Random':
             print(component_name)
             # clearing the name label of all parameters
-            full_name_labels[circuit_component].config(text='')
-            full_name_labels[circuit_component].config(borderwidth=0)
-            full_name_labels[circuit_component].config(relief='flat')
+            full_name_labels[circuit_component].configure(text='')
+            full_name_labels[circuit_component].configure(borderwidth=0)
+            full_name_labels[circuit_component].configure(relief='flat')
 
             # Storing the name label of all parameters
             full_name_labels[circuit_component] = \
-                tk.Label(component_parameters_frame,
-                         text=component_name[circuit_component]
-                         + '\nDistribution: ' +
-                         component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n')
-                         + '\n' + component_param1_label_array[circuit_component]['text'] + '='
-                         + component_param1_array[circuit_component].get('1.0', tk.END).strip('\n')
-                         + '\n' + component_param2_label_array[circuit_component]['text'] +
-                         '=' + component_param2_array[circuit_component].get('1.0', tk.END).strip('\n'),
-                         highlightcolor='black',
-                         highlightthickness=2,
-                         borderwidth=1,
-                         relief='solid',
-                         justify='center',
-                         height=5,
-                         width=25
-                         )
+                customtkinter.CTkLabel(component_parameters_frame,
+                                       text=component_name[circuit_component]
+                                       + '\nDistribution: ' +
+                                       component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n')
+                                       + '\n' + component_param1_label_array[circuit_component]['text'] + '='
+                                       + str(component_param1_array[circuit_component].get())
+                                       + '\n' + component_param2_label_array[circuit_component]['text'] +
+                                       '=' + str(component_param2_array[circuit_component].get()),
+                                       highlightcolor='black',
+                                       borderwidth=1,
+                                       relief='solid',
+                                       justify='center',
+                                       height=5,
+                                       width=15
+                                       )
 
             # Placing the name label of all parameters on the schematic_analysis window
-            full_name_labels[circuit_component].grid(row=circuit_component, column=1)
+            full_name_labels[circuit_component].grid(row=circuit_component, column=1, sticky='ns')
 
             # Storing all components with their parameters in a dictionary
             all_component_parameters.append(
@@ -1088,10 +1124,10 @@ def save_all_entered_parameters(component_name,
 
                       'parameters': {  # Parameter 1 label and user entered number
                           component_param1_dictionary_input[circuit_component]:
-                              component_param1_array[circuit_component].get('1.0', tk.END).strip('\n'),
+                              component_param1_array[circuit_component].get(),
                           # Parameter 2 label and user entered number
                           component_param2_dictionary_input[circuit_component]:
-                              component_param2_array[circuit_component].get('1.0', tk.END).strip('\n')}
+                              component_param2_array[circuit_component].get()}
                       }
                  }
             )
@@ -1099,25 +1135,24 @@ def save_all_entered_parameters(component_name,
         # If value is Constant, display label only. DO NOT store in dictionary
         elif component_value_array[circuit_component] == 'Constant':
 
-            full_name_labels[circuit_component].config(text='')
-            full_name_labels[circuit_component].config(borderwidth=0)
-            full_name_labels[circuit_component].config(relief='flat')
+            full_name_labels[circuit_component].configure(text='')
+            full_name_labels[circuit_component].configure(borderwidth=0)
+            full_name_labels[circuit_component].configure(relief='flat')
 
             # Storing the name label of all parameters
             full_name_labels[circuit_component] = \
-                tk.Label(component_parameters_frame,
-                         text=component_name[circuit_component] + '\nValue: ' + '5',
-                         highlightcolor='black',
-                         highlightthickness=2,
-                         borderwidth=1,
-                         relief='solid',
-                         justify='center',
-                         height=5,
-                         width=25
-                         )
+                customtkinter.CTkLabel(component_parameters_frame,
+                                       text=component_name[circuit_component] + '\nValue: ' + '5',
+                                       highlightcolor='black',
+                                       borderwidth=1,
+                                       relief='solid',
+                                       height=5,
+                                       text_color='black'
+                                       )
+            full_name_labels[circuit_component].configure(width=50)
 
             # Placing the name label of all parameters on the schematic_analysis window
-            full_name_labels[circuit_component].grid(row=circuit_component, column=1)
+            full_name_labels[circuit_component].grid(row=circuit_component, column=1, sticky='ns')
 
     print(all_component_parameters)
 
