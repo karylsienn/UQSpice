@@ -236,10 +236,8 @@ def get_file_path(component_parameters_frame,
             raise ValueError("Unknown encoding.")
     ltspiceascfile.close()
 
-    read_encoding = locale.getpreferredencoding()
-
     # Open and store all file data
-    with open(fpath, mode='r', encoding=read_encoding) as file:
+    with open(fpath, mode='r', encoding='cp1252') as file:
         schematic_data = file.read()
     file.close()
 
