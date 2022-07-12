@@ -73,7 +73,7 @@ graphs = tk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = tk.Frame(schematic_params, width=280, height=100, relief='sunken')
+component_parameters_frame = tk.Frame(schematic_params, width=380, height=100, relief='sunken')
 
 schematic_canvas_frame = tk.Frame(schematic_params,
                                   width=700,
@@ -180,6 +180,8 @@ tabControl.pack(expand=True, fill=tk.BOTH)
 schematic_canvas_frame.pack(side='left', fill=tk.BOTH, expand=True)
 canvas.pack(fill=tk.BOTH, expand=True)
 component_parameters_frame.pack(side='right', fill=tk.BOTH)
+component_parameters_frame.grid_columnconfigure(0, weight=1)
+component_parameters_frame.grid_rowconfigure(tuple(range(1000)), weight=1)
 component_parameters_frame.propagate(False)
 guievents.sketch_graphs(graph_value, graphs)
 
