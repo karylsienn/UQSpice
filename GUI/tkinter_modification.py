@@ -43,6 +43,17 @@ class ResizingCanvas(tk.Canvas):
         y = self.canvasy(event.y)
         factor = 1.001 ** event.delta
         self.scale(tk.ALL, x, y, factor, factor)
+        # Respond to Linux (event.num) or Windows (event.delta) wheel event
+        if event.num == 5 or event.delta == -120:  # scroll down
+            x = self.canvasx(event.x)
+            y = self.canvasy(event.y)
+            factor = 1.001 ** event.delta/2
+            self.scale(tk.ALL, x, y, factor, factor)
+        if event.num == 4 or event.delta == 120:  # scroll up
+            x = self.canvasx(event.x)
+            y = self.canvasy(event.y)
+            factor = 1.001 ** event.delta*2
+            self.scale(tk.ALL, x, y, factor, factor)
 
     def __init__(self, parent, **kwargs):
         tk.Canvas.__init__(self, parent, **kwargs)
