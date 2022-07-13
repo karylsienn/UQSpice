@@ -37,8 +37,8 @@ schematic_analysis.withdraw()
 schematic_analysis.title('EMC Analysis')
 schematic_analysis_width = 1100  # width for the Tk schematic_analysis
 schematic_analysis_height = 750  # height for the Tk schematic_analysis
-root_width = 300
-root_height = 150
+root_width = 400
+root_height = 180
 
 # get screen width and height
 screen_width = schematic_analysis.winfo_screenwidth()  # width of the screen
@@ -62,7 +62,7 @@ schematic_analysis.geometry('%dx%d+%d+%d' % (schematic_analysis_width,
 schematic_analysis.minsize(schematic_analysis.winfo_width(), schematic_analysis.winfo_height())
 
 root.geometry('%dx%d+%d+%d' % (root_width, root_height, root_x, root_y))
-
+root.title('Welcome to EMC Statisical Analysis Tool')
 # Creating tabs in tkinter schematic_analysis window
 tabControl = ttk.Notebook(schematic_analysis)
 
@@ -73,7 +73,7 @@ graphs = tk.Frame(tabControl)
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = tk.Frame(schematic_params, width=380, height=100, relief='sunken')
+component_parameters_frame = tk.Frame(schematic_params, width=380, height=100)
 
 schematic_canvas_frame = tk.Frame(schematic_params,
                                   width=700,
@@ -96,7 +96,22 @@ enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
                                                   command=lambda: guievents.error_select_schematic(canvas)
                                                   )
 
-
+logo = tk.Canvas(root, width=200, height=50, background='#212325', highlightthickness=0)
+factor = 3
+adjustment = 20
+logo.create_line(48*factor + adjustment, 48*factor, 48*factor + adjustment, 96*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment, 80*factor, 48*factor + adjustment, 80*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment, 48*factor, 24*factor + adjustment, 48*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(48*factor + adjustment, 48*factor, 24*factor + adjustment, 44*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(48*factor + adjustment, 48*factor, 24*factor + adjustment, 52*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(24*factor + adjustment, 44*factor, 24*factor + adjustment, 52*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment, 8*factor, 16*factor + adjustment, 24*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment, 40*factor, 16*factor + adjustment, 56*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment, 72*factor, 16*factor + adjustment, 88*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(0*factor + adjustment, 80*factor, 8*factor + adjustment, 80*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(8*factor + adjustment, 16*factor, 8*factor + adjustment, 80*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(48*factor + adjustment, 16*factor, 16*factor + adjustment, 16*factor, tags='MOSFET', fill='#1F6AA5')
+logo.create_line(48*factor + adjustment, 0*factor, 48*factor + adjustment, 16*factor, tags='MOSFET', fill='#1F6AA5')
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------------ Menu Bar ------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -162,12 +177,16 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
 
 graph_value = 0
 open_asc_file_button = customtkinter.CTkButton(root,
-                                               text='Open LTspice .asc file',
+                                               text='Open LTspice Schematic .asc file',
                                                command=lambda: guievents.open_asc_file(root, schematic_analysis))
 
 open_raw_file_button = customtkinter.CTkButton(root,
-                                               text='Open LTspice .raw file',
+                                               text='Open LTspice Waveform .raw file',
                                                command=guievents.open_raw_file)
+
+open_something_file_button = customtkinter.CTkButton(root,
+                                               text='Open LTspice file',
+                                               command=print("Opening file"))
 
 exit_app_button = customtkinter.CTkButton(root,
                                           text='Exit EMC Analysis',
@@ -185,9 +204,12 @@ component_parameters_frame.grid_rowconfigure(tuple(range(1000)), weight=1)
 component_parameters_frame.propagate(False)
 guievents.sketch_graphs(graph_value, graphs)
 
-open_raw_file_button.pack(pady=6)
-open_asc_file_button.pack(pady=6)
-exit_app_button.pack(pady=6)
+# Root window widgets and items
+logo.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+open_raw_file_button.pack(pady=6, padx=6, anchor=tk.NE)
+open_asc_file_button.pack(pady=6, padx=4, anchor=tk.NE)
+open_something_file_button.pack(pady=6, padx=30, anchor=tk.NE)
+exit_app_button.pack(pady=6, padx=30, anchor=tk.NE)
 
 # schematic_analysis.columnconfigure(tuple(range(10)), weight=1)
 # schematic_analysis.rowconfigure(tuple(range(10)), weight=1)
