@@ -97,21 +97,63 @@ enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
                                                   )
 
 logo = tk.Canvas(root, width=200, height=50, background='#212325', highlightthickness=0)
-factor = 3
-adjustment = 20
-logo.create_line(48*factor + adjustment, 48*factor, 48*factor + adjustment, 96*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment, 80*factor, 48*factor + adjustment, 80*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment, 48*factor, 24*factor + adjustment, 48*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48*factor + adjustment, 48*factor, 24*factor + adjustment, 44*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48*factor + adjustment, 48*factor, 24*factor + adjustment, 52*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(24*factor + adjustment, 44*factor, 24*factor + adjustment, 52*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment, 8*factor, 16*factor + adjustment, 24*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment, 40*factor, 16*factor + adjustment, 56*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment, 72*factor, 16*factor + adjustment, 88*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(0*factor + adjustment, 80*factor, 8*factor + adjustment, 80*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(8*factor + adjustment, 16*factor, 8*factor + adjustment, 80*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48*factor + adjustment, 16*factor, 16*factor + adjustment, 16*factor, tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48*factor + adjustment, 0*factor, 48*factor + adjustment, 16*factor, tags='MOSFET', fill='#1F6AA5')
+factor = 2
+adjustment_x = 60
+adjustment_y = 20
+logo.create_line(48*factor + adjustment_x, 48*factor + adjustment_y,
+                 48*factor + adjustment_x, 96*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment_x, 80*factor + adjustment_y,
+                 48*factor + adjustment_x, 80*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment_x, 48*factor + adjustment_y,
+                 24*factor + adjustment_x, 48*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(48*factor + adjustment_x, 48*factor + adjustment_y,
+                 24*factor + adjustment_x, 44*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(48*factor + adjustment_x, 48*factor + adjustment_y,
+                 24*factor + adjustment_x, 52*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(24*factor + adjustment_x, 44*factor + adjustment_y,
+                 24*factor + adjustment_x, 52*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment_x, 8*factor + adjustment_y,
+                 16*factor + adjustment_x, 24*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment_x, 40*factor + adjustment_y,
+                 16*factor + adjustment_x, 56*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(16*factor + adjustment_x, 72*factor + adjustment_y,
+                 16*factor + adjustment_x, 88*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(0*factor + adjustment_x, 80*factor + adjustment_y,
+                 8*factor + adjustment_x, 80*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(8*factor + adjustment_x, 16*factor + adjustment_y,
+                 8*factor + adjustment_x, 80*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(48*factor + adjustment_x, 16*factor + adjustment_y,
+                 16*factor + adjustment_x, 16*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+logo.create_line(48*factor + adjustment_x, 0*factor + adjustment_y,
+                 48*factor + adjustment_x, 16*factor + adjustment_y,
+                 tags='MOSFET', fill='#1F6AA5')
+
+# Changing Colour of shape to gradually disappear
+# light = ('MOSFET', '-fill', '#085691')
+# lighter = ('MOSFET', '-fill', '#053C66')
+# lightest = ('MOSFET', '-fill', '#212325')
+#
+# dark = ('MOSFET', '-fill', '#053C66')
+# darker = ('MOSFET', '-fill', '#085691')
+# darkest = ('MOSFET', '-fill', '#1F6AA5')
+#
+# logo.after(800, logo.itemconfig, light)
+# logo.after(1600, logo.itemconfig, lighter)
+# logo.after(2400, logo.itemconfig, lightest)
+
+# print(logo.__getattribute__('fill'))
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------------ Menu Bar ------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -184,9 +226,9 @@ open_raw_file_button = customtkinter.CTkButton(root,
                                                text='Open LTspice Waveform .raw file',
                                                command=guievents.open_raw_file)
 
-open_something_file_button = customtkinter.CTkButton(root,
-                                               text='Open LTspice file',
-                                               command=print("Opening file"))
+add_new_component_button = customtkinter.CTkButton(root,
+                                                   text='Add new component',
+                                                   command=lambda: print("Opening file"))
 
 exit_app_button = customtkinter.CTkButton(root,
                                           text='Exit EMC Analysis',
@@ -208,9 +250,5 @@ guievents.sketch_graphs(graph_value, graphs)
 logo.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
 open_raw_file_button.pack(pady=6, padx=6, anchor=tk.NE)
 open_asc_file_button.pack(pady=6, padx=4, anchor=tk.NE)
-open_something_file_button.pack(pady=6, padx=30, anchor=tk.NE)
+add_new_component_button.pack(pady=6, padx=30, anchor=tk.NE)
 exit_app_button.pack(pady=6, padx=30, anchor=tk.NE)
-
-# schematic_analysis.columnconfigure(tuple(range(10)), weight=1)
-# schematic_analysis.rowconfigure(tuple(range(10)), weight=1)
-# root.mainloop()
