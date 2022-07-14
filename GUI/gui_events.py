@@ -201,8 +201,21 @@ def get_file_path(component_parameters_frame,
                   entering_parameters_window):
     """
     Obtains the file path selected from a dialog box.
-    Event function for the Open a schematic button
+    Event function for Open a schematic button
 
+    Parameters
+        ---------------------------------------------
+        component_parameters_frame: frame in which the component parameters are placed after selection
+
+        all_component_parameters: List for storing parameters of all components
+
+        schematic_analysis: Window in which component parameters frame is placed inside
+
+        enter_parameters_button: button to open a new window for entering parameters
+
+        entering_parameters_window: Window displayed when button is clicked to enter parameters
+
+        canvas: The canvas in which the components are sketched
     """
     # Open and return file path
     file_path = fd.askopenfilenames(
@@ -307,11 +320,17 @@ def sketch_schematic_asc(schematic,
     Parameters
         ----------
         schematic : file path obtained from file dialog box with extension (.asc)
+
         component_parameters_frame: frame in which the component parameters are placed after selection
+
         all_component_parameters: List for storing parameters of all components
+
         canvas: Canvas to draw the components inside
+
         schematic_analysis: Window in which component parameters frame is placed inside
+
         enter_parameters_button: button to open a new window for entering parameters
+
         entering_parameters_window: Window displayed when button is clicked to enter parameters
 
     """
@@ -337,6 +356,7 @@ def sketch_schematic_asc(schematic,
     inductors = ''
     diodes = ''
     npn_transistor = ''
+    component_name_and_windows = ''
     comp_index = 0
     # finds the connection wires in the circuit
     for lines in schematic:
@@ -366,15 +386,18 @@ def sketch_schematic_asc(schematic,
             power_flags += lines.replace("FLAG ", '')
 
         # Store all component names and values
+        if "WINDOW" in lines:
+            component_name_and_windows += lines.replace("WINDOW ", '')
         if "SYMATTR InstName" in lines:
             components += lines.replace("SYMATTR InstName ", '')
             component_name_and_values += lines.replace("SYMATTR InstName ", '')
+            component_name_and_windows += lines.replace("SYMATTR InstName ", '')
             comp_index = comp_index + 1
         if "SYMATTR Value" in lines:
             component_name_and_values += lines.replace("SYMATTR Value ", '')
-            # print(comp_index - 1, end='')
-            # print(':' + component_constant_values)
 
+    # Used for testing window attribute
+    # canvas.create_rectangle(24 + 150, 56 + 150, 24 + 150 + 20, 8 + 150)
     # ------------------------------------------Cleaning and filtering of elements--------------------------------------
     # Find canvas size to center image
     # TODO: USE CANVAS SIZE FROM LTSPICE SCHEMATIC
@@ -382,6 +405,7 @@ def sketch_schematic_asc(schematic,
     # canvas_size = [int(size) for size in canvas_size]
     # print(canvas_size)
     # canvas.configure(scrollregion=(-canvas_size[0]//4, -canvas_size[1]//4, canvas_size[0]//4, canvas_size[1]//4))
+    print(component_name_and_windows)
 
     # Store all component names and values
     component_name_and_values = component_name_and_values.split('\n')
@@ -389,18 +413,24 @@ def sketch_schematic_asc(schematic,
     component_details_dictionary = {}
 
     print(component_name_and_values)
+    # Creating a dictionary to store component names and values
     # for comps in range(0, len(component_name_and_values) + 1, 2):
     #     if (comps + 1) >= len(component_name_and_values):
     #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
     #         break
     #     else:
     #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
+    # print(component_details_dictionary)
 
-    print(component_details_dictionary)
     # Store all component names in a list after removing new lines
     components = components.split('\n')
     # Remove last element which is empty
     components.pop()
+
+    # Stores whether a component is stored as a :
+    # Constant: Take same values from LTspice and just use them
+    # Random: Adjusted by the user in enter parameters window, which automatically changes Constant to Random
+    # when the user clicks the save parameters button
     component_value_array = ['Constant'] * len(components)
     enter_parameters_button.configure(command=lambda: open_new_window(components,
                                                                       schematic_analysis,
@@ -408,6 +438,8 @@ def sketch_schematic_asc(schematic,
                                                                       entering_parameters_window,
                                                                       component_value_array))
 
+    # Some components are drawn at negative values, which do not appear at all in the canvas, for this reason an
+    # adjustment is made to all coordinates to move them into an area which can be displayed in.
     adjustment = 150
     # ------------------------------------ Separating npn transistors --------------------------------------------------
     modified_npn_transistor = filter_components(npn_transistor, adjustment)
@@ -437,6 +469,8 @@ def sketch_schematic_asc(schematic,
     power_flags = [flag for pwr_flag in power_flags for flag in pwr_flag.split(' ')]
     power_flags.pop()
 
+    # If a flag has the value '0' this means it ground
+    # If a flag has ANY value OTHER THAN '0' this means it is NOT a ground
     for flag_coordinates in range(2, len(power_flags), 3):
         # Store all ground power flags
         if power_flags[flag_coordinates] == '0':
@@ -494,6 +528,8 @@ def sketch_schematic_asc(schematic,
                                                                   40,
                                                                   tags='schematic')
 
+    # Since voltage coordinates are going to be double the number of voltage sources,
+    # the for loop above is going to leave a lot of 'None' unchanged which needs to be removed
     while None in drawn_voltage_sources:
         drawn_voltage_sources.remove(None)
 
@@ -515,7 +551,8 @@ def sketch_schematic_asc(schematic,
 
     while None in drawn_resistors:
         drawn_resistors.remove(None)
-    # # --------------------------- Making resistors open new window when hovered over ---------------------------------
+    # --------------------------- Making components open new window for entering parameters when -----------------------
+    # ------------------------------------ a the component has been left clicked ---------------------------------------
     print(drawn_resistors)
     for resistor_elements in drawn_resistors:
         canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
@@ -562,6 +599,7 @@ def change_component_index(component_selected,
         component_param1_label_array[component_index]['text'] = 'Mean (μ)'
         component_param2_label_array[component_index]['text'] = 'Standard deviation (σ)'
 
+    # Display the labels for the corresponding component index and remove labels of other components
     for labels in range(len(component_param1_label_array)):
         if labels == component_index:
             component_param1_label_array[labels].grid(row=6, column=5, sticky='nsew')
@@ -620,24 +658,24 @@ def select_distribution_type(distribution_type,
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Check if entered parameters are numbers ---------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+# TODO: Sort out error checking if a letter is entered
 def if_number(parameter_to_check, component_selected, components):
-    parameter_value = parameter_to_check[components.index(component_selected.get())].get()
-    msg = ''
-
-    if len(parameter_value) == 0:
-        msg = 'parameter can\'t be empty'
-    else:
-        try:
-            if any(ch.isdigit() for ch in parameter_value):
-                msg = 'Success!'
-            elif any(ch.isalpha() for ch in parameter_value):
-                msg = 'parameter can\'t have letters'
-            else:
-                msg = 'Success!'
-        except Exception as ep:
-            messagebox.showerror('error', ep)
-
-    messagebox.showinfo('message', msg)
+    pass
+    # parameter_value = parameter_to_check[components.index(component_selected.get())].get()
+    # msg = ''
+    #
+    # if len(parameter_value) == 0:
+    #     msg = 'parameter can\'t be empty'
+    # else:
+    #     try:
+    #         if any(ch.isdigit() for ch in parameter_value):
+    #             msg = 'Success!'
+    #         elif any(ch.isalpha() for ch in parameter_value):
+    #             msg = 'parameter can\'t have letters'
+    #     except Exception as ep:
+    #         messagebox.showerror('error', ep)
+    #
+    # messagebox.showinfo('message', msg)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -649,6 +687,22 @@ def open_new_window(components,
                     component_parameters_frame,
                     parameters_window,
                     component_value_array):
+
+    """
+    Event function used to open enter parameter window when enter parameters button has been clicked
+
+    Parameters
+     ----------------------------------
+     components:  All components stored from the LTspice .asc file which has been opened
+
+     schematic_analysis: The main window for opening .asc schematics
+
+     component_parameters_frame:  The window which has all labels for the components after the parameters has been
+                                  entered
+
+     component_value_array: Array which contains whether a component is a Constant (Value from LTspice) or
+                            Random (Selected According to user requirements) value
+    """
     # Creating a new window for entering parameters
     # Check if entering parameters window is already open:
     # if TRUE: lift it on top of schematic analysis window
@@ -704,14 +758,6 @@ def open_new_window(components,
         # Distribution:
         # param1=
         # param2=
-        component_value_label = tk.Label(entering_parameters_window,
-                                         height=1,
-                                         width=10,
-                                         text='Value:',
-                                         background=label_background,
-                                         foreground=text_colour,
-                                         highlightbackground=label_background)
-
         component_name_array_label = tk.Label(entering_parameters_window,
                                               height=1,
                                               width=20,
@@ -942,6 +988,21 @@ def open_new_window(components,
 # ---------------------------------------- Function for deleting entered parameters ------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def delete_label(label_to_remove, label_index, delete_label_button, all_stored_components, components):
+    """
+    Event Function for when the delete button of label has been clicked
+
+    Parameters
+        ------------------------------------------------
+        label_index:  the index of the label to button has been clicked for
+
+        label_to_remove:  the label which is required to be removed
+
+        delete_label_button:  the button clicked to remove the label
+
+        all_stored_components:  list of dictionaries of all components, removes the component which the delete button
+                                has been clicked for
+
+    """
     # Component name stored from label
     component_name = [label_to_remove[label_index].__getattribute__('text').split('\n')[1]]
 
@@ -1125,7 +1186,7 @@ def save_all_entered_parameters(component_name,
             tk.Grid.rowconfigure(component_parameters_frame, circuit_component, weight=1)
             # Placing the name label of all parameters on the schematic_analysis window
             delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
-            full_name_labels[circuit_component].grid(row=circuit_component, column=1, sticky=tk.NSEW)
+            full_name_labels[circuit_component].grid(row=circuit_component, column=1, sticky='nsew')
 
             # Storing all components with their parameters in a dictionary
             all_component_parameters.append(
@@ -1150,7 +1211,7 @@ def save_all_entered_parameters(component_name,
             # Storing the name label of all parameters
             full_name_labels[circuit_component].configure(text='\n' + component_name[circuit_component]
                                                           + '\nValue: ' + '5'
-                                                          + '                    '
+                                                          + '                         '
                                                           + '\n           '
                                                           + '\n')
 

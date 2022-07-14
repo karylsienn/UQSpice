@@ -86,7 +86,7 @@ class ComponentSketcher:
     def draw_capacitor(self, start_coordinate_x, start_coordinate_y):
         y_adjustment = 25
 
-        self.canvas_to_draw_in.create_rectangle(start_coordinate_x - 10,
+        self.canvas_to_draw_in.create_rectangle(start_coordinate_x - 10 - 2,
                                                 start_coordinate_y + y_adjustment - 2,
                                                 start_coordinate_x + 42,
                                                 start_coordinate_y + y_adjustment + 12 + 7,
