@@ -27,6 +27,15 @@ tk.Canvas.create_circle = _create_circle
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Functions instead of remove suffix ------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def remove_suffix(input_string, suffix):
+    if suffix and input_string.endswith(suffix):
+        return input_string[:-len(suffix)]
+    return input_string
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for Root starting window ------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def open_asc_file(root, schematic_analysis):
@@ -236,7 +245,7 @@ def get_file_path(component_parameters_frame,
     if file_path:
         fpath = file_path[0]
         file_name = ntpath.basename(fpath)
-        folder_location = fpath.removesuffix(file_name)
+        folder_location = remove_suffix(fpath, file_name)
         file_name_no_extension = file_name.replace('.asc', '.txt')
         new_schematic_file = folder_location + file_name_no_extension
 

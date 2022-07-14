@@ -37,8 +37,8 @@ schematic_analysis.withdraw()
 schematic_analysis.title('EMC Analysis')
 schematic_analysis_width = 1100  # width for the Tk schematic_analysis
 schematic_analysis_height = 750  # height for the Tk schematic_analysis
-root_width = 400
-root_height = 180
+root_width = 450
+root_height = 220
 
 # get screen width and height
 screen_width = schematic_analysis.winfo_screenwidth()  # width of the screen
