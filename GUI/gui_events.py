@@ -1,4 +1,3 @@
-import locale
 from tkinter import messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
@@ -10,7 +9,7 @@ import component_sketcher as comp
 import readers as read
 # from svglib.svglib import svg2rlg
 # from reportlab.graphics import renderPDF, renderPM
-from PIL import Image, ImageTk
+# from PIL import Image, ImageTk
 import customtkinter
 
 BACKGROUND_COLOUR = '#F0F0F0'
@@ -65,7 +64,10 @@ def open_raw_file():
         )
 
     )
-    read.parse_and_save("RawReader", raw_file_path, "data.csv")
+    if raw_file_path:
+        read.parse_and_save("RawReader", raw_file_path)
+    else:
+        print("Please Select a Waveform .raw file")
 
 
 def exit_application(root):
@@ -118,6 +120,16 @@ def sketch_graphs(data, frame_to_display):
                     annot.set_visible(False)
                     chart_type.draw_idle()
 
+    def hover_test(event):
+        vis = annot.get_visible()
+        if event.inaxes == ax:
+            cont, ind = line.contains(event)
+            if cont:
+                print(event.xdata, event.ydata)
+                ax.plot((event.xdata, event.ydata), 'o')
+                chart_type.draw_idle()
+            else:
+                chart_type.draw_idle()
     chart_type.mpl_connect("motion_notify_event", hover)
 
     toolbar = NavigationToolbar2Tk(chart_type, frame_to_display, pack_toolbar=False)
@@ -162,10 +174,10 @@ def on_leave(e, element_to_change, canvas):
     canvas.itemconfig(element_to_change, fill=BACKGROUND_COLOUR)
 
 
-def on_resistor_press(event, arg, components):
+def on_resistor_press(event, arg, components, canvas):
     print(components)
-    print(components[arg])
     print(arg)
+    print(canvas.find_withtag("current"))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -210,7 +222,7 @@ def get_file_path(component_parameters_frame,
         )
 
     # Image Implementation - not yet working
-    # svg_schematic = svg2rlg('C:/Users/moaik/OneDrive - The University of Nottingham/NSERP/LTspice to latex/Delete.svg')
+# svg_schematic = svg2rlg('C:/Users/moaik/OneDrive - The University of Nottingham/NSERP/LTspice to latex/Delete.svg')
     # renderPM.drawToFile(svg_schematic, "temp_schematic.png", fmt="PNG")
     # img = Image.open('temp_schematic.png')
     # pimg = ImageTk.PhotoImage(img)
@@ -220,47 +232,53 @@ def get_file_path(component_parameters_frame,
     # canvas.create_image(96 + 150, 224 + 150, image=pimg)
     # #canvas.create_line(96-13+150, 224+150, 128 + 13 + 150, 224+150)
 
-    fpath = file_path[0]
-    file_name = ntpath.basename(fpath)
-    folder_location = fpath.removesuffix(file_name)
-    file_name_no_extension = file_name.replace('.asc', '.txt')
-    new_schematic_file = folder_location + file_name_no_extension
+    # Perform actions if a file has been selected
+    if file_path:
+        fpath = file_path[0]
+        file_name = ntpath.basename(fpath)
+        folder_location = fpath.removesuffix(file_name)
+        file_name_no_extension = file_name.replace('.asc', '.txt')
+        new_schematic_file = folder_location + file_name_no_extension
 
-    with open(fpath, 'rb') as ltspiceascfile:
-        first_line = ltspiceascfile.read(4)
-        if first_line.decode('utf-8') == "Vers":
-            encoding = 'utf-8'
-        elif first_line.decode('utf-16 le') == 'Ve':
-            encoding = 'utf-16 le'
-        else:
-            raise ValueError("Unknown encoding.")
-    ltspiceascfile.close()
+        with open(fpath, 'rb') as ltspiceascfile:
+            first_line = ltspiceascfile.read(4)
+            if first_line.decode('utf-8') == "Vers":
+                encoding = 'utf-8'
+            elif first_line.decode('utf-16 le') == 'Ve':
+                encoding = 'utf-16 le'
+            else:
+                raise ValueError("Unknown encoding.")
+        ltspiceascfile.close()
 
-    # Open and store all file data
-    with open(fpath, mode='r', encoding='cp1252') as file:
-        schematic_data = file.read()
-    file.close()
+        # Open and store all file data
+        with open(fpath, mode='r', encoding='cp1252') as file:
+            schematic_data = file.read()
+        file.close()
 
-    # Remove all 'µ' and replace them with 'u'
-    with open(new_schematic_file, mode='w', encoding=encoding) as clean_schematic_file:
-        clean_schematic_file.write(schematic_data.replace('µ', 'u'))
-    clean_schematic_file.close()
+        # Remove all 'µ' and replace them with 'u'
+        with open(new_schematic_file, mode='w', encoding=encoding) as clean_schematic_file:
+            clean_schematic_file.write(schematic_data.replace('µ', 'u'))
+        clean_schematic_file.close()
 
-    # Read clean file
-    with open(new_schematic_file, mode='r', encoding=encoding) as ltspiceascfile:
-        schematic = ltspiceascfile.readlines()
-    ltspiceascfile.close()
+        # Read clean file
+        with open(new_schematic_file, mode='r', encoding=encoding) as ltspiceascfile:
+            schematic = ltspiceascfile.readlines()
+        ltspiceascfile.close()
 
-    sketch_schematic_asc(schematic,
-                         component_parameters_frame,
-                         all_component_parameters,
-                         canvas,
-                         schematic_analysis,
-                         enter_parameters_button,
-                         entering_parameters_window)
+        sketch_schematic_asc(schematic,
+                             component_parameters_frame,
+                             all_component_parameters,
+                             canvas,
+                             schematic_analysis,
+                             enter_parameters_button,
+                             entering_parameters_window)
 
-    # Display file path at the bottom of the window
-    # l1 = Label(schematic_analysis, text="File path: " + file_path).pack()
+        # Display file path at the bottom of the window
+        # l1 = Label(schematic_analysis, text="File path: " + file_path).pack()
+
+    # Display an error in case no schematic has been selected from file dialog box
+    else:
+        error_select_schematic(canvas)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -486,11 +504,14 @@ def sketch_schematic_asc(schematic,
         canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg, canvas))
         canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg, canvas))
 
+    while None in drawn_resistors:
+        drawn_resistors.remove(None)
     # # --------------------------- Making resistors open new window when hovered over ---------------------------------
-    # for resistor_elements in drawn_resistors:
-    #     canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
-    #                     lambda event,
-    #                     arg=resistor_elements: on_resistor_press(event, arg))
+    print(drawn_resistors)
+    for resistor_elements in drawn_resistors:
+        canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
+                        lambda event,
+                        elem=resistor_elements: on_resistor_press(event, elem, components, canvas))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -798,7 +819,11 @@ def open_new_window(components,
                                                                        border_width=0,
                                                                        relief='flat',
                                                                        command=lambda t=circuit_component:
-                                                                       delete_label(name_label_array, t, delete_button)
+                                                                       delete_label(name_label_array,
+                                                                                    t,
+                                                                                    delete_button,
+                                                                                    all_component_parameters,
+                                                                                    components)
                                                                        )
 
             delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
@@ -869,7 +894,8 @@ def open_new_window(components,
                                                         component_param2_entry_box_array,
                                                         name_label_array,
                                                         component_value_array,
-                                                        component_parameters_frame)
+                                                        component_parameters_frame,
+                                                        delete_button)
         )
 
         component_name_row = 3
@@ -906,10 +932,22 @@ def open_new_window(components,
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for deleting entered parameters ------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def delete_label(label_to_remove, label_index, delete_label_button):
+def delete_label(label_to_remove, label_index, delete_label_button, all_stored_components, components):
+    # Component name stored from label
+    component_name = [label_to_remove[label_index].__getattribute__('text').split('\n')[1]]
+
+    # Clear Label from stored data and remove outline border
     label_to_remove[label_index].configure(text='')
     label_to_remove[label_index].configure(borderwidth=0)
+
+    # Remove button from label
     delete_label_button[label_index].grid_forget()
+    # Deleting Item from dictionary
+    # TODO: Fix Out of range issue
+    for stored_comp in range(len(all_stored_components)):
+        if component_name == list(all_stored_components[stored_comp].keys()):
+            print(list(all_stored_components[stored_comp].keys()))
+            all_stored_components.pop(stored_comp)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1034,7 +1072,8 @@ def save_all_entered_parameters(component_name,
                                 component_param2_array,
                                 full_name_labels,
                                 component_value_array,
-                                component_parameters_frame
+                                component_parameters_frame,
+                                delete_button
                                 ):
     global all_component_parameters
     all_component_parameters.clear()
@@ -1059,6 +1098,7 @@ def save_all_entered_parameters(component_name,
         if component_value_array[circuit_component] == 'Random':
             print(component_name)
             # clearing the name label of all parameters
+            full_name_labels[circuit_component].configure(borderwidth=1)
             full_name_labels[circuit_component].configure(text='')
 
             # Storing the name label of all parameters
@@ -1075,7 +1115,8 @@ def save_all_entered_parameters(component_name,
 
             tk.Grid.rowconfigure(component_parameters_frame, circuit_component, weight=1)
             # Placing the name label of all parameters on the schematic_analysis window
-            full_name_labels[circuit_component].grid(row=circuit_component, column=1)
+            delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
+            full_name_labels[circuit_component].grid(row=circuit_component, column=1, sticky=tk.NSEW)
 
             # Storing all components with their parameters in a dictionary
             all_component_parameters.append(
@@ -1094,7 +1135,7 @@ def save_all_entered_parameters(component_name,
 
         # If value is Constant, display label only. DO NOT store in dictionary
         elif component_value_array[circuit_component] == 'Constant':
-
+            full_name_labels[circuit_component].configure(borderwidth=1)
             full_name_labels[circuit_component].configure(text='')
 
             # Storing the name label of all parameters
@@ -1109,6 +1150,7 @@ def save_all_entered_parameters(component_name,
             tk.Grid.rowconfigure(component_parameters_frame, circuit_component, weight=1)
             # Placing the name label of all parameters on the schematic_analysis window
             tk.Grid.columnconfigure(component_parameters_frame, circuit_component, weight=1)
+            delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
             full_name_labels[circuit_component].grid(row=circuit_component, column=1, sticky='nsew')
 
     print(all_component_parameters)
