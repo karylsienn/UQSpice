@@ -30,9 +30,28 @@ tk.Canvas.create_circle = _create_circle
 # ---------------------------------------- Functions instead of remove suffix ------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def remove_suffix(input_string, suffix):
+    """
+    Used to remove a suffix in a string.
+
+    NOTE: This is the same function as removesuffix in python 3.10. Its definition is used here to make it work for
+          python versions below 3.10.
+
+    Parameters:
+        ----------------------------------------
+        input_string: The string to remove a substring from
+        suffix:  The substring to remove
+    """
     if suffix and input_string.endswith(suffix):
         return input_string[:-len(suffix)]
     return input_string
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Functions for Root starting window ------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def hide_schematic_window(root, schematic_analysis):
+    schematic_analysis.withdraw()
+    root.deiconify()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -56,13 +75,19 @@ def open_asc_file(root, schematic_analysis):
                                                  analysis_y))
 
     # Removing the root window if schematic analysis window has been destroyed
-    schematic_analysis.protocol("WM_DELETE_WINDOW", root.destroy)
+    schematic_analysis.protocol("WM_DELETE_WINDOW", lambda: root.destroy())
     # make the entering parameters window on top of the main schematic analysis window and showing it
-    schematic_analysis.wm_transient(root)
+    # schematic_analysis.wm_transient(root)
     schematic_analysis.deiconify()
 
 
 def open_raw_file():
+    """
+    Event Function used when the button to open a .raw file is clicked.
+
+    Allows user to select the file, the .raw file is converted to a .csv file and stored with same name
+    or new name if a file name is given
+    """
     # Open and return file path
     raw_file_path = fd.askopenfilename(
         title="Select a Schematic",
@@ -157,6 +182,26 @@ def exit_program(frame_to_close):
 # ------------------------------------------- Component Filtering ------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def filter_components(components, adjustment):
+    """Function used to extract coordinates of components from LTSpice file
+
+        Parameter `components` is a list of strings all components.
+        `adjustment` is an integer or a float
+
+
+        Parameters
+        -----------------------
+        components : list(str)
+            The component to extract coordinates from
+        adjustment : int
+            The addition to move the component coordinates, this is done because any coordinates in the
+            negative side are not shown at all by the canvas
+
+        Returns
+        -----------------------
+        modified_components
+            A list of coordinates of the given component
+
+    """
     # Store all components coordinates in a list on the same line
     components = components.split('\n')
     # Split each element into its list of coordinates
@@ -173,7 +218,7 @@ def filter_components(components, adjustment):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------- Functions for hovering over components --------------------------------------
+# ---------------------------------------- Functions when hovering over components -------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def on_enter(e, element_to_change, canvas):
     canvas.itemconfig(element_to_change, fill='green')
@@ -199,13 +244,11 @@ def get_file_path(component_parameters_frame,
                   schematic_analysis,
                   enter_parameters_button,
                   entering_parameters_window):
-    """
-    Obtains the file path selected from a dialog box.
-    Event function for Open a schematic button
+    """Obtains the file path selected from a dialog box, Event function for Open a schematic button.
 
-    Parameters
-        ---------------------------------------------
-        component_parameters_frame: frame in which the component parameters are placed after selection
+        Parameters
+        --------
+        component_parameters_frame : frame in which the component parameters are placed after selection
 
         all_component_parameters: List for storing parameters of all components
 
@@ -428,7 +471,7 @@ def sketch_schematic_asc(schematic,
     components.pop()
 
     # Stores whether a component is stored as a :
-    # Constant: Take same values from LTspice and just use them
+    # Constant: Take same values from LTSpice and just use them
     # Random: Adjusted by the user in enter parameters window, which automatically changes Constant to Random
     # when the user clicks the save parameters button
     component_value_array = ['Constant'] * len(components)
@@ -658,24 +701,120 @@ def select_distribution_type(distribution_type,
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Check if entered parameters are numbers ---------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-# TODO: Sort out error checking if a letter is entered
-def if_number(parameter_to_check, component_selected, components):
-    pass
-    # parameter_value = parameter_to_check[components.index(component_selected.get())].get()
-    # msg = ''
-    #
-    # if len(parameter_value) == 0:
-    #     msg = 'parameter can\'t be empty'
-    # else:
-    #     try:
-    #         if any(ch.isdigit() for ch in parameter_value):
-    #             msg = 'Success!'
-    #         elif any(ch.isalpha() for ch in parameter_value):
-    #             msg = 'parameter can\'t have letters'
-    #     except Exception as ep:
-    #         messagebox.showerror('error', ep)
-    #
-    # messagebox.showinfo('message', msg)
+def if_number(parameter_value):
+
+    if parameter_value.isdigit():
+        return True
+    else:
+        return False
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------- Make Components Switch in Root Window -----------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def change_component(master_window, starting_canvas):
+    factor = 2
+    adjustment_x = 60
+    adjustment_y = 20
+
+    logo = comp.ComponentSketcher(starting_canvas)
+
+    starting_canvas.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     48 * factor + adjustment_x, 96 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(16 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     48 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(16 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     24 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     24 * factor + adjustment_x, 44 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     24 * factor + adjustment_x, 52 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(24 * factor + adjustment_x, 44 * factor + adjustment_y,
+                     24 * factor + adjustment_x, 52 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(16 * factor + adjustment_x, 8 * factor + adjustment_y,
+                     16 * factor + adjustment_x, 24 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(16 * factor + adjustment_x, 40 * factor + adjustment_y,
+                     16 * factor + adjustment_x, 56 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(16 * factor + adjustment_x, 72 * factor + adjustment_y,
+                     16 * factor + adjustment_x, 88 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(0 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     8 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(8 * factor + adjustment_x, 16 * factor + adjustment_y,
+                     8 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(48 * factor + adjustment_x, 16 * factor + adjustment_y,
+                     16 * factor + adjustment_x, 16 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    starting_canvas.create_line(48 * factor + adjustment_x, 0 * factor + adjustment_y,
+                     48 * factor + adjustment_x, 16 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+
+    # Changing Colour of shape to gradually disappear
+    light = ('MOSFET', '-fill', '#085691')
+    lighter = ('MOSFET', '-fill', '#053C66')
+    lightest = ('MOSFET', '-fill', '#212325')
+
+    starting_canvas.after(800, starting_canvas.itemconfig, light)
+    starting_canvas.after(1600, starting_canvas.itemconfig, lighter)
+    starting_canvas.after(2400, starting_canvas.itemconfig, lightest)
+
+    dark = ('Diode', '-fill', '#053C66')
+    darker = ('Diode', '-fill', '#085691')
+    darkest = ('Diode', '-fill', '#1F6AA5')
+
+    ground_line = 10
+    x_adjustment = 16
+    start_coordinate_x = adjustment_x
+    start_coordinate_y = adjustment_y
+    # wire before diode
+    starting_canvas.create_line(start_coordinate_x + x_adjustment,
+                                       start_coordinate_y,
+                                       start_coordinate_x + x_adjustment,
+                                       start_coordinate_y + ground_line,
+                                       tags='Diode',
+                                       fill='#212325')
+
+    # wire after diode
+    starting_canvas.create_line(start_coordinate_x + x_adjustment,
+                                       start_coordinate_y + 35 + ground_line,
+                                       start_coordinate_x + x_adjustment,
+                                       start_coordinate_y + 35 + ground_line + 20,
+                                tags='Diode',
+                                fill='#212325')
+
+    # triangle shape of diode
+    starting_canvas.create_polygon(start_coordinate_x - 25 + x_adjustment,
+                                          start_coordinate_y + ground_line,
+                                          start_coordinate_x + 25 + x_adjustment,
+                                          start_coordinate_y + ground_line,
+                                          start_coordinate_x + x_adjustment,
+                                          start_coordinate_y + 35 + ground_line,
+                                          fill='',
+                                          outline='#212325',
+                                          tags='Diode')
+
+    # Diode line in front of triangle shape
+    starting_canvas.create_line(start_coordinate_x - 25 + x_adjustment,
+                                       start_coordinate_y + 35 + ground_line,
+                                       start_coordinate_x + 25 + x_adjustment,
+                                       start_coordinate_y + 35 + ground_line,
+                                       tags='Diode',
+                                fill='#212325')
+
+    starting_canvas.after(3200, starting_canvas.itemconfig, light)
+    starting_canvas.after(4000, starting_canvas.itemconfig, lighter)
+    starting_canvas.after(4800, starting_canvas.itemconfig, lighter)
+    starting_canvas.after(5600, lambda: change_component(master_window, starting_canvas))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -688,19 +827,20 @@ def open_new_window(components,
                     parameters_window,
                     component_value_array):
 
-    """
-    Event function used to open enter parameter window when enter parameters button has been clicked
+    """Event function used to open enter parameter window when enter parameters button has been clicked
 
-    Parameters
-     ----------------------------------
-     components:  All components stored from the LTspice .asc file which has been opened
+     Parameters
+      ----------------------------------
+     components: list of str
+        All components stored from the LTSpice .asc file which has been opened
 
-     schematic_analysis: The main window for opening .asc schematics
+     schematic_analysis: tkinter window
+        The main window for opening .asc schematics
 
      component_parameters_frame:  The window which has all labels for the components after the parameters has been
                                   entered
 
-     component_value_array: Array which contains whether a component is a Constant (Value from LTspice) or
+     component_value_array: Array which contains whether a component is a Constant (Value from LTSpice) or
                             Random (Selected According to user requirements) value
     """
     # Creating a new window for entering parameters
@@ -830,19 +970,22 @@ def open_new_window(components,
                                                                                          height=1,
                                                                                          width=20,
                                                                                          text='',
-                                                                                         validate='focusout'
+                                                                                         validate='key'
                                                                                          )
-            component_param1_entry_box_array[circuit_component].configure(
-                validatecommand=lambda: if_number(component_param1_entry_box_array, component_selected, components))
+
+            vcmd1 = (component_param1_entry_box_array[circuit_component].register(if_number), '%S')
+            component_param1_entry_box_array[circuit_component].configure(validatecommand=vcmd1)
 
             component_param2_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
                                                                                          height=1,
                                                                                          width=20,
                                                                                          text='',
-                                                                                         validate='focusout'
+                                                                                         validate='key'
                                                                                          )
-            component_param2_entry_box_array[circuit_component].configure(
-                validatecommand=lambda: if_number(component_param2_entry_box_array, component_selected, components))
+
+            vcmd2 = (component_param2_entry_box_array[circuit_component].register(if_number), '%S')
+
+            component_param2_entry_box_array[circuit_component].configure(validatecommand=vcmd2)
 
             component_param2_label_array[circuit_component] = tk.Label(entering_parameters_window,
                                                                        height=1,
@@ -1014,10 +1157,13 @@ def delete_label(label_to_remove, label_index, delete_label_button, all_stored_c
     delete_label_button[label_index].grid_forget()
     # Deleting Item from dictionary
     # TODO: Fix Out of range issue
-    for stored_comp in range(len(all_stored_components)):
-        if component_name == list(all_stored_components[stored_comp].keys()):
-            print(list(all_stored_components[stored_comp].keys()))
-            all_stored_components.pop(stored_comp)
+    if all_stored_components:
+        for stored_comp in range(len(all_stored_components)):
+            if component_name == list(all_stored_components[stored_comp].keys()):
+                print(len(all_stored_components))
+                print(stored_comp)
+                del all_stored_components[stored_comp]
+                print(all_stored_components)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1043,7 +1189,7 @@ def save_entered_parameters(entering_parameters_window,
     global component_index
 
     component_value_array[index] = 'Random'
-    print(component_value_array)
+    # print(component_value_array)
 
     if component_value_array[index] == 'Random':
         if component_distribution == 'Normal':
@@ -1064,7 +1210,7 @@ def save_entered_parameters(entering_parameters_window,
                                              }
                                              }
                                             )
-        print(all_component_parameters)
+        # print(all_component_parameters)
         # -------------------------- removing duplicates and storing in a list of dictionaries -------------------------
         appending_flag = 0
         for parameters in range(len(all_component_parameters)):
@@ -1099,7 +1245,7 @@ def save_entered_parameters(entering_parameters_window,
             appending_flag = 0
 
         # --------------------------------- Displaying entered parameters on schematic_analysis window -----------------
-        print(component_index)
+        # print(component_index)
         full_name_labels[index].configure(borderwidth=1)
         full_name_labels[index].configure(text='')
         delete_label_button[index].grid(row=0, column=0, sticky='nw')
@@ -1162,11 +1308,11 @@ def save_all_entered_parameters(component_name,
             component_param1_dictionary_input[distributions] = 'alpha'
             component_param2_dictionary_input[distributions] = 'beta'
 
-    print(component_value_array)
+    # print(component_value_array)
     # If value is Random, display label and store in dictionary
     for circuit_component in range(len(component_name)):
         if component_value_array[circuit_component] == 'Random':
-            print(component_name)
+            # print(component_name)
             # clearing the name label of all parameters
             full_name_labels[circuit_component].configure(borderwidth=1)
             full_name_labels[circuit_component].configure(text='')
@@ -1223,7 +1369,7 @@ def save_all_entered_parameters(component_name,
             delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
             full_name_labels[circuit_component].grid(row=circuit_component, column=1, sticky='nsew')
 
-    print(all_component_parameters)
+    # print(all_component_parameters)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
