@@ -10,7 +10,11 @@ class ComponentSketcher:
 
     # Replacing the oval function of tkinter with a simpler function for circles
     def _create_circle(self, x_coordinate, y_coordinate, r, **kwargs):
-        return self.create_oval(x_coordinate - r, y_coordinate - r, x_coordinate + r, y_coordinate + r, **kwargs)
+        return self.canvas_to_draw_in.create_oval(x_coordinate - r,
+                                                  y_coordinate - r,
+                                                  x_coordinate + r,
+                                                  y_coordinate + r,
+                                                  **kwargs)
 
         self.canvas_to_draw_in.create_circle = _create_circle
 

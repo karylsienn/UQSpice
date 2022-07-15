@@ -38,7 +38,7 @@ schematic_analysis.title('EMC Analysis')
 schematic_analysis_width = 1100  # width for the Tk schematic_analysis
 schematic_analysis_height = 750  # height for the Tk schematic_analysis
 root_width = 450
-root_height = 220
+root_height = 190
 
 # get screen width and height
 screen_width = schematic_analysis.winfo_screenwidth()  # width of the screen
@@ -52,7 +52,7 @@ root_y = (screen_height/2) - (root_height/2) - (root_height/5)
 schematic_analysis_x = (screen_width/2) - (schematic_analysis_width/2) - (schematic_analysis_width/5)
 schematic_analysis_y = (screen_height/2) - (schematic_analysis_height/2) - (schematic_analysis_height/5)
 
-# set the dimensions of the screen and its position
+# set the dimensions of schematic_analysis window and its position
 schematic_analysis.geometry('%dx%d+%d+%d' % (schematic_analysis_width,
                                              schematic_analysis_height,
                                              schematic_analysis_x,
@@ -61,8 +61,9 @@ schematic_analysis.geometry('%dx%d+%d+%d' % (schematic_analysis_width,
 # Set minimum width and height of schematic_analysis window
 schematic_analysis.minsize(schematic_analysis.winfo_width(), schematic_analysis.winfo_height())
 
+# set the dimensions of root window and its position
 root.geometry('%dx%d+%d+%d' % (root_width, root_height, root_x, root_y))
-root.title('Welcome to EMC Statisical Analysis Tool')
+root.title('Welcome to EMC Statistical Analysis Tool')
 # Creating tabs in tkinter schematic_analysis window
 tabControl = ttk.Notebook(schematic_analysis)
 
@@ -100,60 +101,45 @@ logo = tk.Canvas(root, width=200, height=50, background='#212325', highlightthic
 factor = 2
 adjustment_x = 60
 adjustment_y = 20
-logo.create_line(48*factor + adjustment_x, 48*factor + adjustment_y,
-                 48*factor + adjustment_x, 96*factor + adjustment_y,
+logo.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
+                 48 * factor + adjustment_x, 96 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment_x, 80*factor + adjustment_y,
-                 48*factor + adjustment_x, 80*factor + adjustment_y,
+logo.create_line(16 * factor + adjustment_x, 80 * factor + adjustment_y,
+                 48 * factor + adjustment_x, 80 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment_x, 48*factor + adjustment_y,
-                 24*factor + adjustment_x, 48*factor + adjustment_y,
+logo.create_line(16 * factor + adjustment_x, 48 * factor + adjustment_y,
+                 24 * factor + adjustment_x, 48 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48*factor + adjustment_x, 48*factor + adjustment_y,
-                 24*factor + adjustment_x, 44*factor + adjustment_y,
+logo.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
+                 24 * factor + adjustment_x, 44 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48*factor + adjustment_x, 48*factor + adjustment_y,
-                 24*factor + adjustment_x, 52*factor + adjustment_y,
+logo.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
+                 24 * factor + adjustment_x, 52 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(24*factor + adjustment_x, 44*factor + adjustment_y,
-                 24*factor + adjustment_x, 52*factor + adjustment_y,
+logo.create_line(24 * factor + adjustment_x, 44 * factor + adjustment_y,
+                 24 * factor + adjustment_x, 52 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment_x, 8*factor + adjustment_y,
-                 16*factor + adjustment_x, 24*factor + adjustment_y,
+logo.create_line(16 * factor + adjustment_x, 8 * factor + adjustment_y,
+                 16 * factor + adjustment_x, 24 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment_x, 40*factor + adjustment_y,
-                 16*factor + adjustment_x, 56*factor + adjustment_y,
+logo.create_line(16 * factor + adjustment_x, 40 * factor + adjustment_y,
+                 16 * factor + adjustment_x, 56 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16*factor + adjustment_x, 72*factor + adjustment_y,
-                 16*factor + adjustment_x, 88*factor + adjustment_y,
+logo.create_line(16 * factor + adjustment_x, 72 * factor + adjustment_y,
+                 16 * factor + adjustment_x, 88 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(0*factor + adjustment_x, 80*factor + adjustment_y,
-                 8*factor + adjustment_x, 80*factor + adjustment_y,
+logo.create_line(0 * factor + adjustment_x, 80 * factor + adjustment_y,
+                 8 * factor + adjustment_x, 80 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(8*factor + adjustment_x, 16*factor + adjustment_y,
-                 8*factor + adjustment_x, 80*factor + adjustment_y,
+logo.create_line(8 * factor + adjustment_x, 16 * factor + adjustment_y,
+                 8 * factor + adjustment_x, 80 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48*factor + adjustment_x, 16*factor + adjustment_y,
-                 16*factor + adjustment_x, 16*factor + adjustment_y,
+logo.create_line(48 * factor + adjustment_x, 16 * factor + adjustment_y,
+                 16 * factor + adjustment_x, 16 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48*factor + adjustment_x, 0*factor + adjustment_y,
-                 48*factor + adjustment_x, 16*factor + adjustment_y,
+logo.create_line(48 * factor + adjustment_x, 0 * factor + adjustment_y,
+                 48 * factor + adjustment_x, 16 * factor + adjustment_y,
                  tags='MOSFET', fill='#1F6AA5')
-
-# Changing Colour of shape to gradually disappear
-# light = ('MOSFET', '-fill', '#085691')
-# lighter = ('MOSFET', '-fill', '#053C66')
-# lightest = ('MOSFET', '-fill', '#212325')
-#
-# dark = ('MOSFET', '-fill', '#053C66')
-# darker = ('MOSFET', '-fill', '#085691')
-# darkest = ('MOSFET', '-fill', '#1F6AA5')
-#
-# logo.after(800, logo.itemconfig, light)
-# logo.after(1600, logo.itemconfig, lighter)
-# logo.after(2400, logo.itemconfig, lightest)
-
-# print(logo.__getattribute__('fill'))
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------------ Menu Bar ------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -228,7 +214,7 @@ open_raw_file_button = customtkinter.CTkButton(root,
 
 add_new_component_button = customtkinter.CTkButton(root,
                                                    text='Add new component',
-                                                   command=lambda: print("Opening file"))
+                                                   command=lambda: print("Add new component"))
 
 exit_app_button = customtkinter.CTkButton(root,
                                           text='Exit EMC Analysis',
