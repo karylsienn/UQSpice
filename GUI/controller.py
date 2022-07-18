@@ -3,11 +3,6 @@ from tkinter import ttk
 import customtkinter
 import tkinter_modification as tkmod
 import gui_events as guievents
-# from pandas import DataFrame
-# import mplcursors
-# import plotly.graph_objects as go
-# from matplotlib.figure import Figure
-# from matplotlib.widgets import Slider
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -23,7 +18,7 @@ FONT_SIZE = ("", 10)
 Mode = 'dark'
 theme_colour = ''
 if Mode == 'light':
-    theme_colour = 'green'
+    theme_colour = 'dark-blue'
 if Mode == 'dark':
     theme_colour = 'blue'
 
@@ -35,8 +30,8 @@ root = customtkinter.CTk()
 schematic_analysis = customtkinter.CTkToplevel(root)
 schematic_analysis.withdraw()
 schematic_analysis.title('EMC Analysis')
-root_width = 450  # width for the root window
-root_height = 190  # height for the root window
+root_width = 500  # width for the root window
+root_height = 220  # height for the root window
 new_components_width = 630  # width for adding new components window
 new_components_height = 400  # height for adding new components window
 
@@ -48,11 +43,11 @@ screen_height = schematic_analysis.winfo_screenheight()  # height of the screen
 root_x = (screen_width/2) - (root_width/2) - (root_width/5)
 root_y = (screen_height/2) - (root_height/2) - (root_height/5)
 
-
-
-
 # set the dimensions of root window and its position
 root.geometry('%dx%d+%d+%d' % (root_width, root_height, root_x, root_y))
+
+# Set minimum width and height of schematic_analysis window
+root.resizable(height=False, width=False)
 root.title('Welcome to EMC Statistical Analysis Tool')
 # Creating tabs in tkinter schematic_analysis window
 tabControl = ttk.Notebook(schematic_analysis)
@@ -163,6 +158,8 @@ menu.add_cascade(label="File",
 editMenu = tkmod.CTkMenu(menu)
 editMenu.add_command(label="Undo", font=FONT_SIZE)
 editMenu.add_command(label="Redo", font=FONT_SIZE)
+editMenu.add_command(label="Dark Theme", font=FONT_SIZE, command=lambda: guievents.dark_theme_set(root))
+editMenu.add_command(label="Light Theme", font=FONT_SIZE, command=lambda: guievents.light_theme_set(root))
 editMenu.config(font=FONT_SIZE)
 menu.add_cascade(label="Edit", font=FONT_SIZE, menu=editMenu)
 
