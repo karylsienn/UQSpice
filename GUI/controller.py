@@ -148,7 +148,7 @@ fileMenu.add_command(label="Add a new component", font=FONT_SIZE,
 
 fileMenu.add_command(label="Exit",
                      font=FONT_SIZE,
-                     command=lambda: guievents.exit_application(root))
+                     command=lambda: root.destroy())
 
 menu.add_cascade(label="File",
                  font=FONT_SIZE,
