@@ -1,7 +1,7 @@
 from tkinter import messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
-import numpy as np; np.random.seed(1)
+import numpy as np; np.random.seed(213)
 import tkinter as tk
 from tkinter import filedialog as fd
 import ntpath
@@ -26,6 +26,20 @@ def _create_circle(self, x_coordinate, y_coordinate, r, **kwargs):
 
 
 tk.Canvas.create_circle = _create_circle
+
+
+def light_theme_set(root):
+    customtkinter.set_appearance_mode('light')  # Modes: system (default), light, dark
+    root.withdraw()
+    customtkinter.set_default_color_theme('dark-blue')  # Themes: blue (default), dark-blue, green
+    root.withdraw()
+
+
+def dark_theme_set(root):
+    customtkinter.set_appearance_mode('dark')  # Modes: system (default), light, dark
+    root.withdraw()
+    customtkinter.set_default_color_theme('blue')  # Themes: blue (default), dark-blue, green
+    root.withdraw()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -64,7 +78,6 @@ def open_new_components(root):
     root.withdraw()
     open_new_component_window = customtkinter.CTkToplevel()
     open_new_component_window.title('Add a new component')
-    open_new_component_window.geometry('630x400')
 
     # TODO: TRY USING SCREENINFO LIBRARY TO PLACE IN CENTRE OF SCREEN
     open_new_component_width = 650  # width for the Tk schematic_analysis
@@ -83,6 +96,7 @@ def open_new_components(root):
                                                         new_comp_window_y))
     # Set minimum width and height of schematic_analysis window
     open_new_component_window.minsize(open_new_component_width, open_new_component_height)
+    open_new_component_window.resizable(height=True, width=False)
 
     new_components_canvas = tkmod.ResizingCanvas(open_new_component_window)
     button_frame = customtkinter.CTkFrame(open_new_component_window)
@@ -164,10 +178,6 @@ def open_raw_file():
         print("Please Select a Waveform .raw file")
 
 
-def exit_application(root):
-    root.destroy()
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for schematic analysis --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -219,8 +229,8 @@ def sketch_graphs(data, frame_to_display):
         if event.inaxes == ax:
             cont, ind = line.contains(event)
             if cont:
-                print(event.xdata, event.ydata)
-                ax.plot((event.xdata, event.ydata), 'o')
+                points = ax.plot(event.xdata, event.ydata, 'go')
+                points.pop(0)
                 chart_type.draw_idle()
             else:
                 chart_type.draw_idle()
@@ -674,18 +684,18 @@ def change_component_index(component_selected,
     # Check which distribution has been selected and change the parameters accordingly
     if distribution_type.get() == 'Gamma Distribution':
         component_distribution_array[component_index].insert(tk.INSERT, 'Gamma')
-        component_param1_label_array[component_index]['text'] = 'Shape (k)'
-        component_param2_label_array[component_index]['text'] = 'Scale (θ)'
+        component_param1_label_array[component_index].configure(text='Shape (k)')
+        component_param2_label_array[component_index].configure(text='Scale (θ)')
 
     if distribution_type.get() == 'Beta Distribution':
         component_distribution_array[component_index].insert(tk.INSERT, 'Beta')
-        component_param1_label_array[component_index]['text'] = 'Alpha (α)'
-        component_param2_label_array[component_index]['text'] = 'Beta (β)'
+        component_param1_label_array[component_index].configure(text='Alpha (α)')
+        component_param2_label_array[component_index].configure(text='Beta (β)')
 
     if distribution_type.get() == 'Normal Distribution':
         component_distribution_array[component_index].insert(tk.INSERT, 'Normal')
-        component_param1_label_array[component_index]['text'] = 'Mean (μ)'
-        component_param2_label_array[component_index]['text'] = 'Standard deviation (σ)'
+        component_param1_label_array[component_index].configure(text='Mean (μ)')
+        component_param2_label_array[component_index].configure(text='Standard deviation (σ)')
 
     # Display the labels for the corresponding component index and remove labels of other components
     for labels in range(len(component_param1_label_array)):
@@ -714,18 +724,18 @@ def select_distribution_type(distribution_type,
     component_distribution[index_of_selected_component].delete('1.0', tk.END)
     if distribution_type.get() == 'Gamma Distribution':
         component_distribution[index_of_selected_component].insert(tk.INSERT, 'Gamma')
-        parameter1_label[index_of_selected_component]['text'] = 'Shape (k)'
-        parameter2_label[index_of_selected_component]['text'] = 'Scale (θ)'
+        parameter1_label[index_of_selected_component].configure(text='Shape (k)')
+        parameter2_label[index_of_selected_component].configure(text='Scale (θ)')
 
     if distribution_type.get() == 'Beta Distribution':
         component_distribution[index_of_selected_component].insert(tk.INSERT, 'Beta')
-        parameter1_label[index_of_selected_component]['text'] = 'Alpha (α)'
-        parameter2_label[index_of_selected_component]['text'] = 'Beta (β)'
+        parameter1_label[index_of_selected_component].configure(text='Alpha (α)')
+        parameter2_label[index_of_selected_component].configure(text='Beta (β)')
 
     if distribution_type.get() == 'Normal Distribution':
         component_distribution[index_of_selected_component].insert(tk.INSERT, 'Normal')
-        parameter1_label[index_of_selected_component]['text'] = 'Mean (μ)'
-        parameter2_label[index_of_selected_component]['text'] = 'Standard deviation (σ)'
+        parameter1_label[index_of_selected_component].configure(text='Mean (μ)')
+        parameter2_label[index_of_selected_component].configure(text='Standard deviation (σ)')
 
     # Remove all labels for parameters, except the user selected component label
     for labels in range(len(param1_array)):
@@ -748,12 +758,13 @@ def select_distribution_type(distribution_type,
 # ----------------------------------------------------------------------------------------------------------------------
 def if_number(parameter_value, value_before):
     print(value_before)
-    smaller_values_list = ['m', 'u', 'n', 'p', 'MEG']
+    smaller_values_list = ['m', 'u', 'n', 'p', 'k', 'M', 'G', '         ']
     print(parameter_value)
+    matches = [a for a in smaller_values_list if a in value_before]
+    # TODO: Remove characters entered when backspace is used
     if parameter_value.isdigit():
         return True
-    # TODO: One last check to prevent p, m and u being all entered at the same time
-    if (parameter_value in smaller_values_list) and (parameter_value not in value_before):
+    if (parameter_value in smaller_values_list) and (parameter_value not in value_before) and len(matches) == 0:
         return True
     else:
         return False
@@ -950,23 +961,23 @@ def open_new_window(components,
             # Distribution:
             # param1=
             # param2=
-            component_name_array_label = tk.Label(entering_parameters_window,
-                                                  height=1,
-                                                  width=20,
-                                                  text='Component Name:',
-                                                  background=label_background,
-                                                  foreground=text_colour,
-                                                  highlightbackground=label_background
-                                                  )
+            component_name_array_label = customtkinter.CTkLabel(entering_parameters_window,
+                                                                height=1,
+                                                                width=20,
+                                                                text='Component Name:',
+                                                                background=label_background,
+                                                                foreground=text_colour,
+                                                                highlightbackground=label_background
+                                                                )
 
-            component_distribution_label = tk.Label(entering_parameters_window,
-                                                    height=1,
-                                                    width=20,
-                                                    text='Distribution',
-                                                    background=label_background,
-                                                    foreground=text_colour,
-                                                    highlightbackground=label_background
-                                                    )
+            component_distribution_label = customtkinter.CTkLabel(entering_parameters_window,
+                                                                  height=1,
+                                                                  width=20,
+                                                                  text='Distribution',
+                                                                  background=label_background,
+                                                                  foreground=text_colour,
+                                                                  highlightbackground=label_background
+                                                                  )
 
             component_selected = tk.StringVar(entering_parameters_window)
             component_selected.set(components[0])
@@ -996,13 +1007,13 @@ def open_new_window(components,
                                                                                      ))
 
             for circuit_component in range(len(components)):
-                component_name_array[circuit_component] = tk.Label(entering_parameters_window,
-                                                                   height=1,
-                                                                   width=20,
-                                                                   text=components[circuit_component],
-                                                                   background=label_background,
-                                                                   foreground=text_colour
-                                                                   )
+                component_name_array[circuit_component] = customtkinter.CTkLabel(entering_parameters_window,
+                                                                                 height=1,
+                                                                                 width=20,
+                                                                                 text=components[circuit_component],
+                                                                                 background=label_background,
+                                                                                 foreground=text_colour
+                                                                                 )
 
                 component_distribution_array[circuit_component] = tk.Text(entering_parameters_window,
                                                                           height=1,
@@ -1010,13 +1021,13 @@ def open_new_window(components,
                                                                           bg="white"
                                                                           )
 
-                component_param1_label_array[circuit_component] = tk.Label(entering_parameters_window,
-                                                                           height=1,
-                                                                           width=20,
-                                                                           text='',
-                                                                           background=label_background,
-                                                                           foreground=text_colour
-                                                                           )
+                component_param1_label_array[circuit_component] = customtkinter.CTkLabel(entering_parameters_window,
+                                                                                         height=1,
+                                                                                         width=20,
+                                                                                         text='',
+                                                                                         background=label_background,
+                                                                                         foreground=text_colour
+                                                                                         )
 
                 component_param1_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
                                                                                              height=1,
@@ -1039,13 +1050,13 @@ def open_new_window(components,
 
                 component_param2_entry_box_array[circuit_component].configure(validatecommand=vcmd2)
 
-                component_param2_label_array[circuit_component] = tk.Label(entering_parameters_window,
-                                                                           height=1,
-                                                                           width=20,
-                                                                           text='',
-                                                                           background=label_background,
-                                                                           foreground=text_colour
-                                                                           )
+                component_param2_label_array[circuit_component] = customtkinter.CTkLabel(entering_parameters_window,
+                                                                                         height=1,
+                                                                                         width=20,
+                                                                                         text='',
+                                                                                         background=label_background,
+                                                                                         foreground=text_colour
+                                                                                         )
 
                 name_label_array[circuit_component] = customtkinter.CTkLabel(component_parameters_frame,
                                                                              width=100,
@@ -1085,8 +1096,8 @@ def open_new_window(components,
                 # Mean = 1
                 # Standard Deviation = 2
                 component_distribution_array[circuit_component].insert(tk.INSERT, 'Normal')
-                component_param1_label_array[circuit_component]['text'] = 'Mean (μ)'
-                component_param2_label_array[circuit_component]['text'] = 'Standard deviation (σ)'
+                component_param1_label_array[circuit_component].configure(text='Mean (μ)')
+                component_param2_label_array[circuit_component].configure(text= 'Standard deviation (σ)')
                 component_param1_entry_box_array[circuit_component].insert(0, '1')
                 component_param2_entry_box_array[circuit_component].insert(0, '2')
 
@@ -1119,8 +1130,8 @@ def open_new_window(components,
                                         component_selected.get(),
                                         distribution_selected.get(),
                                         component_distribution_array[component_index].get('1.0', tk.END).strip('\n'),
-                                        component_param1_label_array[component_index]['text'],
-                                        component_param2_label_array[component_index]['text'],
+                                        component_param1_label_array[component_index].__getattribute__('text'),
+                                        component_param2_label_array[component_index].__getattribute__('text'),
                                         component_param1_entry_box_array[component_index].get(),
                                         component_param2_entry_box_array[component_index].get(),
                                         component_index,
@@ -1383,10 +1394,11 @@ def save_all_entered_parameters(component_name,
                                        text='\n' + component_name[circuit_component]
                                        + '\nDistribution: ' +
                                        component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n')
-                                       + '\n' + component_param1_label_array[circuit_component]['text'] + '='
+                                       + '\n' +
+                                       component_param1_label_array[circuit_component].__getattribute__('text') + '='
                                        + str(component_param1_array[circuit_component].get())
-                                       + '\n' + component_param2_label_array[circuit_component]['text'] +
-                                       '=' + str(component_param2_array[circuit_component].get())
+                                       + '\n' + component_param2_label_array[circuit_component].__getattribute__('text')
+                                       + '=' + str(component_param2_array[circuit_component].get())
                                        + '\n'
                                        )
 
