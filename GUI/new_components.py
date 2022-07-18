@@ -3,7 +3,7 @@ import json
 import customtkinter
 from tkinter import filedialog as fd
 import ntpath
-import tkinterdnd2
+# import tkinterdnd2
 
 
 # ----------------------------------------------------------------------------------------------------------------------
