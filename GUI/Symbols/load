@@ -1,0 +1,196 @@
+{
+    "line": [
+        0,
+        48,
+        40,
+        8,
+        40,
+        8,
+        28,
+        12,
+        40,
+        8,
+        36,
+        20,
+        8,
+        8,
+        8,
+        56,
+        8,
+        56,
+        24,
+        56,
+        24,
+        56,
+        24,
+        8,
+        24,
+        8,
+        8,
+        8,
+        16,
+        0,
+        16,
+        8,
+        16,
+        56,
+        16,
+        64
+    ],
+    "tags": {
+        "activedash": [
+            "activedash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activefill": [
+            "activefill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activestipple": [
+            "activestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activewidth": [
+            "activewidth",
+            "",
+            "",
+            "0.0",
+            "0.0"
+        ],
+        "arrow": [
+            "arrow",
+            "",
+            "",
+            "none",
+            "none"
+        ],
+        "arrowshape": [
+            "arrowshape",
+            "",
+            "",
+            "8 10 3",
+            "8 10 3"
+        ],
+        "capstyle": [
+            "capstyle",
+            "",
+            "",
+            "butt",
+            "butt"
+        ],
+        "fill": [
+            "fill",
+            "",
+            "",
+            "SystemButtonText",
+            "SystemButtonText"
+        ],
+        "dash": [
+            "dash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "dashoffset": [
+            "dashoffset",
+            "",
+            "",
+            "0",
+            "0"
+        ],
+        "disableddash": [
+            "disableddash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledfill": [
+            "disabledfill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledstipple": [
+            "disabledstipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledwidth": [
+            "disabledwidth",
+            "",
+            "",
+            "0.0",
+            "0.0"
+        ],
+        "joinstyle": [
+            "joinstyle",
+            "",
+            "",
+            "round",
+            "round"
+        ],
+        "offset": [
+            "offset",
+            "",
+            "",
+            "0,0",
+            "0,0"
+        ],
+        "smooth": [
+            "smooth",
+            "",
+            "",
+            "0",
+            "0"
+        ],
+        "splinesteps": [
+            "splinesteps",
+            "",
+            "",
+            "12",
+            "12"
+        ],
+        "state": [
+            "state",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "stipple": [
+            "stipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "tags": [
+            "tags",
+            "",
+            "",
+            "",
+            "load.asy"
+        ],
+        "width": [
+            "width",
+            "",
+            "",
+            "1.0",
+            "1.0"
+        ]
+    }
+}

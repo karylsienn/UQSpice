@@ -7,6 +7,8 @@ from tkinter import filedialog as fd
 import ntpath
 import component_sketcher as comp
 import readers as read
+import tkinter_modification as tkmod
+import new_components as new_comp
 # from svglib.svglib import svg2rlg
 # from reportlab.graphics import renderPDF, renderPM
 # from PIL import Image, ImageTk
@@ -49,30 +51,85 @@ def remove_suffix(input_string, suffix):
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for Root starting window ------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def hide_schematic_window(root, schematic_analysis):
-    schematic_analysis.withdraw()
+def reopen_root_window(root, window_to_close):
+    window_to_close.withdraw()
     root.deiconify()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for Root starting window ------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+def open_new_components(root):
+    # ------------------------------------------- New Components Window Buttons ----------------------------------------
+    root.withdraw()
+    open_new_component_window = customtkinter.CTkToplevel()
+    open_new_component_window.title('Add a new component')
+    open_new_component_window.geometry('630x400')
+
+    # TODO: TRY USING SCREENINFO LIBRARY TO PLACE IN CENTRE OF SCREEN
+    open_new_component_width = 650  # width for the Tk schematic_analysis
+    open_new_component_height = 400  # height for the Tk schematic_analysis
+    # Find the location of the main schematic analysis window
+    screen_width = root.winfo_x()  # width of the screen
+    screen_height = root.winfo_y()  # height of the screen
+    # calculate x and y coordinates for the Tk schematic_analysis window
+    new_comp_window_x = screen_width - (open_new_component_width / 2)
+    new_comp_window_y = screen_height - (open_new_component_height / 2)
+
+    # set the dimensions of schematic analysis window and its position
+    open_new_component_window.geometry('%dx%d+%d+%d' % (open_new_component_width,
+                                                        open_new_component_height,
+                                                        new_comp_window_x,
+                                                        new_comp_window_y))
+    # Set minimum width and height of schematic_analysis window
+    open_new_component_window.minsize(open_new_component_width, open_new_component_height)
+
+    new_components_canvas = tkmod.ResizingCanvas(open_new_component_window)
+    button_frame = customtkinter.CTkFrame(open_new_component_window)
+    new_comp_instance = new_comp.NewComponents(new_components_canvas, open_new_component_window)
+
+    save_symbol_button = customtkinter.CTkButton(button_frame, text='Save Symbol',
+                                                 command=lambda: new_comp_instance.save_component())
+    open_symbol_button = customtkinter.CTkButton(button_frame, text='Open Symbol',
+                                                 command=lambda: new_comp_instance.open_component())
+    load_symbol_button = customtkinter.CTkButton(button_frame, text='Load Symbol',
+                                                 command=lambda: new_comp_instance.load_component())
+    delete_button = customtkinter.CTkButton(button_frame, text='Clear Canvas',
+                                            command=lambda: new_comp_instance.clear_canvas())
+    open_symbol_button.pack(side=tk.RIGHT, padx=10, pady=10)
+    save_symbol_button.pack(side=tk.RIGHT, padx=10, pady=10)
+    load_symbol_button.pack(side=tk.RIGHT, padx=10, pady=10)
+    delete_button.pack(side=tk.RIGHT, padx=10, pady=10)
+    button_frame.pack(side=tk.BOTTOM, fill=tk.X)
+    new_components_canvas.pack(expand=True, fill=tk.BOTH)
+
+    # Removing the root window if schematic analysis window has been destroyed
+    open_new_component_window.protocol("WM_DELETE_WINDOW", lambda: reopen_root_window(root, open_new_component_window))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Function for opening .asc file ----------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 def open_asc_file(root, schematic_analysis):
     root.withdraw()
+    # TODO: TRY USING SCREENINFO LIBRARY TO PLACE IN CENTRE OF SCREEN
     schematic_analysis_width = 1100  # width for the Tk schematic_analysis
     schematic_analysis_height = 750  # height for the Tk schematic_analysis
     # Find the location of the main schematic analysis window
-    screen_width = schematic_analysis.winfo_screenwidth()  # width of the screen
-    screen_height = schematic_analysis.winfo_screenheight()  # height of the screen
+    screen_width = root.winfo_x()  # width of the screen
+    screen_height = root.winfo_y()  # height of the screen
     # calculate x and y coordinates for the Tk schematic_analysis window
-    analysis_x = (screen_width / 2) - (schematic_analysis_width / 2) - (schematic_analysis_width / 3)
-    analysis_y = (screen_height / 2) - (schematic_analysis_height / 2) - (schematic_analysis_height / 3)
+    analysis_x = screen_width - (schematic_analysis_width / 2)
+    analysis_y = screen_height - (schematic_analysis_height / 2)
 
     # set the dimensions of schematic analysis window and its position
     schematic_analysis.geometry('%dx%d+%d+%d' % (schematic_analysis_width,
                                                  schematic_analysis_height,
                                                  analysis_x,
                                                  analysis_y))
+
+    # Set minimum width and height of schematic_analysis window
+    schematic_analysis.minsize(schematic_analysis_width, schematic_analysis_height)
 
     # Removing the root window if schematic analysis window has been destroyed
     schematic_analysis.protocol("WM_DELETE_WINDOW", lambda: root.destroy())
@@ -81,6 +138,9 @@ def open_asc_file(root, schematic_analysis):
     schematic_analysis.deiconify()
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Function for opening a .raw file --------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 def open_raw_file():
     """
     Event Function used when the button to open a .raw file is clicked.
@@ -243,7 +303,8 @@ def get_file_path(component_parameters_frame,
                   canvas,
                   schematic_analysis,
                   enter_parameters_button,
-                  entering_parameters_window):
+                  entering_parameters_window,
+                  root):
     """Obtains the file path selected from a dialog box, Event function for Open a schematic button.
 
         Parameters
@@ -316,13 +377,13 @@ def get_file_path(component_parameters_frame,
         ltspiceascfile.close()
 
         # Open and store all file data
-        with open(fpath, mode='r', encoding='cp1252') as file:
+        with open(fpath, mode='r', encoding=encoding, errors='replace') as file:
             schematic_data = file.read()
         file.close()
 
         # Remove all 'µ' and replace them with 'u'
         with open(new_schematic_file, mode='w', encoding=encoding) as clean_schematic_file:
-            clean_schematic_file.write(schematic_data.replace('µ', 'u'))
+            clean_schematic_file.write(schematic_data.replace('�', 'u'))
         clean_schematic_file.close()
 
         # Read clean file
@@ -336,7 +397,9 @@ def get_file_path(component_parameters_frame,
                              canvas,
                              schematic_analysis,
                              enter_parameters_button,
-                             entering_parameters_window)
+                             entering_parameters_window,
+                             root,
+                             encoding)
 
         # Display file path at the bottom of the window
         # l1 = Label(schematic_analysis, text="File path: " + file_path).pack()
@@ -356,11 +419,13 @@ def sketch_schematic_asc(schematic,
                          canvas,
                          schematic_analysis,
                          enter_parameters_button,
-                         entering_parameters_window):
+                         entering_parameters_window,
+                         root,
+                         encoding):
     """
     Sketches the LTSpice schematic provided from a given file path.
 
-    Parameters
+    Parameters:
         ----------
         schematic : file path obtained from file dialog box with extension (.asc)
 
@@ -401,6 +466,7 @@ def sketch_schematic_asc(schematic,
     npn_transistor = ''
     component_name_and_windows = ''
     comp_index = 0
+    circuit_symbols = ''
     # finds the connection wires in the circuit
     for lines in schematic:
 
@@ -423,6 +489,8 @@ def sketch_schematic_asc(schematic,
             diodes += lines.replace("SYMBOL diode ", '')
         if "SYMBOL npn " in lines:
             npn_transistor += lines.replace("SYMBOL npn ", '')
+        if "SYMBOL " in lines:
+            circuit_symbols += lines.replace("SYMBOL ", '').replace('\n', ' ')
 
         # Store all power flags used in the circuit
         if "FLAG" in lines:
@@ -448,7 +516,11 @@ def sketch_schematic_asc(schematic,
     # canvas_size = [int(size) for size in canvas_size]
     # print(canvas_size)
     # canvas.configure(scrollregion=(-canvas_size[0]//4, -canvas_size[1]//4, canvas_size[0]//4, canvas_size[1]//4))
-    print(component_name_and_windows)
+    circuit_symbols_list = circuit_symbols.split(' ')
+    circuit_symbols_list.pop()
+    for element in range(0, len(circuit_symbols_list), 4):
+        circuit_symbols_list[element + 1] = int(circuit_symbols_list[element + 1])
+        circuit_symbols_list[element + 2] = int(circuit_symbols_list[element + 2])
 
     # Store all component names and values
     component_name_and_values = component_name_and_values.split('\n')
@@ -479,7 +551,8 @@ def sketch_schematic_asc(schematic,
                                                                       schematic_analysis,
                                                                       component_parameters_frame,
                                                                       entering_parameters_window,
-                                                                      component_value_array))
+                                                                      component_value_array,
+                                                                      canvas))
 
     # Some components are drawn at negative values, which do not appear at all in the canvas, for this reason an
     # adjustment is made to all coordinates to move them into an area which can be displayed in.
@@ -533,48 +606,14 @@ def sketch_schematic_asc(schematic,
     # TODO: Implement remaining power flags
     modified_other_power_flags = [modification + adjustment for modification in other_power_flags]
 
-    # ------------------------------------------------ Drawing resistors -----------------------------------------------
-    drawn_resistors = len(modified_resistors) * [None]
-
     drawing_components = comp.ComponentSketcher(canvas)
-    drawing_components.sketch_components(modified_resistors, drawn_resistors, drawing_components.draw_resistor)
-
-    # ------------------------------------------------ Drawing Capacitors ----------------------------------------------
-    drawn_capacitors = len(modified_capacitors) * [None]
-    drawing_components.sketch_components(modified_capacitors, drawn_capacitors, drawing_components.draw_capacitor)
-
-    # ------------------------------------------------ Drawing Inductors -----------------------------------------------
-    drawn_inductors = len(modified_inductors) * [None]
-    drawing_components.sketch_components(modified_inductors, drawn_inductors, drawing_components.draw_inductor)
-
-    # ------------------------------------------------ Drawing Diodes --------------------------------------------------
-    drawn_diodes = len(modified_diodes) * [None]
-    drawing_components.sketch_components(modified_diodes, drawn_diodes, drawing_components.draw_diode)
-
     # -------------------------------------------- Drawing Grounds -----------------------------------------------------
     drawn_ground_flags = len(ground_flags) * [None]
     drawing_components.sketch_components(modified_ground_flags,
                                          drawn_ground_flags,
                                          drawing_components.draw_ground_flags)
 
-    # --------------------------------------------- Drawing npn transistors --------------------------------------------
-    drawn_npn_transistors = len(modified_npn_transistor) * [None]
-    drawing_components.sketch_components(modified_npn_transistor,
-                                         drawn_npn_transistors,
-                                         drawing_components.draw_npn_transistor)
-
-    # ----------------------------------------------- Drawing voltage sources ------------------------------------------
-    drawn_voltage_sources = len(modified_voltage_sources) * [None]
-    for vol_sources in range(0, len(modified_voltage_sources), 2):
-        drawn_voltage_sources[vol_sources] = canvas.create_circle(modified_voltage_sources[vol_sources],
-                                                                  modified_voltage_sources[vol_sources + 1] + 56,
-                                                                  40,
-                                                                  tags='schematic')
-
-    # Since voltage coordinates are going to be double the number of voltage sources,
-    # the for loop above is going to leave a lot of 'None' unchanged which needs to be removed
-    while None in drawn_voltage_sources:
-        drawn_voltage_sources.remove(None)
+    circuit_comps = new_comp.NewComponents(canvas, root)
 
     # ---------------------------------------------- Drawing Wires -----------------------------------------------------
     for coordinate in range(0, len(modified_coordinates), 4):
@@ -585,22 +624,28 @@ def sketch_schematic_asc(schematic,
                            modified_coordinates[coordinate + 3],
                            tags='schematic')
 
+    for symbol in range(0, len(circuit_symbols_list), 4):
+        circuit_comps.load_component(file_name=circuit_symbols_list[symbol],
+                                     x_coordinate=circuit_symbols_list[symbol + 1] + adjustment,
+                                     y_coordinate=circuit_symbols_list[symbol + 2] + adjustment,
+                                     encoding=encoding)
+
     # ------------------------------------ Binding events to drawn shapes ----------------------------------------------
 
-    # --------------------------- Making voltage sources change colour when hovered over -------------------------------
-    for vol_elements in drawn_voltage_sources:
-        canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg, canvas))
-        canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg, canvas))
-
-    while None in drawn_resistors:
-        drawn_resistors.remove(None)
-    # --------------------------- Making components open new window for entering parameters when -----------------------
-    # ------------------------------------ a the component has been left clicked ---------------------------------------
-    print(drawn_resistors)
-    for resistor_elements in drawn_resistors:
-        canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
-                        lambda event,
-                        elem=resistor_elements: on_resistor_press(event, elem, components, canvas))
+    # # --------------------------- Making voltage sources change colour when hovered over -------------------------------
+    # for vol_elements in drawn_voltage_sources:
+    #     canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg, canvas))
+    #     canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg, canvas))
+    #
+    # while None in drawn_resistors:
+    #     drawn_resistors.remove(None)
+    # # --------------------------- Making components open new window for entering parameters when -----------------------
+    # # ------------------------------------ a the component has been left clicked ---------------------------------------
+    # print(drawn_resistors)
+    # for resistor_elements in drawn_resistors:
+    #     canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
+    #                     lambda event,
+    #                     elem=resistor_elements: on_resistor_press(event, elem, components, canvas))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -701,9 +746,14 @@ def select_distribution_type(distribution_type,
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Check if entered parameters are numbers ---------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def if_number(parameter_value):
-
+def if_number(parameter_value, value_before):
+    print(value_before)
+    smaller_values_list = ['m', 'u', 'n', 'p', 'MEG']
+    print(parameter_value)
     if parameter_value.isdigit():
+        return True
+    # TODO: One last check to prevent p, m and u being all entered at the same time
+    if (parameter_value in smaller_values_list) and (parameter_value not in value_before):
         return True
     else:
         return False
@@ -825,7 +875,8 @@ def open_new_window(components,
                     schematic_analysis,
                     component_parameters_frame,
                     parameters_window,
-                    component_value_array):
+                    component_value_array,
+                    canvas):
 
     """Event function used to open enter parameter window when enter parameters button has been clicked
 
@@ -843,288 +894,298 @@ def open_new_window(components,
      component_value_array: Array which contains whether a component is a Constant (Value from LTSpice) or
                             Random (Selected According to user requirements) value
     """
-    # Creating a new window for entering parameters
-    # Check if entering parameters window is already open:
-    # if TRUE: lift it on top of schematic analysis window
-    global entering_parameters_window
-    if entering_parameters_window is not None and entering_parameters_window.winfo_exists():
-        entering_parameters_window.lift(schematic_analysis)
-        entering_parameters_window.wm_transient(schematic_analysis)
-    # if FALSE: Create a new enter parameters window
+    if components:
+        # Creating a new window for entering parameters
+        # Check if entering parameters window is already open:
+        # if TRUE: lift it on top of schematic analysis window
+        global entering_parameters_window
+        if entering_parameters_window is not None and entering_parameters_window.winfo_exists():
+            entering_parameters_window.lift(schematic_analysis)
+            entering_parameters_window.wm_transient(schematic_analysis)
+        # if FALSE: Create a new enter parameters window
+        else:
+            entering_parameters_window = customtkinter.CTkToplevel(schematic_analysis)
+
+            label_background = ''
+            text_colour = ''
+            global Mode
+            if Mode == 'dark':
+                label_background = '#212325'
+                outline = '#212325'
+                text_colour = 'white'
+            elif Mode == 'light':
+                label_background = '#EBEBEB'
+                outline = '#EBEBEB'
+                text_colour = 'black'
+
+            # sets the title of the new window created for entering parameters
+            entering_parameters_window.title("Enter Component Parameters")
+
+            # Find the location of the main schematic analysis window
+            schematic_x = schematic_analysis.winfo_x()
+            schematic_y = schematic_analysis.winfo_y()
+            # set the size and location of the new window created for entering parameters
+            entering_parameters_window.geometry("460x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
+            # make the entering parameters window on top of the main schematic analysis window
+            entering_parameters_window.wm_transient(schematic_analysis)
+
+            component_name_array = [None] * len(components)
+            component_distribution_array = [None] * len(components)
+            component_param1_entry_box_array = [None] * len(components)
+            component_param2_entry_box_array = [None] * len(components)
+            component_param1_label_array = [None] * len(components)
+            component_param2_label_array = [None] * len(components)
+            name_label_array = [None] * len(components)
+            component_full_information_array = [None] * len(components)
+            delete_button = [None] * len(components)
+            # Example Structure
+            # name: L1
+            # distribution: normal
+            # parameters:
+            # mu: 1    sd: 2
+
+            # Display names of the parameters using labels
+            # Which looks like the following:
+            # Component Name:
+            # Distribution:
+            # param1=
+            # param2=
+            component_name_array_label = tk.Label(entering_parameters_window,
+                                                  height=1,
+                                                  width=20,
+                                                  text='Component Name:',
+                                                  background=label_background,
+                                                  foreground=text_colour,
+                                                  highlightbackground=label_background
+                                                  )
+
+            component_distribution_label = tk.Label(entering_parameters_window,
+                                                    height=1,
+                                                    width=20,
+                                                    text='Distribution',
+                                                    background=label_background,
+                                                    foreground=text_colour,
+                                                    highlightbackground=label_background
+                                                    )
+
+            component_selected = tk.StringVar(entering_parameters_window)
+            component_selected.set(components[0])
+            distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
+            distribution_selected = tk.StringVar(entering_parameters_window)
+            distribution_selected.set(distributions[0])
+            comp_values = ['Constant', 'Random']
+            values_selected = tk.StringVar(entering_parameters_window)
+            values_selected.set(comp_values[0])
+            max_distribution_width = len(max(distributions, key=len))
+
+            # Drop down list for selecting which component to enter parameters for
+            component_drop_down_list = \
+                customtkinter.CTkOptionMenu(master=entering_parameters_window,
+                                            variable=component_selected,
+                                            values=components,
+                                            width=max_distribution_width,
+                                            command=lambda _: change_component_index(component_selected,
+                                                                                     values_selected,
+                                                                                     distribution_selected,
+                                                                                     component_distribution_array,
+                                                                                     component_param1_label_array,
+                                                                                     component_param2_label_array,
+                                                                                     component_param1_entry_box_array,
+                                                                                     component_param2_entry_box_array,
+                                                                                     components
+                                                                                     ))
+
+            for circuit_component in range(len(components)):
+                component_name_array[circuit_component] = tk.Label(entering_parameters_window,
+                                                                   height=1,
+                                                                   width=20,
+                                                                   text=components[circuit_component],
+                                                                   background=label_background,
+                                                                   foreground=text_colour
+                                                                   )
+
+                component_distribution_array[circuit_component] = tk.Text(entering_parameters_window,
+                                                                          height=1,
+                                                                          width=20,
+                                                                          bg="white"
+                                                                          )
+
+                component_param1_label_array[circuit_component] = tk.Label(entering_parameters_window,
+                                                                           height=1,
+                                                                           width=20,
+                                                                           text='',
+                                                                           background=label_background,
+                                                                           foreground=text_colour
+                                                                           )
+
+                component_param1_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
+                                                                                             height=1,
+                                                                                             width=20,
+                                                                                             text='',
+                                                                                             validate='key'
+                                                                                             )
+
+                vcmd1 = (component_param1_entry_box_array[circuit_component].register(if_number), '%S', '%s')
+                component_param1_entry_box_array[circuit_component].configure(validatecommand=vcmd1)
+
+                component_param2_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
+                                                                                             height=1,
+                                                                                             width=20,
+                                                                                             text='',
+                                                                                             validate='key'
+                                                                                             )
+
+                vcmd2 = (component_param2_entry_box_array[circuit_component].register(if_number), '%S', '%s')
+
+                component_param2_entry_box_array[circuit_component].configure(validatecommand=vcmd2)
+
+                component_param2_label_array[circuit_component] = tk.Label(entering_parameters_window,
+                                                                           height=1,
+                                                                           width=20,
+                                                                           text='',
+                                                                           background=label_background,
+                                                                           foreground=text_colour
+                                                                           )
+
+                name_label_array[circuit_component] = customtkinter.CTkLabel(component_parameters_frame,
+                                                                             width=100,
+                                                                             height=25,
+                                                                             highlightcolor='black',
+                                                                             borderwidth=1,
+                                                                             relief='solid',
+                                                                             justify='left',
+                                                                             text_color='black'
+                                                                             )
+
+                delete_button[circuit_component] = customtkinter.CTkButton(name_label_array[circuit_component],
+                                                                           text='x',
+                                                                           text_color='#A9A9A9',
+                                                                           width=20,
+                                                                           height=15,
+                                                                           bg_color='#212325',
+                                                                           fg_color='#212325',
+                                                                           hover_color='#E81123',
+                                                                           corner_radius=0,
+                                                                           border_width=0,
+                                                                           relief='flat',
+                                                                           command=lambda t=circuit_component:
+                                                                           delete_label(name_label_array,
+                                                                                        t,
+                                                                                        delete_button,
+                                                                                        all_component_parameters,
+                                                                                        components)
+                                                                           )
+
+                delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
+
+                # component_full_information_array[circuit_component] = tk.Entry(component_parameters_frame)
+
+                # Default parameters which are:
+                # distribution: Normal
+                # Mean = 1
+                # Standard Deviation = 2
+                component_distribution_array[circuit_component].insert(tk.INSERT, 'Normal')
+                component_param1_label_array[circuit_component]['text'] = 'Mean (μ)'
+                component_param2_label_array[circuit_component]['text'] = 'Standard deviation (σ)'
+                component_param1_entry_box_array[circuit_component].insert(0, '1')
+                component_param2_entry_box_array[circuit_component].insert(0, '2')
+
+            global component_index
+            component_index = 0
+
+            # Drop down list for selecting the type of distribution for random components
+            distribution_drop_down_list = \
+                customtkinter.CTkOptionMenu(master=entering_parameters_window,
+                                            variable=distribution_selected,
+                                            values=distributions,
+                                            width=max_distribution_width,
+                                            command=lambda _:
+                                            select_distribution_type(distribution_selected,
+                                                                     component_index,
+                                                                     component_distribution_array,
+                                                                     component_param1_label_array,
+                                                                     component_param2_label_array,
+                                                                     component_param1_entry_box_array,
+                                                                     component_param2_entry_box_array
+                                                                     ))
+
+            # Button for saving individual parameters
+            save_parameters_button = customtkinter.CTkButton(
+                entering_parameters_window,
+                text='Save Parameters',
+                command=lambda:
+                save_entered_parameters(entering_parameters_window,
+                                        values_selected,
+                                        component_selected.get(),
+                                        distribution_selected.get(),
+                                        component_distribution_array[component_index].get('1.0', tk.END).strip('\n'),
+                                        component_param1_label_array[component_index]['text'],
+                                        component_param2_label_array[component_index]['text'],
+                                        component_param1_entry_box_array[component_index].get(),
+                                        component_param2_entry_box_array[component_index].get(),
+                                        component_index,
+                                        name_label_array,
+                                        delete_button,
+                                        component_value_array,
+                                        components,
+                                        component_parameters_frame)
+            )
+
+            # Button for saving all parameters
+            save_all_parameters_button = customtkinter.CTkButton(
+                entering_parameters_window,
+                text='Save All Parameters',
+                command=lambda: save_all_entered_parameters(components,
+                                                            values_selected,
+                                                            component_distribution_array,
+                                                            component_param1_label_array,
+                                                            component_param2_label_array,
+                                                            component_param1_entry_box_array,
+                                                            component_param2_entry_box_array,
+                                                            name_label_array,
+                                                            component_value_array,
+                                                            component_parameters_frame,
+                                                            delete_button)
+            )
+
+            component_name_row = 3
+            distribution_row = 4
+            button_row = 10
+
+            # Button for closing window
+            cancel_button = customtkinter.CTkButton(entering_parameters_window,
+                                                    text='Cancel',
+                                                    command=lambda: close_window(entering_parameters_window))
+
+            # Component drop down list and component name label
+            component_name_array_label.grid(row=component_name_row, column=5, sticky='news')
+            component_drop_down_list.grid(row=component_name_row, column=6)
+
+            # Placing label and dropdown for distributions
+            component_distribution_label.grid(row=distribution_row, column=5, sticky='news')
+            distribution_drop_down_list.grid(row=distribution_row, column=6)
+
+            # Closing parameters window
+            cancel_button.grid(row=button_row, column=5)
+
+            # Saving Parameters button location in new window
+            save_parameters_button.grid(row=button_row, column=6)
+
+            # Saving All Parameters button location in new window
+            save_all_parameters_button.grid(row=button_row, column=7)
+
+            # Ensuring all widgets inside enter parameters window are resizable
+            entering_parameters_window.grid_rowconfigure(tuple(range(button_row)), weight=1)
+            entering_parameters_window.grid_columnconfigure(tuple(range(button_row)), weight=1)
     else:
-        entering_parameters_window = customtkinter.CTkToplevel(schematic_analysis)
-
-        label_background = ''
-        text_colour = ''
-        global Mode
-        if Mode == 'dark':
-            label_background = '#212325'
-            outline = '#212325'
-            text_colour = 'white'
-        elif Mode == 'light':
-            label_background = '#EBEBEB'
-            outline = '#EBEBEB'
-            text_colour = 'black'
-
-        # sets the title of the new window created for entering parameters
-        entering_parameters_window.title("Enter Component Parameters")
-
-        # Find the location of the main schematic analysis window
-        schematic_x = schematic_analysis.winfo_x()
-        schematic_y = schematic_analysis.winfo_y()
-        # set the size and location of the new window created for entering parameters
-        entering_parameters_window.geometry("460x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
-        # make the entering parameters window on top of the main schematic analysis window
-        entering_parameters_window.wm_transient(schematic_analysis)
-
-        component_name_array = [None] * len(components)
-        component_distribution_array = [None] * len(components)
-        component_param1_entry_box_array = [None] * len(components)
-        component_param2_entry_box_array = [None] * len(components)
-        component_param1_label_array = [None] * len(components)
-        component_param2_label_array = [None] * len(components)
-        name_label_array = [None] * len(components)
-        component_full_information_array = [None] * len(components)
-        delete_button = [None] * len(components)
-        # Example Structure
-        # name: L1
-        # distribution: normal
-        # parameters:
-        # mu: 1    sd: 2
-
-        # Display names of the parameters using labels
-        # Which looks like the following:
-        # Component Name:
-        # Distribution:
-        # param1=
-        # param2=
-        component_name_array_label = tk.Label(entering_parameters_window,
-                                              height=1,
-                                              width=20,
-                                              text='Component Name:',
-                                              background=label_background,
-                                              foreground=text_colour,
-                                              highlightbackground=label_background
-                                              )
-
-        component_distribution_label = tk.Label(entering_parameters_window,
-                                                height=1,
-                                                width=20,
-                                                text='Distribution',
-                                                background=label_background,
-                                                foreground=text_colour,
-                                                highlightbackground=label_background
-                                                )
-
-        component_selected = tk.StringVar(entering_parameters_window)
-        component_selected.set(components[0])
-        distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
-        distribution_selected = tk.StringVar(entering_parameters_window)
-        distribution_selected.set(distributions[0])
-        comp_values = ['Constant', 'Random']
-        values_selected = tk.StringVar(entering_parameters_window)
-        values_selected.set(comp_values[0])
-        max_distribution_width = len(max(distributions, key=len))
-
-        # Drop down list for selecting which component to enter parameters for
-        component_drop_down_list = \
-            customtkinter.CTkOptionMenu(master=entering_parameters_window,
-                                        variable=component_selected,
-                                        values=components,
-                                        width=max_distribution_width,
-                                        command=lambda _: change_component_index(component_selected,
-                                                                                 values_selected,
-                                                                                 distribution_selected,
-                                                                                 component_distribution_array,
-                                                                                 component_param1_label_array,
-                                                                                 component_param2_label_array,
-                                                                                 component_param1_entry_box_array,
-                                                                                 component_param2_entry_box_array,
-                                                                                 components
-                                                                                 ))
-
-        for circuit_component in range(len(components)):
-            component_name_array[circuit_component] = tk.Label(entering_parameters_window,
-                                                               height=1,
-                                                               width=20,
-                                                               text=components[circuit_component],
-                                                               background=label_background,
-                                                               foreground=text_colour
-                                                               )
-
-            component_distribution_array[circuit_component] = tk.Text(entering_parameters_window,
-                                                                      height=1,
-                                                                      width=20,
-                                                                      bg="white"
-                                                                      )
-
-            component_param1_label_array[circuit_component] = tk.Label(entering_parameters_window,
-                                                                       height=1,
-                                                                       width=20,
-                                                                       text='',
-                                                                       background=label_background,
-                                                                       foreground=text_colour
-                                                                       )
-
-            component_param1_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
-                                                                                         height=1,
-                                                                                         width=20,
-                                                                                         text='',
-                                                                                         validate='key'
-                                                                                         )
-
-            vcmd1 = (component_param1_entry_box_array[circuit_component].register(if_number), '%S')
-            component_param1_entry_box_array[circuit_component].configure(validatecommand=vcmd1)
-
-            component_param2_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
-                                                                                         height=1,
-                                                                                         width=20,
-                                                                                         text='',
-                                                                                         validate='key'
-                                                                                         )
-
-            vcmd2 = (component_param2_entry_box_array[circuit_component].register(if_number), '%S')
-
-            component_param2_entry_box_array[circuit_component].configure(validatecommand=vcmd2)
-
-            component_param2_label_array[circuit_component] = tk.Label(entering_parameters_window,
-                                                                       height=1,
-                                                                       width=20,
-                                                                       text='',
-                                                                       background=label_background,
-                                                                       foreground=text_colour
-                                                                       )
-
-            name_label_array[circuit_component] = customtkinter.CTkLabel(component_parameters_frame,
-                                                                         width=100,
-                                                                         height=25,
-                                                                         highlightcolor='black',
-                                                                         borderwidth=1,
-                                                                         relief='solid',
-                                                                         justify='left',
-                                                                         text_color='black'
-                                                                         )
-
-            delete_button[circuit_component] = customtkinter.CTkButton(name_label_array[circuit_component],
-                                                                       text='x',
-                                                                       text_color='#A9A9A9',
-                                                                       width=20,
-                                                                       height=15,
-                                                                       bg_color='#212325',
-                                                                       fg_color='#212325',
-                                                                       hover_color='#E81123',
-                                                                       corner_radius=0,
-                                                                       border_width=0,
-                                                                       relief='flat',
-                                                                       command=lambda t=circuit_component:
-                                                                       delete_label(name_label_array,
-                                                                                    t,
-                                                                                    delete_button,
-                                                                                    all_component_parameters,
-                                                                                    components)
-                                                                       )
-
-            delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
-
-            # component_full_information_array[circuit_component] = tk.Entry(component_parameters_frame)
-
-            # Default parameters which are:
-            # distribution: Normal
-            # Mean = 1
-            # Standard Deviation = 2
-            component_distribution_array[circuit_component].insert(tk.INSERT, 'Normal')
-            component_param1_label_array[circuit_component]['text'] = 'Mean (μ)'
-            component_param2_label_array[circuit_component]['text'] = 'Standard deviation (σ)'
-            component_param1_entry_box_array[circuit_component].insert(0, '1')
-            component_param2_entry_box_array[circuit_component].insert(0, '2')
-
-        global component_index
-        component_index = 0
-
-        # Drop down list for selecting the type of distribution for random components
-        distribution_drop_down_list = \
-            customtkinter.CTkOptionMenu(master=entering_parameters_window,
-                                        variable=distribution_selected,
-                                        values=distributions,
-                                        width=max_distribution_width,
-                                        command=lambda _:
-                                        select_distribution_type(distribution_selected,
-                                                                 component_index,
-                                                                 component_distribution_array,
-                                                                 component_param1_label_array,
-                                                                 component_param2_label_array,
-                                                                 component_param1_entry_box_array,
-                                                                 component_param2_entry_box_array
-                                                                 ))
-
-        # Button for saving individual parameters
-        save_parameters_button = customtkinter.CTkButton(
-            entering_parameters_window,
-            text='Save Parameters',
-            command=lambda:
-            save_entered_parameters(entering_parameters_window,
-                                    values_selected,
-                                    component_selected.get(),
-                                    distribution_selected.get(),
-                                    component_distribution_array[component_index].get('1.0', tk.END).strip('\n'),
-                                    component_param1_label_array[component_index]['text'],
-                                    component_param2_label_array[component_index]['text'],
-                                    component_param1_entry_box_array[component_index].get(),
-                                    component_param2_entry_box_array[component_index].get(),
-                                    component_index,
-                                    name_label_array,
-                                    delete_button,
-                                    component_value_array,
-                                    components,
-                                    component_parameters_frame)
-        )
-
-        # Button for saving all parameters
-        save_all_parameters_button = customtkinter.CTkButton(
-            entering_parameters_window,
-            text='Save All Parameters',
-            command=lambda: save_all_entered_parameters(components,
-                                                        values_selected,
-                                                        component_distribution_array,
-                                                        component_param1_label_array,
-                                                        component_param2_label_array,
-                                                        component_param1_entry_box_array,
-                                                        component_param2_entry_box_array,
-                                                        name_label_array,
-                                                        component_value_array,
-                                                        component_parameters_frame,
-                                                        delete_button)
-        )
-
-        component_name_row = 3
-        distribution_row = 4
-        button_row = 10
-
-        # Button for closing window
-        cancel_button = customtkinter.CTkButton(entering_parameters_window,
-                                                text='Cancel',
-                                                command=lambda: close_window(entering_parameters_window))
-
-        # Component drop down list and component name label
-        component_name_array_label.grid(row=component_name_row, column=5, sticky='news')
-        component_drop_down_list.grid(row=component_name_row, column=6)
-
-        # Placing label and dropdown for distributions
-        component_distribution_label.grid(row=distribution_row, column=5, sticky='news')
-        distribution_drop_down_list.grid(row=distribution_row, column=6)
-
-        # Closing parameters window
-        cancel_button.grid(row=button_row, column=5)
-
-        # Saving Parameters button location in new window
-        save_parameters_button.grid(row=button_row, column=6)
-
-        # Saving All Parameters button location in new window
-        save_all_parameters_button.grid(row=button_row, column=7)
-
-        # Ensuring all widgets inside enter parameters window are resizable
-        entering_parameters_window.grid_rowconfigure(tuple(range(button_row)), weight=1)
-        entering_parameters_window.grid_columnconfigure(tuple(range(button_row)), weight=1)
+        error_for_not_entering_schematic = \
+            canvas.create_window(400, 300,
+                                 window=tk.Label(canvas,
+                                                 text="Please select a schematic with components",
+                                                 width=40,
+                                                 font=("Times New Roman", 20),
+                                                 height=40),
+                                 tags='Error if schematic has no components')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1134,7 +1195,7 @@ def delete_label(label_to_remove, label_index, delete_label_button, all_stored_c
     """
     Event Function for when the delete button of label has been clicked
 
-    Parameters
+    Parameters:
         ------------------------------------------------
         label_index:  the index of the label to button has been clicked for
 
@@ -1383,6 +1444,7 @@ def close_window(window_to_close):
 # ----------------------------------- Function when no schematic selected ----------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def error_select_schematic(canvas):
+    canvas.delete("all")
     canvas.create_window(400, 300,
                          window=tk.Label(canvas,
                                          text="Please select a schematic",
@@ -1395,26 +1457,27 @@ def error_select_schematic(canvas):
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------- Function for entering component parameters ---------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-# Entering Component Parameters for all elements
-def component_parameters(components,
-                         canvas,
-                         schematic_analysis,
-                         component_parameters_frame,
-                         entering_parameters_window):
-    global all_component_parameters
-    component_value_array = ['Constant'] * len(components)
-    if len(components) != 0:
-        open_new_window(components,
-                        schematic_analysis,
-                        component_parameters_frame,
-                        entering_parameters_window,
-                        component_value_array)
-    else:
-        error_for_not_entering_schematic = \
-            canvas.create_window(400, 300,
-                                 window=tk.Label(canvas,
-                                                 text="Please select a schematic with components",
-                                                 width=40,
-                                                 font=("Times New Roman", 20),
-                                                 height=40),
-                                 tags='Error if schematic has no components')
+# # Entering Component Parameters for all elements
+# def component_parameters(components,
+#                          canvas,
+#                          schematic_analysis,
+#                          component_parameters_frame,
+#                          entering_parameters_window):
+#     global all_component_parameters
+#     component_value_array = ['Constant'] * len(components)
+#     if components:
+#         open_new_window(components,
+#                         schematic_analysis,
+#                         component_parameters_frame,
+#                         entering_parameters_window,
+#                         component_value_array,
+#                         canvas)
+#     else:
+#         error_for_not_entering_schematic = \
+#             canvas.create_window(400, 300,
+#                                  window=tk.Label(canvas,
+#                                                  text="Please select a schematic with components",
+#                                                  width=40,
+#                                                  font=("Times New Roman", 20),
+#                                                  height=40),
+#                                  tags='Error if schematic has no components')
