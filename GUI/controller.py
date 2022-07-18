@@ -35,10 +35,10 @@ root = customtkinter.CTk()
 schematic_analysis = customtkinter.CTkToplevel(root)
 schematic_analysis.withdraw()
 schematic_analysis.title('EMC Analysis')
-schematic_analysis_width = 1100  # width for the Tk schematic_analysis
-schematic_analysis_height = 750  # height for the Tk schematic_analysis
-root_width = 450
-root_height = 190
+root_width = 450  # width for the root window
+root_height = 190  # height for the root window
+new_components_width = 630  # width for adding new components window
+new_components_height = 400  # height for adding new components window
 
 # get screen width and height
 screen_width = schematic_analysis.winfo_screenwidth()  # width of the screen
@@ -48,18 +48,8 @@ screen_height = schematic_analysis.winfo_screenheight()  # height of the screen
 root_x = (screen_width/2) - (root_width/2) - (root_width/5)
 root_y = (screen_height/2) - (root_height/2) - (root_height/5)
 
-# calculate x and y coordinates for the Tk schematic_analysis window
-schematic_analysis_x = (screen_width/2) - (schematic_analysis_width/2) - (schematic_analysis_width/5)
-schematic_analysis_y = (screen_height/2) - (schematic_analysis_height/2) - (schematic_analysis_height/5)
 
-# set the dimensions of schematic_analysis window and its position
-schematic_analysis.geometry('%dx%d+%d+%d' % (schematic_analysis_width,
-                                             schematic_analysis_height,
-                                             schematic_analysis_x,
-                                             schematic_analysis_y))
 
-# Set minimum width and height of schematic_analysis window
-schematic_analysis.minsize(schematic_analysis.winfo_width(), schematic_analysis.winfo_height())
 
 # set the dimensions of root window and its position
 root.geometry('%dx%d+%d+%d' % (root_width, root_height, root_x, root_y))
@@ -155,7 +145,11 @@ fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
                                                              canvas,
                                                              schematic_analysis,
                                                              enter_parameters_button,
-                                                             entering_parameters_window))
+                                                             entering_parameters_window,
+                                                             root))
+
+fileMenu.add_command(label="Add a new component", font=FONT_SIZE,
+                     command=lambda: guievents.open_new_components(root))
 
 fileMenu.add_command(label="Exit",
                      font=FONT_SIZE,
@@ -191,7 +185,7 @@ menu.add_cascade(label="Help", font=FONT_SIZE, menu=helpMenu)
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-
+# --------------------------------------- Schematic Analysis Window Buttons --------------------------------------------
 # Select a schematic using a button
 openfile_button = customtkinter.CTkButton(schematic_analysis,
                                           text='Open a Schematic',
@@ -200,9 +194,11 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
                                                                                   canvas,
                                                                                   schematic_analysis,
                                                                                   enter_parameters_button,
-                                                                                  entering_parameters_window)
+                                                                                  entering_parameters_window,
+                                                                                  root)
                                           )
 
+# ------------------------------------------- Root Window Buttons ------------------------------------------------------
 graph_value = 0
 open_asc_file_button = customtkinter.CTkButton(root,
                                                text='Open LTspice Schematic .asc file',
@@ -210,15 +206,16 @@ open_asc_file_button = customtkinter.CTkButton(root,
 
 open_raw_file_button = customtkinter.CTkButton(root,
                                                text='Open LTspice Waveform .raw file',
-                                               command=guievents.open_raw_file)
+                                               command=lambda: guievents.open_raw_file())
 
 add_new_component_button = customtkinter.CTkButton(root,
                                                    text='Add new component',
-                                                   command=lambda: print("Add new component"))
+                                                   command=lambda: guievents.open_new_components(root))
 
 exit_app_button = customtkinter.CTkButton(root,
                                           text='Exit EMC Analysis',
                                           command=lambda: guievents.exit_application(root))
+
 
 # open file button, tab control and canvas location in schematic_analysis window
 enter_parameters_button.pack(padx=0, pady=10, side=tk.BOTTOM)
@@ -226,10 +223,16 @@ openfile_button.pack(padx=0, pady=2, side=tk.BOTTOM)
 tabControl.pack(expand=True, fill=tk.BOTH)
 schematic_canvas_frame.pack(side='left', fill=tk.BOTH, expand=True)
 canvas.pack(fill=tk.BOTH, expand=True)
+
+# separator = ttk.Separator(component_parameters_frame, orient='vertical')
+# separator.pack(fill='y')
+# TODO: Ensure Component Paramaters Frame, shows even when window is resized
 component_parameters_frame.pack(side='right', fill=tk.BOTH)
 component_parameters_frame.grid_columnconfigure(0, weight=1)
 component_parameters_frame.grid_rowconfigure(tuple(range(1000)), weight=1)
-component_parameters_frame.propagate(False)
+# Prevents Component parameters Frame From Resizing
+component_parameters_frame.pack_propagate(False)
+component_parameters_frame.grid_propagate(False)
 guievents.sketch_graphs(graph_value, graphs)
 
 # Root window widgets and items
