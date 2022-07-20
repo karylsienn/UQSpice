@@ -41,18 +41,18 @@ class ResizingCanvas(tk.Canvas):
     def do_zoom(self, event):
         x = self.canvasx(event.x)
         y = self.canvasy(event.y)
-        factor = 1.001 ** event.delta
+        factor = 1.0001 ** event.delta
         self.scale(tk.ALL, x, y, factor, factor)
         # Respond to Linux (event.num) or Windows (event.delta) wheel event
         if event.num == 5 or event.delta == -120:  # scroll down
             x = self.canvasx(event.x)
             y = self.canvasy(event.y)
-            factor = 1.001 ** event.delta/2
+            factor = 1.0001 ** event.delta/2
             self.scale(tk.ALL, x, y, factor, factor)
         if event.num == 4 or event.delta == 120:  # scroll up
             x = self.canvasx(event.x)
             y = self.canvasy(event.y)
-            factor = 1.001 ** event.delta*2
+            factor = 1.0001 ** event.delta*2
             self.scale(tk.ALL, x, y, factor, factor)
 
     def __init__(self, parent, **kwargs):
@@ -63,7 +63,6 @@ class ResizingCanvas(tk.Canvas):
         self.bind("<MouseWheel>", self.do_zoom)
         self.bind('<ButtonPress-1>', lambda event: self.scan_mark(event.x, event.y))
         self.bind("<B1-Motion>", lambda event: self.scan_dragto(event.x, event.y, gain=1))
-        # code for linux not yet implemented
         self.bind('<Button-5>', self.do_zoom)  # zoom for Linux, wheel scroll down
         self.bind('<Button-4>', self.do_zoom)  # zoom for Linux, wheel scroll up
 

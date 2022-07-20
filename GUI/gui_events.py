@@ -9,6 +9,8 @@ import component_sketcher as comp
 import readers as read
 import tkinter_modification as tkmod
 import new_components as new_comp
+from pynput import keyboard
+import math
 # from svglib.svglib import svg2rlg
 # from reportlab.graphics import renderPDF, renderPM
 # from PIL import Image, ImageTk
@@ -50,7 +52,7 @@ def remove_suffix(input_string, suffix):
     Used to remove a suffix in a string.
 
     NOTE: This is the same function as removesuffix in python 3.10. Its definition is used here to make it work for
-          python versions below 3.10.
+    python versions below 3.10.
 
     Parameters:
         ----------------------------------------
@@ -80,7 +82,7 @@ def open_new_components(root):
     open_new_component_window.title('Add a new component')
 
     # TODO: TRY USING SCREENINFO LIBRARY TO PLACE IN CENTRE OF SCREEN
-    open_new_component_width = 650  # width for the Tk schematic_analysis
+    open_new_component_width = 810  # width for the Tk schematic_analysis
     open_new_component_height = 400  # height for the Tk schematic_analysis
     # Find the location of the main schematic analysis window
     screen_width = root.winfo_x()  # width of the screen
@@ -106,11 +108,14 @@ def open_new_components(root):
                                                  command=lambda: new_comp_instance.save_component())
     open_symbol_button = customtkinter.CTkButton(button_frame, text='Open Symbol',
                                                  command=lambda: new_comp_instance.open_component())
+    open_folder_button = customtkinter.CTkButton(button_frame, text='Open Folder',
+                                                 command=lambda: new_comp_instance.open_folder())
     load_symbol_button = customtkinter.CTkButton(button_frame, text='Load Symbol',
                                                  command=lambda: new_comp_instance.load_component())
     delete_button = customtkinter.CTkButton(button_frame, text='Clear Canvas',
                                             command=lambda: new_comp_instance.clear_canvas())
     open_symbol_button.pack(side=tk.RIGHT, padx=10, pady=10)
+    open_folder_button.pack(side=tk.RIGHT, padx=10, pady=10)
     save_symbol_button.pack(side=tk.RIGHT, padx=10, pady=10)
     load_symbol_button.pack(side=tk.RIGHT, padx=10, pady=10)
     delete_button.pack(side=tk.RIGHT, padx=10, pady=10)
@@ -463,44 +468,25 @@ def sketch_schematic_asc(schematic,
 
     # Clear all previous drawn wires, components, power flags, voltage sources, etc.
     wires = ''
-    canvas_size = ''
-    voltage_sources = ''
     components = ''
     component_name_and_values = ''
     comp_values_list = []
     power_flags = ''
-    resistors = ''
-    capacitors = ''
-    inductors = ''
-    diodes = ''
-    npn_transistor = ''
     component_name_and_windows = ''
     comp_index = 0
     circuit_symbols = ''
-    # finds the connection wires in the circuit
+
     for lines in schematic:
 
         # Store all connection wires
         if "WIRE" in lines:
             wires += lines.replace("WIRE ", '')
-        if "SHEET" in lines:
-            canvas_size += lines.replace("SHEET 1 ", '')
 
         # Store all components
-        if "SYMBOL voltage " in lines:
-            voltage_sources += lines.replace("SYMBOL voltage ", '')
-        if "SYMBOL res " in lines:
-            resistors += lines.replace("SYMBOL res ", '')
-        if "SYMBOL cap " in lines:
-            capacitors += lines.replace("SYMBOL cap ", '')
-        if "SYMBOL ind " in lines:
-            inductors += lines.replace("SYMBOL ind ", '')
-        if "SYMBOL diode " in lines:
-            diodes += lines.replace("SYMBOL diode ", '')
-        if "SYMBOL npn " in lines:
-            npn_transistor += lines.replace("SYMBOL npn ", '')
         if "SYMBOL " in lines:
-            circuit_symbols += lines.replace("SYMBOL ", '').replace('\n', ' ')
+            circuit_symbols += lines.replace("SYMBOL ", '').replace('\n', ' ')\
+                                                           .replace('Comparators\\', '')\
+                                                           .replace('OpAmps\\', '')
 
         # Store all power flags used in the circuit
         if "FLAG" in lines:
@@ -520,12 +506,6 @@ def sketch_schematic_asc(schematic,
     # Used for testing window attribute
     # canvas.create_rectangle(24 + 150, 56 + 150, 24 + 150 + 20, 8 + 150)
     # ------------------------------------------Cleaning and filtering of elements--------------------------------------
-    # Find canvas size to center image
-    # TODO: USE CANVAS SIZE FROM LTSPICE SCHEMATIC
-    # canvas_size = canvas_size.split(" ")
-    # canvas_size = [int(size) for size in canvas_size]
-    # print(canvas_size)
-    # canvas.configure(scrollregion=(-canvas_size[0]//4, -canvas_size[1]//4, canvas_size[0]//4, canvas_size[1]//4))
     circuit_symbols_list = circuit_symbols.split(' ')
     circuit_symbols_list.pop()
     for element in range(0, len(circuit_symbols_list), 4):
@@ -567,24 +547,6 @@ def sketch_schematic_asc(schematic,
     # Some components are drawn at negative values, which do not appear at all in the canvas, for this reason an
     # adjustment is made to all coordinates to move them into an area which can be displayed in.
     adjustment = 150
-    # ------------------------------------ Separating npn transistors --------------------------------------------------
-    modified_npn_transistor = filter_components(npn_transistor, adjustment)
-
-    # ------------------------------------------ Separating Resistors --------------------------------------------------
-    modified_resistors = filter_components(resistors, adjustment)
-
-    # ------------------------------------------ Separating Capacitors -------------------------------------------------
-    modified_capacitors = filter_components(capacitors, adjustment)
-
-    # ------------------------------------------ Separating Inductors --------------------------------------------------
-    modified_inductors = filter_components(inductors, adjustment)
-
-    # ------------------------------------------ Separating Diodes -----------------------------------------------------
-    modified_diodes = filter_components(diodes, adjustment)
-
-    # ------------------------------------------ Separating voltage sources --------------------------------------------
-    modified_voltage_sources = filter_components(voltage_sources, adjustment)
-
     # -------------------------------------------- Separating Wires ----------------------------------------------------
     modified_coordinates = filter_components(wires, adjustment)
 
@@ -597,6 +559,7 @@ def sketch_schematic_asc(schematic,
 
     # If a flag has the value '0' this means it ground
     # If a flag has ANY value OTHER THAN '0' this means it is NOT a ground
+    print(power_flags)
     for flag_coordinates in range(2, len(power_flags), 3):
         # Store all ground power flags
         if power_flags[flag_coordinates] == '0':
@@ -606,15 +569,17 @@ def sketch_schematic_asc(schematic,
         elif power_flags[flag_coordinates] != '0':
             other_power_flags.append(power_flags[flag_coordinates - 2])
             other_power_flags.append(power_flags[flag_coordinates - 1])
+            other_power_flags.append(power_flags[flag_coordinates])
 
     ground_flags = [int(coordinate) for coordinate in ground_flags]
-    other_power_flags = [int(coordinate) for coordinate in other_power_flags]
+
+    for power_flag in range(0, len(other_power_flags), 3):
+        other_power_flags[power_flag] = int(other_power_flags[power_flag]) + adjustment
+        other_power_flags[power_flag + 1] = int(other_power_flags[power_flag + 1]) + adjustment
+
+    print('other power flags:', end='')
     print(other_power_flags)
     modified_ground_flags = [modification + adjustment for modification in ground_flags]
-
-    # -------------------------------------- Power flags other than ground ---------------------------------------------
-    # TODO: Implement remaining power flags
-    modified_other_power_flags = [modification + adjustment for modification in other_power_flags]
 
     drawing_components = comp.ComponentSketcher(canvas)
     # -------------------------------------------- Drawing Grounds -----------------------------------------------------
@@ -622,8 +587,6 @@ def sketch_schematic_asc(schematic,
     drawing_components.sketch_components(modified_ground_flags,
                                          drawn_ground_flags,
                                          drawing_components.draw_ground_flags)
-
-    circuit_comps = new_comp.NewComponents(canvas, root)
 
     # ---------------------------------------------- Drawing Wires -----------------------------------------------------
     for coordinate in range(0, len(modified_coordinates), 4):
@@ -633,6 +596,28 @@ def sketch_schematic_asc(schematic,
                            modified_coordinates[coordinate + 2],
                            modified_coordinates[coordinate + 3],
                            tags='schematic')
+
+    # -------------------------------------------- Drawing Other Power Flags -------------------------------------------
+    # TODO: Implement remaining power flags
+    # angle = 0
+    # angle = math.radians(angle)
+    # cos_val = math.cos(angle)
+    # sin_val = math.sin(angle)
+    # x_old = other_power_flags[0]
+    # y_old = other_power_flags[1]
+    # centre_x = ((other_power_flags[0] - (other_power_flags[0] + 75))/2)
+    # centre_y = (other_power_flags[1])
+    for power_flag in range(0, len(other_power_flags), 3):
+        # other_power_flags[power_flag] = other_power_flags[power_flag] - centre_x
+        # other_power_flags[power_flag + 1] = other_power_flags[power_flag + 1] - centre_y
+        # x_new = other_power_flags[power_flag] * cos_val - other_power_flags[power_flag + 1] * sin_val
+        # y_new = other_power_flags[power_flag] * sin_val - other_power_flags[power_flag + 1] * cos_val
+
+        drawing_components.draw_other_power_flags(start_coordinate_x=other_power_flags[power_flag],
+                                                  start_coordinate_y=other_power_flags[power_flag + 1],
+                                                  power_flag=other_power_flags[power_flag + 2])
+
+    circuit_comps = new_comp.NewComponents(canvas, root)
 
     for symbol in range(0, len(circuit_symbols_list), 4):
         circuit_comps.load_component(file_name=circuit_symbols_list[symbol],
@@ -663,14 +648,15 @@ def sketch_schematic_asc(schematic,
 # ----------------------------------------------------------------------------------------------------------------------
 # Function when the selected component has been changed from dropdown list
 def change_component_index(component_selected,
-                           value_selected,
                            distribution_type,
                            component_distribution_array,
                            component_param1_label_array,
                            component_param2_label_array,
                            component_param1_array,
                            component_param2_array,
-                           components
+                           components,
+                           param1_prefix_drop_down_list,
+                           param2_prefix_drop_down_list
                            ):
     global component_index
     for comp_index in range(len(components)):
@@ -703,12 +689,16 @@ def change_component_index(component_selected,
             component_param1_label_array[labels].grid(row=6, column=5, sticky='nsew')
             component_param2_label_array[labels].grid(row=7, column=5, sticky='nsew')
             component_param1_array[labels].grid(row=6, column=6, sticky='nsew')
+            param1_prefix_drop_down_list[labels].grid(row=6, column=7, sticky='n')
             component_param2_array[labels].grid(row=7, column=6, sticky='nsew')
+            param2_prefix_drop_down_list[labels].grid(row=7, column=7, sticky='n')
         else:
             component_param1_label_array[labels].grid_remove()
             component_param2_label_array[labels].grid_remove()
             component_param1_array[labels].grid_remove()
+            param1_prefix_drop_down_list[labels].grid_remove()
             component_param2_array[labels].grid_remove()
+            param2_prefix_drop_down_list[labels].grid_remove()
 
 
 # Function when the selected distribution for the component has been changed from dropdown list
@@ -718,7 +708,9 @@ def select_distribution_type(distribution_type,
                              parameter1_label,
                              parameter2_label,
                              param1_array,
-                             param2_array
+                             param2_array,
+                             param1_prefix_drop_down_list,
+                             param2_prefix_drop_down_list
                              ):
     # Check which distribution has been selected and change the parameters accordingly
     component_distribution[index_of_selected_component].delete('1.0', tk.END)
@@ -743,14 +735,16 @@ def select_distribution_type(distribution_type,
             parameter1_label[labels].grid(row=6, column=5, sticky='nsew')
             parameter2_label[labels].grid(row=7, column=5, sticky='nsew')
             param1_array[labels].grid(row=6, column=6, sticky='nsew')
+            param1_prefix_drop_down_list[labels].grid(row=6, column=7, sticky='n')
             param2_array[labels].grid(row=7, column=6, sticky='nsew')
+            param2_prefix_drop_down_list[labels].grid(row=7, column=7, sticky='n')
         else:
             parameter1_label[labels].grid_remove()
             parameter2_label[labels].grid_remove()
             param1_array[labels].grid_remove()
+            param1_prefix_drop_down_list[labels].grid_remove()
             param2_array[labels].grid_remove()
-
-    print(distribution_type.get())
+            param2_prefix_drop_down_list[labels].grid_remove()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -758,14 +752,20 @@ def select_distribution_type(distribution_type,
 # ----------------------------------------------------------------------------------------------------------------------
 def if_number(parameter_value, value_before):
     print(value_before)
-    smaller_values_list = ['m', 'u', 'n', 'p', 'k', 'M', 'G', '         ']
+    smaller_values_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.']
+    decimal = '.'
     print(parameter_value)
-    matches = [a for a in smaller_values_list if a in value_before]
+    # matches = [a for a in smaller_values_list if a in value_before]
+    # values = [b for b in value_before if b in smaller_values_list]
+    # print(values)
+
     # TODO: Remove characters entered when backspace is used
-    if parameter_value.isdigit():
+    if parameter_value in smaller_values_list:
         return True
-    if (parameter_value in smaller_values_list) and (parameter_value not in value_before) and len(matches) == 0:
-        return True
+    # if parameter_value == decimal or decimal not in value_before:
+    #     return True
+    # elif (parameter_value in smaller_values_list) and (parameter_value not in value_before) and len(matches) == 0:
+    #     return True
     else:
         return False
 
@@ -947,6 +947,8 @@ def open_new_window(components,
             component_param1_label_array = [None] * len(components)
             component_param2_label_array = [None] * len(components)
             name_label_array = [None] * len(components)
+            param1_prefix_drop_down_list_array = [None] * len(components)
+            param2_prefix_drop_down_list_array = [None] * len(components)
             component_full_information_array = [None] * len(components)
             delete_button = [None] * len(components)
             # Example Structure
@@ -984,27 +986,12 @@ def open_new_window(components,
             distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
             distribution_selected = tk.StringVar(entering_parameters_window)
             distribution_selected.set(distributions[0])
-            comp_values = ['Constant', 'Random']
-            values_selected = tk.StringVar(entering_parameters_window)
-            values_selected.set(comp_values[0])
+            prefixes = ['None', 'm', 'μ', 'n', 'p', 'f', 'K', 'MEG', 'G', 'T']
+            param1_prefix_selected = tk.StringVar(entering_parameters_window)
+            param1_prefix_selected.set(prefixes[0])
+            param2_prefix_selected = tk.StringVar(entering_parameters_window)
+            param2_prefix_selected.set(prefixes[0])
             max_distribution_width = len(max(distributions, key=len))
-
-            # Drop down list for selecting which component to enter parameters for
-            component_drop_down_list = \
-                customtkinter.CTkOptionMenu(master=entering_parameters_window,
-                                            variable=component_selected,
-                                            values=components,
-                                            width=max_distribution_width,
-                                            command=lambda _: change_component_index(component_selected,
-                                                                                     values_selected,
-                                                                                     distribution_selected,
-                                                                                     component_distribution_array,
-                                                                                     component_param1_label_array,
-                                                                                     component_param2_label_array,
-                                                                                     component_param1_entry_box_array,
-                                                                                     component_param2_entry_box_array,
-                                                                                     components
-                                                                                     ))
 
             for circuit_component in range(len(components)):
                 component_name_array[circuit_component] = customtkinter.CTkLabel(entering_parameters_window,
@@ -1036,7 +1023,9 @@ def open_new_window(components,
                                                                                              validate='key'
                                                                                              )
 
-                vcmd1 = (component_param1_entry_box_array[circuit_component].register(if_number), '%S', '%s')
+                vcmd1 = (component_param1_entry_box_array[circuit_component].register(if_number),
+                         '%S',
+                         '%s')
                 component_param1_entry_box_array[circuit_component].configure(validatecommand=vcmd1)
 
                 component_param2_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
@@ -1046,7 +1035,9 @@ def open_new_window(components,
                                                                                              validate='key'
                                                                                              )
 
-                vcmd2 = (component_param2_entry_box_array[circuit_component].register(if_number), '%S', '%s')
+                vcmd2 = (component_param2_entry_box_array[circuit_component].register(if_number),
+                         '%S',
+                         '%s')
 
                 component_param2_entry_box_array[circuit_component].configure(validatecommand=vcmd2)
 
@@ -1057,6 +1048,19 @@ def open_new_window(components,
                                                                                          background=label_background,
                                                                                          foreground=text_colour
                                                                                          )
+                # Drop down list for selecting prefixes
+                param1_prefix_drop_down_list_array[circuit_component] = \
+                    customtkinter.CTkOptionMenu(master=entering_parameters_window,
+                                                variable=param1_prefix_selected,
+                                                values=prefixes,
+                                                width=max_distribution_width)
+
+                # Drop down list for selecting prefixes
+                param2_prefix_drop_down_list_array[circuit_component] = \
+                    customtkinter.CTkOptionMenu(master=entering_parameters_window,
+                                                variable=param2_prefix_selected,
+                                                values=prefixes,
+                                                width=max_distribution_width)
 
                 name_label_array[circuit_component] = customtkinter.CTkLabel(component_parameters_frame,
                                                                              width=100,
@@ -1104,6 +1108,23 @@ def open_new_window(components,
             global component_index
             component_index = 0
 
+            # Drop down list for selecting which component to enter parameters for
+            component_drop_down_list = \
+                customtkinter.CTkOptionMenu(master=entering_parameters_window,
+                                            variable=component_selected,
+                                            values=components,
+                                            width=max_distribution_width,
+                                            command=lambda _: change_component_index(component_selected,
+                                                                                     distribution_selected,
+                                                                                     component_distribution_array,
+                                                                                     component_param1_label_array,
+                                                                                     component_param2_label_array,
+                                                                                     component_param1_entry_box_array,
+                                                                                     component_param2_entry_box_array,
+                                                                                     components,
+                                                                                     param1_prefix_drop_down_list_array,
+                                                                                     param2_prefix_drop_down_list_array
+                                                                                     ))
             # Drop down list for selecting the type of distribution for random components
             distribution_drop_down_list = \
                 customtkinter.CTkOptionMenu(master=entering_parameters_window,
@@ -1117,7 +1138,9 @@ def open_new_window(components,
                                                                      component_param1_label_array,
                                                                      component_param2_label_array,
                                                                      component_param1_entry_box_array,
-                                                                     component_param2_entry_box_array
+                                                                     component_param2_entry_box_array,
+                                                                     param1_prefix_drop_down_list_array,
+                                                                     param2_prefix_drop_down_list_array
                                                                      ))
 
             # Button for saving individual parameters
@@ -1126,7 +1149,6 @@ def open_new_window(components,
                 text='Save Parameters',
                 command=lambda:
                 save_entered_parameters(entering_parameters_window,
-                                        values_selected,
                                         component_selected.get(),
                                         distribution_selected.get(),
                                         component_distribution_array[component_index].get('1.0', tk.END).strip('\n'),
@@ -1139,7 +1161,9 @@ def open_new_window(components,
                                         delete_button,
                                         component_value_array,
                                         components,
-                                        component_parameters_frame)
+                                        component_parameters_frame,
+                                        param1_prefix_drop_down_list_array,
+                                        param2_prefix_drop_down_list_array)
             )
 
             # Button for saving all parameters
@@ -1147,7 +1171,6 @@ def open_new_window(components,
                 entering_parameters_window,
                 text='Save All Parameters',
                 command=lambda: save_all_entered_parameters(components,
-                                                            values_selected,
                                                             component_distribution_array,
                                                             component_param1_label_array,
                                                             component_param2_label_array,
@@ -1156,7 +1179,9 @@ def open_new_window(components,
                                                             name_label_array,
                                                             component_value_array,
                                                             component_parameters_frame,
-                                                            delete_button)
+                                                            delete_button,
+                                                            param1_prefix_drop_down_list_array,
+                                                            param2_prefix_drop_down_list_array)
             )
 
             component_name_row = 3
@@ -1243,7 +1268,6 @@ def delete_label(label_to_remove, label_index, delete_label_button, all_stored_c
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for closing new windows using a  button
 def save_entered_parameters(entering_parameters_window,
-                            component_value,
                             component_name,
                             selected_distribution,
                             component_distribution,
@@ -1256,7 +1280,9 @@ def save_entered_parameters(entering_parameters_window,
                             delete_label_button,
                             component_value_array,
                             components,
-                            component_parameters_frame):
+                            component_parameters_frame,
+                            prefix1,
+                            prefix2):
     global all_component_parameters
     global component_index
 
@@ -1274,11 +1300,51 @@ def save_entered_parameters(entering_parameters_window,
             component_param1_dictionary_input = 'alpha'
             component_param2_dictionary_input = 'beta'
 
+        component_param1 = float(component_param1)
+        component_param2 = float(component_param2)
+        if prefix1[index].get() == 'm':
+            component_param1 = component_param1 / 1000
+        elif prefix1[index].get() == 'μ':
+            component_param1 = component_param1 / 1000000
+        elif prefix1[index].get() == 'n':
+            component_param1 = component_param1 / 1000000000
+        elif prefix1[index].get() == 'p':
+            component_param1 = component_param1 / 1000000000000
+        elif prefix1[index].get() == 'f':
+            component_param1 = component_param1 / 1000000000000000
+        elif prefix1[index].get() == 'K':
+            component_param1 = component_param1 * 1000
+        elif prefix1[index].get() == 'MEG':
+            component_param1 = component_param1 * 1000000
+        elif prefix1[index].get() == 'G':
+            component_param1 = component_param1 * 1000000000
+        elif prefix1[index].get() == 'T':
+            component_param1 = component_param1 * 1000000000000
+
+        if prefix2[index].get() == 'm':
+            component_param2 = component_param2 / 1000
+        elif prefix2[index].get() == 'μ':
+            component_param2 = component_param2 / 1000000
+        elif prefix2[index].get() == 'n':
+            component_param2 = component_param2 / 1000000000
+        elif prefix2[index].get() == 'p':
+            component_param2 = component_param2 / 1000000000000
+        elif prefix2[index].get() == 'f':
+            component_param2 = component_param2 / 1000000000000000
+        elif prefix2[index].get() == 'K':
+            component_param2 = component_param2 * 1000
+        elif prefix2[index].get() == 'MEG':
+            component_param2 = component_param2 * 1000000
+        elif prefix2[index].get() == 'G':
+            component_param2 = component_param2 * 1000000000
+        elif prefix2[index].get() == 'T':
+            component_param2 = component_param2 * 1000000000000
+
         if len(all_component_parameters) == 0:
             all_component_parameters.append({component_name:
                                             {'distribution': component_distribution,
-                                             'parameters': {component_param1_dictionary_input: str(component_param1),
-                                                            component_param2_dictionary_input: str(component_param2)}
+                                             'parameters': {component_param1_dictionary_input: component_param1,
+                                                            component_param2_dictionary_input: component_param2}
                                              }
                                              }
                                             )
@@ -1329,7 +1395,7 @@ def save_entered_parameters(entering_parameters_window,
                                           + '\n')
 
     # If value is constant just display the label only.
-    elif component_value.get() == 'Constant':
+    elif component_value_array[index] == 'Constant':
         full_name_labels[index].configure(text='')
 
         full_name_labels[index].configure(text='\n' + component_name +
@@ -1347,12 +1413,13 @@ def save_entered_parameters(entering_parameters_window,
 
     full_name_labels[component_index].grid(row=component_index, column=1, sticky='nsew')
 
+    print(all_component_parameters)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for saving all parameters ------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def save_all_entered_parameters(component_name,
-                                value,
                                 component_distribution_array,
                                 component_param1_label_array,
                                 component_param2_label_array,
@@ -1361,7 +1428,9 @@ def save_all_entered_parameters(component_name,
                                 full_name_labels,
                                 component_value_array,
                                 component_parameters_frame,
-                                delete_button
+                                delete_button,
+                                prefix1,
+                                prefix2
                                 ):
     global all_component_parameters
     all_component_parameters.clear()
@@ -1389,6 +1458,47 @@ def save_all_entered_parameters(component_name,
             full_name_labels[circuit_component].configure(borderwidth=1)
             full_name_labels[circuit_component].configure(text='')
 
+            param1 = float(component_param1_array[circuit_component].get())
+            param2 = float(component_param2_array[circuit_component].get())
+
+            if prefix1[circuit_component].get() == 'm':
+                param1 = param1 / 1000
+            elif prefix1[circuit_component].get() == 'μ':
+                param1 = param1 / 1000000
+            elif prefix1[circuit_component].get() == 'n':
+                param1 = param1 / 1000000000
+            elif prefix1[circuit_component].get() == 'p':
+                param1 = param1/ 1000000000000
+            elif prefix1[circuit_component].get() == 'f':
+                param1 = param1 / 1000000000000000
+            elif prefix1[circuit_component].get() == 'K':
+                param1 = param1 * 1000
+            elif prefix1[circuit_component].get() == 'MEG':
+                param1 = param1 * 1000000
+            elif prefix1[circuit_component].get() == 'G':
+                param1 = param1 * 1000000000
+            elif prefix1[circuit_component].get() == 'T':
+                param1 = param1 * 1000000000000
+
+            if prefix2[circuit_component].get() == 'm':
+                param2 = param2 / 1000
+            elif prefix2[circuit_component].get() == 'μ':
+                param2 = param2 / 1000000
+            elif prefix2[circuit_component].get() == 'n':
+                param2 = param2 / 1000000000
+            elif prefix2[circuit_component].get() == 'p':
+                param2 = param2 / 1000000000000
+            elif prefix2[circuit_component].get() == 'f':
+                param2 = param2 / 1000000000000000
+            elif prefix2[circuit_component].get() == 'K':
+                param2 = param2 * 1000
+            elif prefix2[circuit_component].get() == 'MEG':
+                param2 = param2 * 1000000
+            elif prefix2[circuit_component].get() == 'G':
+                param2 = param2 * 1000000000
+            elif prefix2[circuit_component].get() == 'T':
+                param2 = param2 * 1000000000000
+
             # Storing the name label of all parameters
             full_name_labels[circuit_component].configure(
                                        text='\n' + component_name[circuit_component]
@@ -1396,9 +1506,9 @@ def save_all_entered_parameters(component_name,
                                        component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n')
                                        + '\n' +
                                        component_param1_label_array[circuit_component].__getattribute__('text') + '='
-                                       + str(component_param1_array[circuit_component].get())
+                                       + str(param1)
                                        + '\n' + component_param2_label_array[circuit_component].__getattribute__('text')
-                                       + '=' + str(component_param2_array[circuit_component].get())
+                                       + '=' + str(param2)
                                        + '\n'
                                        )
 
@@ -1414,10 +1524,10 @@ def save_all_entered_parameters(component_name,
                   'parameters': {
                    # Parameter 1 name and user entered number
                    component_param1_dictionary_input[circuit_component]:
-                   component_param1_array[circuit_component].get(),
+                   param1,
                    # Parameter 2 name and user entered number
                    component_param2_dictionary_input[circuit_component]:
-                   component_param2_array[circuit_component].get()}
+                   param2}
                   }
                  }
             )

@@ -118,6 +118,23 @@ class NewComponents:
                                                  items['rectangle'][rectangle + 2] + x_coordinate,
                                                  items['rectangle'][rectangle + 3] + y_coordinate,
                                                  tags=file_name + '.asy')
+            if item == 'arc':
+                for arc in range(0, len(items['arc']), 8):
+                    self.canvas.create_arc(items['arc'][arc] + x_coordinate,
+                                           items['arc'][arc + 1] + y_coordinate,
+                                           items['arc'][arc + 2] + x_coordinate,
+                                           items['arc'][arc + 3] + y_coordinate,
+                                           style=tk.ARC,
+                                           start=270,
+                                           tags=file_name + '.asy')
+
+                    self.canvas.create_arc(items['arc'][arc + 2] + x_coordinate,
+                                           items['arc'][arc + 3] + y_coordinate,
+                                           items['arc'][arc + 6] + x_coordinate,
+                                           (items['arc'][arc + 7] / 2) + y_coordinate,
+                                           style=tk.ARC,
+                                           start=180,
+                                           tags=file_name + '.asy')
 
     def sketch_component(self, component, file_name):
         self.canvas.delete("all")
@@ -151,6 +168,9 @@ class NewComponents:
         # self.canvas.create_arc(56, 36, 72, 52, start=180, style=tk.ARC)
         # self.canvas.create_arc(56, 28, 72, 32, start=0, style=tk.ARC)
         # self.canvas.create_arc(56, 28+4, 72, 32, start=270, extent=45, style=tk.ARC)
+        # FerriteBead Correct Arc Drawing
+        # self.canvas.create_arc(16, 4, -16, 12, start=270, style=tk.ARC)
+        # self.canvas.create_arc(-16, 12, 16, 4, start=180, style=tk.ARC)
         # Remove Spaces and change coordinates to numbers
         modified_lines = filter_components(wires, 0)
         modified_circles = filter_components(circles, 0)
@@ -186,6 +206,28 @@ class NewComponents:
             self.canvas.create_line(line_coordinates,
                                     tags=self.file_name)
 
+        # Sketch arcs
+        for arc in range(0, len(modified_arcs), 8):
+            arc_coordinates = (modified_arcs[arc],
+                               modified_arcs[arc + 1],
+                               modified_arcs[arc + 2],
+                               modified_arcs[arc + 3])
+
+            arc_coordinates_2 = (modified_arcs[arc + 2],
+                                 modified_arcs[arc + 3],
+                                 modified_arcs[arc + 6],
+                                 modified_arcs[arc + 7]/2)
+
+            self.canvas.create_arc(arc_coordinates,
+                                   style=tk.ARC,
+                                   tags=self.file_name,
+                                   start=270)
+
+            self.canvas.create_arc(arc_coordinates_2,
+                                   style=tk.ARC,
+                                   start=180,
+                                   tags=self.file_name)
+        print(modified_arcs)
         # Store the drawn shape of component for export
         if modified_rectangles:
             self.component_information['rectangle'] = modified_rectangles
@@ -193,6 +235,8 @@ class NewComponents:
             self.component_information['circle'] = modified_circles
         if modified_lines:
             self.component_information['line'] = modified_lines
+        if modified_arcs:
+            self.component_information['arc'] = modified_arcs
         self.component_information['tags'] = self.canvas.itemconfig(self.file_name)
 
         self.root.bind('<Button-3>', self.move_component)
@@ -230,3 +274,39 @@ class NewComponents:
         self.file_name = file_name
         print(self.file_name)
         self.sketch_component(schematic, file_name)
+
+    def open_folder(self, fpath=None):
+        # Open and return file path
+        if fpath is None:
+            fpath = fd.askopenfilenames(
+                title="Select a Symbol",
+
+                filetypes=(
+                    ("Schematic", "*.asy"),
+                    ("All files", "*.*")
+                )
+            )
+        # else:
+        #     # Needs to be replaced by label
+        #     print("Please select a file")
+
+        for symbol in range(len(fpath)):
+            with open(fpath[symbol], 'rb') as ltspiceascfile:
+                first_line = ltspiceascfile.read(4)
+                if first_line.decode('utf-8') == "Vers":
+                    self.encoding = 'utf-8'
+                elif first_line.decode('utf-16 le') == 'Ve':
+                    self.encoding = 'utf-16 le'
+                else:
+                    raise ValueError("Unknown encoding.")
+            ltspiceascfile.close()
+            # Read clean file
+            with open(fpath[symbol], mode='r', encoding=self.encoding, errors='replace') as ltspiceascfile:
+                schematic = ltspiceascfile.readlines()
+            ltspiceascfile.close()
+
+            file_name = ntpath.basename(fpath[symbol])
+            self.file_name = file_name
+            self.sketch_component(schematic, file_name)
+            self.save_component()
+        print('Saved All Components')
