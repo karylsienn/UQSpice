@@ -1,0 +1,203 @@
+{
+    "rectangle": [
+        -176,
+        -128,
+        176,
+        128
+    ],
+    "line": [
+        -20,
+        -128,
+        -20,
+        -112,
+        20,
+        -128,
+        20,
+        -112,
+        -8,
+        -100,
+        8,
+        -100
+    ],
+    "arc": [
+        -20,
+        -124,
+        4,
+        -100,
+        -20,
+        -112,
+        -8,
+        -100,
+        -4,
+        -124,
+        20,
+        -100,
+        8,
+        -100,
+        20,
+        -112
+    ],
+    "tags": {
+        "activedash": [
+            "activedash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activefill": [
+            "activefill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activeoutline": [
+            "activeoutline",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activeoutlinestipple": [
+            "activeoutlinestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activestipple": [
+            "activestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activewidth": [
+            "activewidth",
+            "",
+            "",
+            "0.0",
+            "0.0"
+        ],
+        "dash": [
+            "dash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "dashoffset": [
+            "dashoffset",
+            "",
+            "",
+            "0",
+            "0"
+        ],
+        "disableddash": [
+            "disableddash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledfill": [
+            "disabledfill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledoutline": [
+            "disabledoutline",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledoutlinestipple": [
+            "disabledoutlinestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledstipple": [
+            "disabledstipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledwidth": [
+            "disabledwidth",
+            "",
+            "",
+            "0.0",
+            "0"
+        ],
+        "fill": [
+            "fill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "offset": [
+            "offset",
+            "",
+            "",
+            "0,0",
+            "0,0"
+        ],
+        "outline": [
+            "outline",
+            "",
+            "",
+            "SystemButtonText",
+            "SystemButtonText"
+        ],
+        "outlineoffset": [
+            "outlineoffset",
+            "",
+            "",
+            "0,0",
+            "0,0"
+        ],
+        "outlinestipple": [
+            "outlinestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "state": [
+            "state",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "stipple": [
+            "stipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "tags": [
+            "tags",
+            "",
+            "",
+            "",
+            "LTC1541.asy"
+        ],
+        "width": [
+            "width",
+            "",
+            "",
+            "1.0",
+            "1.0"
+        ]
+    }
+}

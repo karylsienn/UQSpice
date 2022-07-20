@@ -1,0 +1,232 @@
+{
+    "line": [
+        -16,
+        -48,
+        64,
+        0,
+        -16,
+        48,
+        64,
+        0,
+        -16,
+        -48,
+        -16,
+        48,
+        0,
+        48,
+        0,
+        38,
+        0,
+        -48,
+        0,
+        -38,
+        32,
+        48,
+        32,
+        19,
+        36,
+        15,
+        28,
+        15,
+        36,
+        15,
+        36,
+        7,
+        28,
+        7,
+        36,
+        7,
+        28,
+        7,
+        28,
+        -1,
+        36,
+        -1,
+        28,
+        -1,
+        -8,
+        -16,
+        0,
+        -16,
+        -8,
+        16,
+        0,
+        16,
+        -4,
+        12,
+        -4,
+        20,
+        4,
+        -40,
+        12,
+        -40,
+        8,
+        -36,
+        8,
+        -44,
+        4,
+        40,
+        12,
+        40,
+        37,
+        -5,
+        27,
+        -5
+    ],
+    "tags": {
+        "activedash": [
+            "activedash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activefill": [
+            "activefill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activestipple": [
+            "activestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activewidth": [
+            "activewidth",
+            "",
+            "",
+            "0.0",
+            "0.0"
+        ],
+        "arrow": [
+            "arrow",
+            "",
+            "",
+            "none",
+            "none"
+        ],
+        "arrowshape": [
+            "arrowshape",
+            "",
+            "",
+            "8 10 3",
+            "8 10 3"
+        ],
+        "capstyle": [
+            "capstyle",
+            "",
+            "",
+            "butt",
+            "butt"
+        ],
+        "fill": [
+            "fill",
+            "",
+            "",
+            "SystemButtonText",
+            "SystemButtonText"
+        ],
+        "dash": [
+            "dash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "dashoffset": [
+            "dashoffset",
+            "",
+            "",
+            "0",
+            "0"
+        ],
+        "disableddash": [
+            "disableddash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledfill": [
+            "disabledfill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledstipple": [
+            "disabledstipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledwidth": [
+            "disabledwidth",
+            "",
+            "",
+            "0.0",
+            "0.0"
+        ],
+        "joinstyle": [
+            "joinstyle",
+            "",
+            "",
+            "round",
+            "round"
+        ],
+        "offset": [
+            "offset",
+            "",
+            "",
+            "0,0",
+            "0,0"
+        ],
+        "smooth": [
+            "smooth",
+            "",
+            "",
+            "0",
+            "0"
+        ],
+        "splinesteps": [
+            "splinesteps",
+            "",
+            "",
+            "12",
+            "12"
+        ],
+        "state": [
+            "state",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "stipple": [
+            "stipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "tags": [
+            "tags",
+            "",
+            "",
+            "",
+            "LT6001.asy"
+        ],
+        "width": [
+            "width",
+            "",
+            "",
+            "1.0",
+            "1.0"
+        ]
+    }
+}

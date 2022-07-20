@@ -1,0 +1,291 @@
+{
+    "rectangle": [
+        96,
+        128,
+        -96,
+        -80
+    ],
+    "circle": [
+        65,
+        -63,
+        63,
+        -65,
+        66,
+        -62,
+        62,
+        -66,
+        67,
+        -61,
+        61,
+        -67
+    ],
+    "line": [
+        48,
+        -48,
+        -48,
+        -48,
+        0,
+        32,
+        48,
+        -48,
+        -48,
+        -48,
+        0,
+        32,
+        -9,
+        -35,
+        -23,
+        -35,
+        23,
+        -35,
+        9,
+        -35,
+        0,
+        64,
+        0,
+        32,
+        32,
+        64,
+        0,
+        64,
+        96,
+        112,
+        64,
+        112,
+        -96,
+        -16,
+        -29,
+        -16,
+        96,
+        -16,
+        29,
+        -16,
+        -16,
+        -64,
+        -16,
+        -48,
+        16,
+        -64,
+        16,
+        -48,
+        96,
+        -64,
+        16,
+        -64,
+        -16,
+        -64,
+        -96,
+        -64,
+        -16,
+        -28,
+        -16,
+        -42,
+        -32,
+        0,
+        -46,
+        0,
+        46,
+        0,
+        32,
+        0,
+        39,
+        7,
+        39,
+        -7,
+        32,
+        41,
+        32,
+        87,
+        64,
+        34,
+        32,
+        53,
+        64,
+        98,
+        32,
+        75,
+        47,
+        39,
+        32,
+        53,
+        51,
+        46,
+        47,
+        39,
+        32,
+        53,
+        51,
+        46,
+        64,
+        -64,
+        64,
+        34,
+        64,
+        112,
+        64,
+        98
+    ],
+    "tags": {
+        "activedash": [
+            "activedash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activefill": [
+            "activefill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activeoutline": [
+            "activeoutline",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activeoutlinestipple": [
+            "activeoutlinestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activestipple": [
+            "activestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activewidth": [
+            "activewidth",
+            "",
+            "",
+            "0.0",
+            "0.0"
+        ],
+        "dash": [
+            "dash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "dashoffset": [
+            "dashoffset",
+            "",
+            "",
+            "0",
+            "0"
+        ],
+        "disableddash": [
+            "disableddash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledfill": [
+            "disabledfill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledoutline": [
+            "disabledoutline",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledoutlinestipple": [
+            "disabledoutlinestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledstipple": [
+            "disabledstipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledwidth": [
+            "disabledwidth",
+            "",
+            "",
+            "0.0",
+            "0"
+        ],
+        "fill": [
+            "fill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "offset": [
+            "offset",
+            "",
+            "",
+            "0,0",
+            "0,0"
+        ],
+        "outline": [
+            "outline",
+            "",
+            "",
+            "SystemButtonText",
+            "SystemButtonText"
+        ],
+        "outlineoffset": [
+            "outlineoffset",
+            "",
+            "",
+            "0,0",
+            "0,0"
+        ],
+        "outlinestipple": [
+            "outlinestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "state": [
+            "state",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "stipple": [
+            "stipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "tags": [
+            "tags",
+            "",
+            "",
+            "",
+            "LT6106.asy"
+        ],
+        "width": [
+            "width",
+            "",
+            "",
+            "1.0",
+            "1.0"
+        ]
+    }
+}
