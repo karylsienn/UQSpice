@@ -231,6 +231,26 @@ class ComponentSketcher:
                                               outline='black',
                                               tags='schematic')
 
+    def draw_other_power_flags(self, start_coordinate_x, start_coordinate_y, power_flag):
+        y_fixed_value = 15
+
+        # Pentagon in which the label is inside
+        self.canvas_to_draw_in.create_polygon(start_coordinate_x,
+                                              start_coordinate_y,
+                                              start_coordinate_x + 25,
+                                              start_coordinate_y + y_fixed_value,
+                                              start_coordinate_x + 75,
+                                              start_coordinate_y + y_fixed_value,
+                                              start_coordinate_x + 75,
+                                              start_coordinate_y - y_fixed_value,
+                                              start_coordinate_x + 25,
+                                              start_coordinate_y - y_fixed_value,
+                                              fill='',
+                                              outline='black',
+                                              tags='Power_Flag')
+
+        # self.canvas_to_draw_in.create_text(start_coordinate_x + 35, start_coordinate_y, text=power_flag, fill="black")
+
     def sketch_components(self,
                           component_coordinate_list,
                           drawn_components,
