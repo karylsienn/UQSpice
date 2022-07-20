@@ -1,0 +1,249 @@
+{
+    "rectangle": [
+        80,
+        112,
+        -80,
+        -64
+    ],
+    "line": [
+        -8,
+        8,
+        -12,
+        -8,
+        -4,
+        8,
+        -8,
+        -8,
+        -8,
+        8,
+        0,
+        8,
+        -8,
+        -8,
+        -16,
+        -8,
+        -32,
+        32,
+        32,
+        0,
+        -32,
+        -32,
+        32,
+        0,
+        -32,
+        32,
+        -32,
+        -32,
+        -28,
+        16,
+        -20,
+        16,
+        -28,
+        -16,
+        -20,
+        -16,
+        -51,
+        16,
+        -32,
+        16,
+        -32,
+        64,
+        -51,
+        64,
+        -32,
+        80,
+        -32,
+        48,
+        32,
+        80,
+        -32,
+        80,
+        32,
+        48,
+        32,
+        80,
+        -32,
+        48,
+        32,
+        48,
+        -51,
+        64,
+        -51,
+        16,
+        -24,
+        11,
+        -24,
+        20,
+        80,
+        0,
+        32,
+        0,
+        -80,
+        -16,
+        -32,
+        -16
+    ],
+    "tags": {
+        "activedash": [
+            "activedash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activefill": [
+            "activefill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activeoutline": [
+            "activeoutline",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activeoutlinestipple": [
+            "activeoutlinestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activestipple": [
+            "activestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "activewidth": [
+            "activewidth",
+            "",
+            "",
+            "0.0",
+            "0.0"
+        ],
+        "dash": [
+            "dash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "dashoffset": [
+            "dashoffset",
+            "",
+            "",
+            "0",
+            "0"
+        ],
+        "disableddash": [
+            "disableddash",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledfill": [
+            "disabledfill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledoutline": [
+            "disabledoutline",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledoutlinestipple": [
+            "disabledoutlinestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledstipple": [
+            "disabledstipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "disabledwidth": [
+            "disabledwidth",
+            "",
+            "",
+            "0.0",
+            "0"
+        ],
+        "fill": [
+            "fill",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "offset": [
+            "offset",
+            "",
+            "",
+            "0,0",
+            "0,0"
+        ],
+        "outline": [
+            "outline",
+            "",
+            "",
+            "SystemButtonText",
+            "SystemButtonText"
+        ],
+        "outlineoffset": [
+            "outlineoffset",
+            "",
+            "",
+            "0,0",
+            "0,0"
+        ],
+        "outlinestipple": [
+            "outlinestipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "state": [
+            "state",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "stipple": [
+            "stipple",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "tags": [
+            "tags",
+            "",
+            "",
+            "",
+            "LT6703-2.asy"
+        ],
+        "width": [
+            "width",
+            "",
+            "",
+            "1.0",
+            "1.0"
+        ]
+    }
+}
