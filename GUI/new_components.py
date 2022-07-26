@@ -1,7 +1,8 @@
+import os.path
 import tkinter as tk
 import json
 import customtkinter
-from tkinter import filedialog as fd
+from tkinter import filedialog as fd, messagebox
 import ntpath
 # import tkinterdnd2
 
@@ -71,6 +72,7 @@ class NewComponents:
         self.canvas = canvas_to_draw_component
         self.root = master_window
         self.file_name = ''
+        self.file_path = ''
         # self.canvas.drop_target_register(tkinterdnd2.DND_FILES)
         # self.canvas.dnd_bind('<<Drop>>', lambda t: self.open_component(t.data.strip("{").strip("}")))
         self.component_information = {}
@@ -82,59 +84,162 @@ class NewComponents:
         y = event.y - component_coords[1]
         self.canvas.move(self.file_name, x, y)
 
-    def save_component(self):
-        with open('Symbols/' + remove_suffix(self.file_name, '.asy'), 'w') as file:
-            json.dump(self.component_information, file, indent=4)
-            print('Saved.')
+    def save_component(self, value=0):
+        if value == 0:
+            try:
+                with open(os.path.expanduser('Symbols/' + remove_suffix(self.file_name, '.asy')), 'w') as file:
+                    json.dump(self.component_information, file, indent=4)
+                messagebox.showinfo('Component Saved',
+                                    self.file_name + ' has been saved to '
+                                    + remove_suffix(self.file_path, self.file_name) + '/Symbols')
+            except (FileNotFoundError, PermissionError):
+                if self.file_name == '':
+                    messagebox.showerror('Error', 'Please select a symbol first')
+
+                else:
+                    messagebox.showerror('Error',
+                                         self.file_name + ' has not been found, please add the file to Symbols folder')
+        elif value == 1:
+            try:
+                with open(os.path.expanduser('Symbols/' + remove_suffix(self.file_name, '.asy')), 'w') as file:
+                    json.dump(self.component_information, file, indent=4)
+
+            except (FileNotFoundError, PermissionError):
+                if self.file_name == '':
+                    messagebox.showerror('Error', 'Please select a symbol first')
+
+                else:
+                    messagebox.showerror('Error',
+                                         self.file_name + ' has not been found, please add the file to Symbols folder')
 
     def clear_canvas(self):
         self.canvas.delete('all')
 
-    def load_component(self, file_name=0, x_coordinate=0, y_coordinate=0, encoding=None):
-        if file_name == 0:
+    def load_component(self, file_name=None, encoding=None,
+                       x_coordinate=0, y_coordinate=0,
+                       angle=0, window_x=0, window_y=0):
+        if file_name is None:
             file_name = remove_suffix(self.file_name, '.asy')
-        with open('Symbols/' + file_name, 'r', encoding=encoding) as file:
-            items = json.load(file)
-        for item in items.keys():
 
-            if item == 'line':
-                for line in range(0, len(items['line']), 4):
-                    self.canvas.create_line(items['line'][line] + x_coordinate,
+        try:
+            with open(os.path.expanduser('Symbols/' + file_name), 'r', encoding=encoding, errors='replace') as file:
+                items = json.load(file)
+            for item in items.keys():
+
+                if item == 'line':
+                    for line in range(0, len(items['line']), 4):
+                        line_coordinates = [items['line'][line] + x_coordinate,
                                             items['line'][line + 1] + y_coordinate,
                                             items['line'][line + 2] + x_coordinate,
-                                            items['line'][line + 3] + y_coordinate,
-                                            tags=file_name + '.asy')
-            if item == 'circle':
-                for circle in range(0, len(items['circle']), 4):
-                    self.canvas.create_oval(items['circle'][circle] + x_coordinate,
-                                            items['circle'][circle + 1] + y_coordinate,
-                                            items['circle'][circle + 2] + x_coordinate,
-                                            items['circle'][circle + 3] + y_coordinate,
-                                            tags=file_name + '.asy')
-            if item == 'rectangle':
-                for rectangle in range(0, len(items['rectangle']), 4):
-                    self.canvas.create_rectangle(items['rectangle'][rectangle] + x_coordinate,
+                                            items['line'][line + 3] + y_coordinate]
+                        # self.canvas.create_line(coordinates,
+                        #                         tags=file_name + '.asy' + 'lines')
+                        self.rotate(line_coordinates, x_coordinate, y_coordinate, angle, window_x, window_y,
+                                    file_name + '.asy' + 'lines', 'line')
+                if item == 'circle':
+                    for circle in range(0, len(items['circle']), 4):
+                        circle_coordinates = [items['circle'][circle] + x_coordinate,
+                                              items['circle'][circle + 1] + y_coordinate,
+                                              items['circle'][circle + 2] + x_coordinate,
+                                              items['circle'][circle + 3] + y_coordinate]
+
+                        # self.canvas.create_oval(circle_coordinates, tags=file_name + '.asy' + 'circles')
+                        self.rotate(circle_coordinates, x_coordinate, y_coordinate, angle, window_x, window_y,
+                                    file_name + '.asy' + 'circles', 'circle')
+                if item == 'rectangle':
+                    for rectangle in range(0, len(items['rectangle']), 4):
+                        rectangle_coordinates = [items['rectangle'][rectangle] + x_coordinate,
                                                  items['rectangle'][rectangle + 1] + y_coordinate,
                                                  items['rectangle'][rectangle + 2] + x_coordinate,
-                                                 items['rectangle'][rectangle + 3] + y_coordinate,
-                                                 tags=file_name + '.asy')
-            if item == 'arc':
-                for arc in range(0, len(items['arc']), 8):
-                    self.canvas.create_arc(items['arc'][arc] + x_coordinate,
-                                           items['arc'][arc + 1] + y_coordinate,
-                                           items['arc'][arc + 2] + x_coordinate,
-                                           items['arc'][arc + 3] + y_coordinate,
-                                           style=tk.ARC,
-                                           start=270,
-                                           tags=file_name + '.asy')
+                                                 items['rectangle'][rectangle + 3] + y_coordinate]
+                        # self.canvas.create_rectangle(rectangle_coordinates, tags=file_name + '.asy' + 'rectangles')
+                        self.rotate(rectangle_coordinates, x_coordinate, y_coordinate, angle, window_x, window_y,
+                                    file_name + '.asy' + 'rectangles', 'rectangle')
+                if item == 'arc':
+                    for arc in range(0, len(items['arc']), 8):
+                        self.canvas.create_arc(items['arc'][arc] + x_coordinate,
+                                               items['arc'][arc + 1] + y_coordinate,
+                                               items['arc'][arc + 2] + x_coordinate,
+                                               items['arc'][arc + 3] + y_coordinate,
+                                               style=tk.ARC,
+                                               start=270,
+                                               tags=file_name + '.asy' + 'arc 1')
 
-                    self.canvas.create_arc(items['arc'][arc + 2] + x_coordinate,
-                                           items['arc'][arc + 3] + y_coordinate,
-                                           items['arc'][arc + 6] + x_coordinate,
-                                           (items['arc'][arc + 7] / 2) + y_coordinate,
-                                           style=tk.ARC,
-                                           start=180,
-                                           tags=file_name + '.asy')
+                        self.canvas.create_arc(items['arc'][arc + 2] + x_coordinate,
+                                               items['arc'][arc + 3] + y_coordinate,
+                                               items['arc'][arc + 6] + x_coordinate,
+                                               (items['arc'][arc + 7] / 2) + y_coordinate,
+                                               style=tk.ARC,
+                                               start=180,
+                                               tags=file_name + '.asy' + 'arc 2')
+        except (FileNotFoundError, PermissionError):
+            if file_name == '':
+                messagebox.showerror('Error', 'Please select a symbol first')
+            else:
+                messagebox.showerror('Error',
+                                     file_name + ' has not been found, please add the file to Symbols folder')
+
+    def rotate(self,
+               coordinates, start_coordinate_x, start_coordinate_y, angle, window_x, window_y,
+               tag, shape_to_draw):
+        # coordinates = self.canvas.coords(tag)
+        # print(coordinates)
+        #self.canvas.delete(tag)
+
+        if angle == 'R90' or angle == 90:
+            for coords in range(0, len(coordinates), 2):
+                # Swapping x and y
+                # through x = x + y
+                #         y = x - y
+                #         x = x - y
+                coordinates[coords] = coordinates[coords] + coordinates[coords + 1]
+                coordinates[coords + 1] = coordinates[coords] - coordinates[coords + 1]
+                coordinates[coords] = coordinates[coords] - coordinates[coords + 1]
+                coordinates[coords + 1] = - coordinates[coords + 1]
+
+            for coordinate in range(0, len(coordinates), 2):
+                coordinates[coordinate] = coordinates[coordinate] - start_coordinate_y + start_coordinate_x
+                coordinates[coordinate + 1] = coordinates[coordinate + 1] + start_coordinate_y + start_coordinate_x
+        if angle == 'R180' or angle == 180:
+            for coords in range(0, len(coordinates), 2):
+                coordinates[coords] = -coordinates[coords]
+                coordinates[coords + 1] = - coordinates[coords + 1]
+            for coordinate in range(0, len(coordinates), 2):
+                coordinates[coordinate] = coordinates[coordinate] + 2 * start_coordinate_x
+                coordinates[coordinate + 1] = coordinates[coordinate + 1] + 2 * start_coordinate_y
+            window_x = 0
+            window_y = 0
+        if angle == 'R270' or angle == 270:
+            for coords in range(0, len(coordinates), 2):
+                # Swapping x and y
+                # through x = x + y
+                #         y = x - y
+                #         x = x - y
+                coordinates[coords] = coordinates[coords] + coordinates[coords + 1]
+                coordinates[coords + 1] = coordinates[coords] - coordinates[coords + 1]
+                coordinates[coords] = coordinates[coords] - coordinates[coords + 1]
+                coordinates[coords] = - coordinates[coords]
+            for coordinate in range(0, len(coordinates), 2):
+                coordinates[coordinate] = coordinates[coordinate] + start_coordinate_y + start_coordinate_x
+                coordinates[coordinate + 1] = coordinates[coordinate + 1] - start_coordinate_x + start_coordinate_y
+
+        # print('Rotation at an angle of:', angle, end='')
+        # print(' ', coordinates)
+
+        if shape_to_draw == 'line':
+            # Adjustment Required for capacitor at an angle of 90 degrees
+            # self.canvas.create_line(coordinates[0] - 64,
+            #                         coordinates[1] + 32,
+            #                         coordinates[2] - 64,
+            #                         coordinates[3] + 32, tags=tag + 'rotated')
+            self.canvas.create_line(coordinates[0] - window_x,
+                                    coordinates[1] + window_y,
+                                    coordinates[2] - window_x,
+                                    coordinates[3] + window_y, tags=tag + 'rotated')
+        if shape_to_draw == 'circle':
+            self.canvas.create_oval(coordinates, tags=tag + 'rotated')
+        if shape_to_draw == 'rectangle':
+            self.canvas.create_rectangle(coordinates, tags=tag + 'rotated')
 
     def sketch_component(self, component, file_name):
         self.canvas.delete("all")
@@ -186,16 +291,6 @@ class NewComponents:
 
             self.canvas.create_rectangle(rectangle_coordinates, tags=self.file_name)
 
-        # Sketch Circles
-        for circle in range(0, len(modified_circles), 4):
-            circle_coordinates = (modified_circles[circle],
-                                  modified_circles[circle + 1],
-                                  modified_circles[circle + 2],
-                                  modified_circles[circle + 3])
-
-            self.canvas.create_oval(circle_coordinates,
-                                    tags=self.file_name)
-
         # Sketch Lines
         for line in range(0, len(modified_lines), 4):
             line_coordinates = (modified_lines[line],
@@ -206,6 +301,15 @@ class NewComponents:
             self.canvas.create_line(line_coordinates,
                                     tags=self.file_name)
 
+        # Sketch Circles
+        for circle in range(0, len(modified_circles), 4):
+            circle_coordinates = (modified_circles[circle],
+                                  modified_circles[circle + 1],
+                                  modified_circles[circle + 2],
+                                  modified_circles[circle + 3])
+
+            self.canvas.create_oval(circle_coordinates,
+                                    tags=self.file_name)
         # Sketch arcs
         for arc in range(0, len(modified_arcs), 8):
             arc_coordinates = (modified_arcs[arc],
@@ -243,55 +347,18 @@ class NewComponents:
 
     def open_component(self, fpath=0):
         # Open and return file path
-        if fpath == 0:
-            fpath = fd.askopenfilename(
-                title="Select a Symbol",
+        try:
+            if fpath == 0:
+                fpath = fd.askopenfilename(
+                    title="Select a Symbol",
 
-                filetypes=(
-                    ("Schematic", "*.asy"),
-                    ("All files", "*.*")
+                    filetypes=(
+                        ("Schematic", "*.asy"),
+                        ("All files", "*.*")
+                    )
                 )
-            )
-        # else:
-        #     # Needs to be replaced by label
-        #     print("Please select a file")
-
-        with open(fpath, 'rb') as ltspiceascfile:
-            first_line = ltspiceascfile.read(4)
-            if first_line.decode('utf-8') == "Vers":
-                self.encoding = 'utf-8'
-            elif first_line.decode('utf-16 le') == 'Ve':
-                self.encoding = 'utf-16 le'
-            else:
-                raise ValueError("Unknown encoding.")
-        ltspiceascfile.close()
-        # Read clean file
-        with open(fpath, mode='r', encoding=self.encoding) as ltspiceascfile:
-            schematic = ltspiceascfile.readlines()
-        ltspiceascfile.close()
-
-        file_name = ntpath.basename(fpath)
-        self.file_name = file_name
-        print(self.file_name)
-        self.sketch_component(schematic, file_name)
-
-    def open_folder(self, fpath=None):
-        # Open and return file path
-        if fpath is None:
-            fpath = fd.askopenfilenames(
-                title="Select a Symbol",
-
-                filetypes=(
-                    ("Schematic", "*.asy"),
-                    ("All files", "*.*")
-                )
-            )
-        # else:
-        #     # Needs to be replaced by label
-        #     print("Please select a file")
-
-        for symbol in range(len(fpath)):
-            with open(fpath[symbol], 'rb') as ltspiceascfile:
+            self.file_path = fpath
+            with open(fpath, 'rb') as ltspiceascfile:
                 first_line = ltspiceascfile.read(4)
                 if first_line.decode('utf-8') == "Vers":
                     self.encoding = 'utf-8'
@@ -301,12 +368,57 @@ class NewComponents:
                     raise ValueError("Unknown encoding.")
             ltspiceascfile.close()
             # Read clean file
-            with open(fpath[symbol], mode='r', encoding=self.encoding, errors='replace') as ltspiceascfile:
+            with open(fpath, mode='r', encoding=self.encoding) as ltspiceascfile:
                 schematic = ltspiceascfile.readlines()
             ltspiceascfile.close()
 
-            file_name = ntpath.basename(fpath[symbol])
+            file_name = ntpath.basename(fpath)
             self.file_name = file_name
+            print(self.file_name)
             self.sketch_component(schematic, file_name)
-            self.save_component()
-        print('Saved All Components')
+
+        except ValueError:
+            messagebox.showerror('Error', 'Please select a symbol .asy file')
+        except FileNotFoundError:
+            pass
+
+    def open_folder(self, fpath=None):
+        # Open and return file path
+        try:
+            if fpath is None:
+                fpath = fd.askopenfilenames(
+                    title="Select a Symbol",
+
+                    filetypes=(
+                        ("Schematic", "*.asy"),
+                        ("All files", "*.*")
+                    )
+                )
+            if len(fpath) == 0:
+                raise FileNotFoundError
+            file_name = ntpath.basename(fpath[0])
+            self.file_path = remove_suffix(fpath[0], file_name)
+            for symbol in range(len(fpath)):
+                with open(fpath[symbol], 'rb') as ltspiceascfile:
+                    first_line = ltspiceascfile.read(4)
+                    if first_line.decode('utf-8') == "Vers":
+                        self.encoding = 'utf-8'
+                    elif first_line.decode('utf-16 le') == 'Ve':
+                        self.encoding = 'utf-16 le'
+                    else:
+                        raise ValueError("Unknown encoding.")
+                ltspiceascfile.close()
+                # Read clean file
+                with open(fpath[symbol], mode='r', encoding=self.encoding, errors='replace') as ltspiceascfile:
+                    schematic = ltspiceascfile.readlines()
+                ltspiceascfile.close()
+
+                file_name = ntpath.basename(fpath[symbol])
+                self.file_name = file_name
+                self.sketch_component(schematic, file_name)
+                self.save_component(value=1)
+            messagebox.showinfo('Components Saved', str(len(fpath)) + ' Components have been saved in '
+                                + self.file_path + '/Symbols')
+        except FileNotFoundError:
+            pass
+

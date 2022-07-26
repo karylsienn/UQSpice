@@ -1,6 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
 import customtkinter
+from matplotlib import pyplot as plt, backend_bases
+from matplotlib.backends._backend_tk import NavigationToolbar2Tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 import tkinter_modification as tkmod
 import gui_events as guievents
 
@@ -25,6 +29,7 @@ if Mode == 'dark':
 customtkinter.set_appearance_mode(Mode)  # Modes: system (default), light, dark
 customtkinter.set_default_color_theme(theme_colour)  # Themes: blue (default), dark-blue, green
 
+data = []
 # create the schematic_analysis window
 root = customtkinter.CTk()
 schematic_analysis = customtkinter.CTkToplevel(root)
@@ -54,9 +59,11 @@ tabControl = ttk.Notebook(schematic_analysis)
 
 # Creating a tab for drawing schematics and another tab for graphs
 schematic_params = tk.Frame(tabControl)
+spice_data = tk.Frame(tabControl, width=1100, height=700)
 graphs = tk.Frame(tabControl)
 
 tabControl.add(schematic_params, text='Schematic and entering parameters')
+tabControl.add(spice_data, text='LTSpice data')
 tabControl.add(graphs, text='Graphs')
 
 component_parameters_frame = tk.Frame(schematic_params, width=380, height=100)
@@ -75,6 +82,10 @@ canvas = tkmod.ResizingCanvas(schematic_canvas_frame,
 all_component_parameters = []
 entering_parameters_window = None
 
+# param1_prefix_selected = tk.StringVar(entering_parameters_window)
+# param1_prefix_selected.set('')
+# column_1 = customtkinter.CTkOptionMenu(master=graphs,
+#                                        variable=param1_prefix_selected)
 
 # Button for entering the parameters of the circuit
 enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
@@ -195,23 +206,68 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
                                                                                   root)
                                           )
 
+# ------------------------------------------------- Graph Tab ----------------------------------------------------------
+figure = plt.Figure(figsize=(8, 6), dpi=100)
+chart_type = FigureCanvasTkAgg(figure, master=graphs)
+ax = [figure.add_subplot(111)]
+
+
+backend_bases.NavigationToolbar2.toolitems = (
+    ('Home', 'Reset original view', 'home', 'home'),
+    ('Back', 'Back to  previous view', 'back', 'back'),
+    ('Forward', 'Forward to next view', 'forward', 'forward'),
+    (None, None, None, None),
+    ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
+    ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
+    ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'),
+    (None, None, None, None),
+    ('Save', 'Save the figure', 'filesave', 'save_figure'),
+  )
+
+ax[0].set_title('Empty Plot')
+ax[0].grid('on')
+toolbar = NavigationToolbar2Tk(chart_type, graphs, pack_toolbar=False)
+
+toolbar.update()
+toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=1)
+
+column_to_plot_1 = customtkinter.CTkOptionMenu(toolbar,
+                                             values=[''])
+
+column_to_plot_2 = customtkinter.CTkOptionMenu(toolbar,
+                                             values=[''])
+
+check_var = tk.StringVar()
+new_subplot = customtkinter.CTkCheckBox(master=toolbar, text="New Subplot",
+                                        variable=check_var, onvalue="on", offvalue="off",
+                                        text_color='black')
+
 # ------------------------------------------- Root Window Buttons ------------------------------------------------------
 graph_value = 0
+
+
 open_asc_file_button = customtkinter.CTkButton(root,
                                                text='Open LTspice Schematic .asc file',
                                                command=lambda: guievents.open_asc_file(root, schematic_analysis))
-
-open_raw_file_button = customtkinter.CTkButton(root,
-                                               text='Open LTspice Waveform .raw file',
-                                               command=lambda: guievents.open_raw_file())
 
 add_new_component_button = customtkinter.CTkButton(root,
                                                    text='Add new component',
                                                    command=lambda: guievents.open_new_components(root))
 
+open_raw_file_button = customtkinter.CTkButton(root,
+                                               text='Open LTspice Waveform .raw file',
+                                               command=lambda: guievents.open_raw_file(spice_data, graphs,
+                                                                                       column_to_plot_1,
+                                                                                       column_to_plot_2,
+                                                                                       figure,
+                                                                                       chart_type,
+                                                                                       ax,
+                                                                                       toolbar,
+                                                                                       new_subplot))
+
 exit_app_button = customtkinter.CTkButton(root,
                                           text='Exit EMC Analysis',
-                                          command=lambda: guievents.exit_application(root))
+                                          command=lambda: root.destroy())
 
 # open file button, tab control and canvas location in schematic_analysis window
 enter_parameters_button.pack(padx=0, pady=10, side=tk.BOTTOM)
@@ -219,7 +275,7 @@ openfile_button.pack(padx=0, pady=2, side=tk.BOTTOM)
 tabControl.pack(expand=True, fill=tk.BOTH)
 schematic_canvas_frame.pack(side='left', fill=tk.BOTH, expand=True)
 canvas.pack(fill=tk.BOTH, expand=True)
-
+chart_type.get_tk_widget().pack(side='top', fill='both')
 # separator = ttk.Separator(component_parameters_frame, orient='vertical')
 # separator.pack(fill='y')
 # TODO: Ensure Component Paramaters Frame, shows even when window is resized
@@ -229,10 +285,11 @@ component_parameters_frame.grid_rowconfigure(tuple(range(1000)), weight=1)
 # Prevents Component parameters Frame From Resizing
 component_parameters_frame.pack_propagate(False)
 component_parameters_frame.grid_propagate(False)
-guievents.sketch_graphs(graph_value, graphs)
-
 # Root window widgets and items
 logo.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+column_to_plot_1.pack(side=tk.LEFT, padx=10)
+column_to_plot_2.pack(side=tk.LEFT, padx=10)
+new_subplot.pack(side=tk.LEFT, padx=10)
 open_raw_file_button.pack(pady=6, padx=6, anchor=tk.NE)
 open_asc_file_button.pack(pady=6, padx=4, anchor=tk.NE)
 add_new_component_button.pack(pady=6, padx=30, anchor=tk.NE)

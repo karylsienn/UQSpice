@@ -1,6 +1,9 @@
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------- Component Drawings ------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+import tkinter as tk
+
+
 class ComponentSketcher:
     BACKGROUND_COLOUR = '#F0F0F0'
     OUTLINE_COLOUR = 'green'
@@ -16,7 +19,7 @@ class ComponentSketcher:
                                                   y_coordinate + r,
                                                   **kwargs)
 
-        self.canvas_to_draw_in.create_circle = _create_circle
+    tk.Canvas.create_circle = _create_circle
 
     def draw_npn_transistor(self, start_coordinate_x, start_coordinate_y):
         y_adjustment = 48

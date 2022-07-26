@@ -526,7 +526,7 @@ def parse_and_save(
         data = reader.get_pandas(columns=columns, steps=steps, interpolated=interpolated, **rest)
 
         # Store the dataframe in a file
-        if len(outfile) == 0:
+        if outfile == None:
             outfile = re.sub(".raw", ".csv", infile)
         data.to_csv(outfile, index=False)
         print("Saved.")

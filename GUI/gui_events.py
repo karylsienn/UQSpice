@@ -1,5 +1,7 @@
 from tkinter import messagebox
 import matplotlib.pyplot as plt
+import mplcursors
+import pandas
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import numpy as np; np.random.seed(213)
 import tkinter as tk
@@ -9,6 +11,8 @@ import component_sketcher as comp
 import readers as read
 import tkinter_modification as tkmod
 import new_components as new_comp
+import tksheet
+import re
 from pynput import keyboard
 import math
 # from svglib.svglib import svg2rlg
@@ -160,7 +164,7 @@ def open_asc_file(root, schematic_analysis):
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for opening a .raw file --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def open_raw_file():
+def open_raw_file(spice_data, graphs, column_1, column_2, figure, chart_type, ax, toolbar, new_subplot):
     """
     Event Function used when the button to open a .raw file is clicked.
 
@@ -178,9 +182,45 @@ def open_raw_file():
 
     )
     if raw_file_path:
-        read.parse_and_save("RawReader", raw_file_path)
+        read.parse_and_save("RawReader", raw_file_path, 'test')
+        raw_reader = read.RawReader(raw_file_path)
+        data = raw_reader.get_pandas()
+        data_as_list = data.values.tolist()
+        data_headers = list(data.columns.values)
+
+        sheet = tksheet.Sheet(parent=spice_data,
+                              headers=data_headers)
+        sheet.set_sheet_data(data_as_list)
+        sheet.enable_bindings()
+        sheet.pack(expand=True, fill=tk.BOTH)
+        col1_prefix_selected = tk.StringVar(graphs)
+        col1_prefix_selected.set(data_headers[0])
+        col2_prefix_selected = tk.StringVar(graphs)
+        col2_prefix_selected.set(data_headers[0])
+        column_1.configure(variable=col1_prefix_selected)
+        column_1.configure(values=data_headers)
+        column_2.configure(values=data_headers)
+        column_2.configure(variable=col2_prefix_selected)
+
+        column_1.configure(command=lambda arg=column_1.get: sketch_graphs(data, graphs, data_headers,
+                                                                          data_headers.index(column_1.get()),
+                                                                          data_headers.index(column_2.get()),
+                                                                          figure, ax, toolbar, new_subplot, 0))
+        column_2.configure(command=lambda arg=column_2.get: sketch_graphs(data, graphs, data_headers,
+                                                                          data_headers.index(column_1.get()),
+                                                                          data_headers.index(column_2.get()),
+                                                                          figure, ax, toolbar, new_subplot, 0))
+        print(data.iloc[:, 2])
+
+        # open_new_window(components,
+        #                 schematic_analysis,
+        #                 component_parameters_frame,
+        #                 entering_parameters_window,
+        #                 component_value_array,
+        #                 canvas)
+
     else:
-        print("Please Select a Waveform .raw file")
+        pass
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -189,61 +229,30 @@ def open_raw_file():
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Function for sketching graphs on tab 2 ----------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def sketch_graphs(data, frame_to_display):
-    figure = plt.Figure(figsize=(8, 6), dpi=100)
-    ax = figure.add_subplot(111)
-    x = np.sort(np.random.rand(15))
-    y = np.sort(np.random.rand(15))
-    names = np.array(list("ABCDEFGHIJKLMNO"))
+def sketch_graphs(data, frame_to_display, column_headings, column1, column2, figure, ax, toolbar,
+                  new_subplot, plot_index):
+    print(new_subplot.get())
+    if new_subplot.get() == 'off':
+        ax[plot_index].clear()
+        line, = ax[plot_index].plot(data.iloc[:, column1], data.iloc[:, column2])
+        ax[plot_index].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
+        ax[plot_index].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
+        ax[plot_index].grid('on')
+        figure.canvas.draw()
+        figure.canvas.flush_events()
+        toolbar.update()
+        mplcursors.cursor(line, hover=mplcursors.HoverMode.Transient)
 
-    line, = ax.plot(x, y)
-
-    chart_type = FigureCanvasTkAgg(figure, master=frame_to_display)
-    chart_type.get_tk_widget().pack(side='top', fill='both')
-    ax.set_title('Example Plot')
-    ax.grid('on')
-    names = np.array(list("ABCDEFGHIJKLMNO"))
-    annot = ax.annotate("", xy=(0, 0), xytext=(-20, 20), textcoords="offset points",
-                        bbox=dict(boxstyle="round", fc="w"),
-                        arrowprops=dict(arrowstyle="->"))
-    annot.set_visible(False)
-
-    def update_annot(ind):
-        graph_x, graph_y = line.get_data()
-        annot.xy = (graph_x[ind["ind"][0]], graph_y[ind["ind"][0]])
-        text = "{}, {}".format(" ".join(list(map(str, ind["ind"]))),
-                               " ".join([names[n] for n in ind["ind"]]))
-        annot.set_text(text)
-        annot.get_bbox_patch().set_alpha(0.4)
-
-    def hover(event):
-        vis = annot.get_visible()
-        if event.inaxes == ax:
-            cont, ind = line.contains(event)
-            if cont:
-                update_annot(ind)
-                annot.set_visible(True)
-                chart_type.draw_idle()
-            else:
-                if vis:
-                    annot.set_visible(False)
-                    chart_type.draw_idle()
-
-    def hover_test(event):
-        vis = annot.get_visible()
-        if event.inaxes == ax:
-            cont, ind = line.contains(event)
-            if cont:
-                points = ax.plot(event.xdata, event.ydata, 'go')
-                points.pop(0)
-                chart_type.draw_idle()
-            else:
-                chart_type.draw_idle()
-    chart_type.mpl_connect("motion_notify_event", hover)
-
-    toolbar = NavigationToolbar2Tk(chart_type, frame_to_display, pack_toolbar=False)
-    toolbar.update()
-    toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=1)
+    # if new_subplot.get() == 'on':
+    #     ax.append(figure.add_subplot(len(ax), 1, len(ax)))
+    #     line, = ax[plot_index + 1].plot(data.iloc[:, column1], data.iloc[:, column2])
+    #     ax[plot_index + 1].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
+    #     ax[plot_index + 1].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
+    #     ax[plot_index + 1].grid('on')
+    #     figure.canvas.draw()
+    #     figure.canvas.flush_events()
+    #     toolbar.update()
+    #     mplcursors.cursor(line, hover=mplcursors.HoverMode.Transient)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -383,10 +392,12 @@ def get_file_path(component_parameters_frame,
 
         with open(fpath, 'rb') as ltspiceascfile:
             first_line = ltspiceascfile.read(4)
-            if first_line.decode('utf-8') == "Vers":
-                encoding = 'utf-8'
-            elif first_line.decode('utf-16 le') == 'Ve':
+            print(first_line)
+            if first_line.decode('utf-16 le') == 'Ve':
                 encoding = 'utf-16 le'
+            elif first_line.decode('utf-8') == "Vers":
+                encoding = 'utf-8'
+
             else:
                 raise ValueError("Unknown encoding.")
         ltspiceascfile.close()
@@ -475,6 +486,8 @@ def sketch_schematic_asc(schematic,
     component_name_and_windows = ''
     comp_index = 0
     circuit_symbols = ''
+    full_list = ''
+    trial = ''
 
     for lines in schematic:
 
@@ -485,8 +498,22 @@ def sketch_schematic_asc(schematic,
         # Store all components
         if "SYMBOL " in lines:
             circuit_symbols += lines.replace("SYMBOL ", '').replace('\n', ' ')\
-                                                           .replace('Comparators\\', '')\
-                                                           .replace('OpAmps\\', '')
+                                                           .replace('Comparators\\', '') \
+                                                           .replace('Comparators\\\\', '') \
+                                                           .replace('OpAmps\\', '') \
+                                                           .replace('OpAmps\\\\', '') \
+                                                           .replace('Digital\\', '')\
+                                                           .replace('Digital\\\\', '')
+            trial += lines.replace("SYMBOL ", '').replace('\n', ' ')
+
+
+            full_list += lines.replace("SYMBOL ", '').replace('\n', ' ')\
+                                                           .replace('Comparators\\', '') \
+                                                           .replace('Comparators\\\\', '') \
+                                                           .replace('OpAmps\\', '') \
+                                                           .replace('OpAmps\\\\', '') \
+                                                           .replace('Digital\\', '')\
+                                                           .replace('Digital\\\\', '')
 
         # Store all power flags used in the circuit
         if "FLAG" in lines:
@@ -495,6 +522,7 @@ def sketch_schematic_asc(schematic,
         # Store all component names and values
         if "WINDOW" in lines:
             component_name_and_windows += lines.replace("WINDOW ", '')
+            full_list += lines.replace("WINDOW ", '')
         if "SYMATTR InstName" in lines:
             components += lines.replace("SYMATTR InstName ", '')
             component_name_and_values += lines.replace("SYMATTR InstName ", '')
@@ -508,16 +536,92 @@ def sketch_schematic_asc(schematic,
     # ------------------------------------------Cleaning and filtering of elements--------------------------------------
     circuit_symbols_list = circuit_symbols.split(' ')
     circuit_symbols_list.pop()
+    full_list = full_list.split('\n')
+    component_name_and_windows_list = component_name_and_windows.split('\n')
+    for window in range(0, len(component_name_and_windows_list)):
+        if 'Left' in component_name_and_windows_list[window]\
+                or 'Right' in component_name_and_windows_list[window]\
+                or 'VBottom' in component_name_and_windows_list[window]\
+                or 'VTop' in component_name_and_windows_list[window]:
+            component_name_and_windows_list[window] = re.sub(r"^\s+|\s+$", '',
+                                                             re.sub(r'[0-9].*? ', '', re.sub(r'[A-Z]', '',
+                                                                                         re.sub(r'[A-Z][a-z]*.' + '\d',
+                                                             '', component_name_and_windows_list[window])), 1))
+
+    for window in range(0, len(full_list)):
+        if 'Left' in full_list[window]\
+                or 'Right' in full_list[window]\
+                or 'VBottom' in full_list[window]\
+                or 'VTop' in full_list[window]:
+            full_list[window] = re.sub(r'VBottom.' + '\d', '',re.sub(r'VTop.' + '\d', '',\
+                                re.sub(r'Right.' + '\d', '', re.sub(r'Left.' + '\d', '', full_list[window]))))
+    old_list = full_list
+    full_list = ' '.join(full_list).split(' ')
+
+    # Removing \\ from component names
+    for window in range(0, len(full_list)):
+        if '\\' or '\\\\' in full_list[window]:
+            full_list[window] = full_list[window].replace('\\', '').replace('\\\\', '')
+
+    while '' in full_list:
+        full_list.remove('')
+
+    print(full_list)
+    # Removing extra unnecessary elements from window
+    for window in range(0, len(full_list)):
+        if (window + 5)<= len(full_list):
+            if ('R0' in full_list[window]
+                or 'R90' in full_list[window]
+                or 'R180' in full_list[window]
+                or 'R270' in full_list[window]) and not re.search('[a-zA-Z]', full_list[window]):
+                    full_list[window + 1] = re.sub('[0-9]', '', full_list[window + 1])
+                    full_list[window + 5] = ''
+
+    # Adding 0 for components which have no rotations
+    for window in range(0, len(full_list)):
+        if (window + 5) <= len(full_list):
+            if (('R0' in full_list[window]
+                or 'R90' in full_list[window]
+                or 'R180' in full_list[window]
+                or 'R270' in full_list[window])\
+                    and re.search('[a-zA-Z]', full_list[window + 1])):
+                print(full_list[window + 1])
+                full_list.insert(window + 1, str(0))
+                full_list.insert(window + 2, str(0))
+                full_list.insert(window + 3, str(0))
+                full_list.insert(window + 4, str(0))
+
+            if (('R0' in full_list[window]
+                         or 'R90' in full_list[window]
+                         or 'R180' in full_list[window]
+                         or 'R270' in full_list[window])
+                        and re.search('[a-zA-Z][0-9]', full_list[window + 1])):
+                print(full_list[window + 1])
+                full_list.insert(window + 1, str(0))
+                full_list.insert(window + 2, str(0))
+                full_list.insert(window + 3, str(0))
+                full_list.insert(window + 4, str(0))
+
+            if ('R0' in full_list[window]
+                or 'R90' in full_list[window]
+                or 'R180' in full_list[window]
+                or 'R270' in full_list[window]) \
+                    and full_list[window + 3].isalpha():
+                full_list.insert(window + 3, str(0))
+                full_list.insert(window + 4, str(0))
+
+    print(full_list)
+    component_name_and_windows_list.pop()
+    filtered_component_name_and_window = ' '.join(component_name_and_windows_list).split(' ')
+
     for element in range(0, len(circuit_symbols_list), 4):
         circuit_symbols_list[element + 1] = int(circuit_symbols_list[element + 1])
         circuit_symbols_list[element + 2] = int(circuit_symbols_list[element + 2])
-
+        #circuit_symbols_list[element + 3] = int(circuit_symbols_list[element + 3].replace('R', ''))
     # Store all component names and values
     component_name_and_values = component_name_and_values.split('\n')
     component_name_and_values.pop()
     component_details_dictionary = {}
-
-    print(component_name_and_values)
     # Creating a dictionary to store component names and values
     # for comps in range(0, len(component_name_and_values) + 1, 2):
     #     if (comps + 1) >= len(component_name_and_values):
@@ -618,24 +722,59 @@ def sketch_schematic_asc(schematic,
                                                   power_flag=other_power_flags[power_flag + 2])
 
     circuit_comps = new_comp.NewComponents(canvas, root)
+    print(filtered_component_name_and_window)
+    component_drawn = ''
+    list_to_add = []
+    components_dictionary = {}
 
     for symbol in range(0, len(circuit_symbols_list), 4):
-        circuit_comps.load_component(file_name=circuit_symbols_list[symbol],
-                                     x_coordinate=circuit_symbols_list[symbol + 1] + adjustment,
-                                     y_coordinate=circuit_symbols_list[symbol + 2] + adjustment,
-                                     encoding=encoding)
+        # if circuit_symbols_list[symbol + 3] == 0:
+            circuit_comps.load_component(file_name=circuit_symbols_list[symbol], encoding=encoding,
+                                         x_coordinate=circuit_symbols_list[symbol + 1] + adjustment,
+                                         y_coordinate=circuit_symbols_list[symbol + 2] + adjustment,
+                                         angle=circuit_symbols_list[symbol + 3], window_x=0, window_y=0)
+
+        # if circuit_symbols_list[symbol + 3] != 0:
+        #     for component in range(len(filtered_component_name_and_window)):
+        #         if not filtered_component_name_and_window[component].isdigit():
+        #             if filtered_component_name_and_window[component - 1].isdigit():
+        #                 print(filtered_component_name_and_window[component])
+        #                 component_drawn = filtered_component_name_and_window[component]
+        #                 if not component_drawn == filtered_component_name_and_window[component]:
+        #                     component_drawn = filtered_component_name_and_window[component]
+        #                     window_x = int(filtered_component_name_and_window[component - 1]) \
+        #                                + int(filtered_component_name_and_window[component - 2])
+        #                     window_y = int(filtered_component_name_and_window[component - 3]) \
+        #                                + int(filtered_component_name_and_window[component - 4])
+        #                     circuit_comps.load_component(file_name=circuit_symbols_list[symbol], encoding=encoding,
+        #                                                  x_coordinate=circuit_symbols_list[symbol + 1] + adjustment,
+        #                                                  y_coordinate=circuit_symbols_list[symbol + 2] + adjustment,
+        #                                                  angle=circuit_symbols_list[symbol + 3],
+        #                                                  window_x=window_x, window_y=window_y)
+
+
+    # for symbol in range(0, len(full_list), 8):
+    #     try:
+    #         circuit_comps.load_component(file_name=full_list[symbol], encoding=encoding,
+    #                                      x_coordinate=int(full_list[symbol + 1]) + adjustment,
+    #                                      y_coordinate=int(full_list[symbol + 2]) + adjustment,
+    #                                      angle=full_list[symbol + 3], window_x=0, window_y=0)
+    #     except ValueError:
+    #         print('Error in list')
+
+
 
     # ------------------------------------ Binding events to drawn shapes ----------------------------------------------
 
-    # # --------------------------- Making voltage sources change colour when hovered over -------------------------------
+    # # --------------------------- Making voltage sources change colour when hovered over -----------------------------
     # for vol_elements in drawn_voltage_sources:
     #     canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg, canvas))
     #     canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg, canvas))
     #
     # while None in drawn_resistors:
     #     drawn_resistors.remove(None)
-    # # --------------------------- Making components open new window for entering parameters when -----------------------
-    # # ------------------------------------ a the component has been left clicked ---------------------------------------
+    # # --------------------------- Making components open new window for entering parameters when ---------------------
+    # # ------------------------------------ a the component has been left clicked -------------------------------------
     # print(drawn_resistors)
     # for resistor_elements in drawn_resistors:
     #     canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
@@ -752,20 +891,19 @@ def select_distribution_type(distribution_type,
 # ----------------------------------------------------------------------------------------------------------------------
 def if_number(parameter_value, value_before):
     print(value_before)
-    smaller_values_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.']
-    decimal = '.'
+    number_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.']
+    smaller_values_list = ['m', 'u', 'n', 'p', 'f', 'K', 'M', 'G', 'T']
     print(parameter_value)
-    # matches = [a for a in smaller_values_list if a in value_before]
+    matches = [a for a in smaller_values_list if a in value_before]
     # values = [b for b in value_before if b in smaller_values_list]
     # print(values)
-
     # TODO: Remove characters entered when backspace is used
-    if parameter_value in smaller_values_list:
+    if parameter_value in number_list:
         return True
     # if parameter_value == decimal or decimal not in value_before:
     #     return True
-    # elif (parameter_value in smaller_values_list) and (parameter_value not in value_before) and len(matches) == 0:
-    #     return True
+    elif (parameter_value in smaller_values_list) and (parameter_value not in value_before) and len(matches) == 0:
+        return True
     else:
         return False
 
