@@ -77,6 +77,7 @@ class NewComponents:
         # self.canvas.dnd_bind('<<Drop>>', lambda t: self.open_component(t.data.strip("{").strip("}")))
         self.component_information = {}
         self.encoding = None
+        self.error_number = 0
 
     def move_component(self, event):
         component_coords = self.canvas.coords(self.file_name)
@@ -87,30 +88,65 @@ class NewComponents:
     def save_component(self, value=0):
         if value == 0:
             try:
-                with open(os.path.expanduser('Symbols/' + remove_suffix(self.file_name, '.asy')), 'w') as file:
-                    json.dump(self.component_information, file, indent=4)
-                messagebox.showinfo('Component Saved',
-                                    self.file_name + ' has been saved to '
-                                    + remove_suffix(self.file_path, self.file_name) + '/Symbols')
-            except (FileNotFoundError, PermissionError):
+                path_to_symbol = os.path.expanduser('Symbols/' + remove_suffix(self.file_name, '.asy'))
+                file_exists = os.path.exists(path_to_symbol)
+                print(path_to_symbol)
+                if file_exists and self.file_name:
+                    overwrite_symbol_message = 'The file ' + self.file_name\
+                                                + ' already exists, do you wish to overwrite the saved file?'
+
+                    yes_or_no = messagebox.askyesnocancel('File Already Exists',
+                                                          message=overwrite_symbol_message, default=messagebox.YES)
+                    if yes_or_no == 'yes':
+                        with open(path_to_symbol, 'w') as file:
+                            json.dump(self.component_information, file, indent=4)
+                        messagebox.showinfo('Component Saved',
+                                            self.file_name + ' has been saved to '
+                                            + remove_suffix(self.file_path, self.file_name) + 'Symbols')
+                    if yes_or_no == 'no' or yes_or_no == 'cancel':
+                        pass
+                else:
+                    with open(path_to_symbol, 'w') as file:
+                        json.dump(self.component_information, file, indent=4)
+                    messagebox.showinfo('Component Saved',
+                                        self.file_name + ' has been saved to '
+                                        + remove_suffix(self.file_path, self.file_name) + 'Symbols')
+            except FileNotFoundError:
                 if self.file_name == '':
                     messagebox.showerror('Error', 'Please select a symbol first')
 
                 else:
                     messagebox.showerror('Error',
                                          self.file_name + ' has not been found, please add the file to Symbols folder')
+            except PermissionError:
+                if self.file_name == '':
+                    messagebox.showerror('Error', 'Please select a symbol first')
+
+                else:
+                    messagebox.showerror('Access Denied', 'Permission is required to access this file')
         elif value == 1:
             try:
                 with open(os.path.expanduser('Symbols/' + remove_suffix(self.file_name, '.asy')), 'w') as file:
                     json.dump(self.component_information, file, indent=4)
 
-            except (FileNotFoundError, PermissionError):
+            except FileNotFoundError:
                 if self.file_name == '':
                     messagebox.showerror('Error', 'Please select a symbol first')
 
                 else:
-                    messagebox.showerror('Error',
-                                         self.file_name + ' has not been found, please add the file to Symbols folder')
+                    if self.error_number >= 5:
+                        pass
+                    else:
+                        self.error_number += 1
+                        messagebox.showerror('Error',
+                                             self.file_name
+                                             + ' has not been found, please add the file to Symbols folder')
+            except PermissionError:
+                if self.file_name == '':
+                    messagebox.showerror('Error', 'Please select a symbol first')
+
+                else:
+                    messagebox.showerror('Access Denied', 'Permission is required to access this file')
 
     def clear_canvas(self):
         self.canvas.delete('all')
@@ -122,7 +158,7 @@ class NewComponents:
             file_name = remove_suffix(self.file_name, '.asy')
 
         try:
-            with open(os.path.expanduser('Symbols/' + file_name), 'r', encoding=encoding, errors='replace') as file:
+            with open(os.path.expanduser('Symbols/' + file_name), 'r', encoding='utf-8', errors='replace') as file:
                 items = json.load(file)
             for item in items.keys():
 
@@ -172,12 +208,24 @@ class NewComponents:
                                                style=tk.ARC,
                                                start=180,
                                                tags=file_name + '.asy' + 'arc 2')
-        except (FileNotFoundError, PermissionError):
+        except FileNotFoundError:
             if file_name == '':
                 messagebox.showerror('Error', 'Please select a symbol first')
             else:
-                messagebox.showerror('Error',
-                                     file_name + ' has not been found, please add the file to Symbols folder')
+                if self.error_number >= 5:
+                    self.error_number += 1
+                    pass
+                else:
+                    self.error_number += 1
+                    messagebox.showerror('Error',
+                                         file_name
+                                         + ' has not been found, please add the file to Symbols folder')
+        except PermissionError:
+            if self.file_name == '':
+                messagebox.showerror('Error', 'Please select a symbol first')
+
+            else:
+                messagebox.showerror('Access Denied', 'Permission is required to access this file')
 
     def rotate(self,
                coordinates, start_coordinate_x, start_coordinate_y, angle, window_x, window_y,
@@ -200,7 +248,7 @@ class NewComponents:
             for coordinate in range(0, len(coordinates), 2):
                 coordinates[coordinate] = coordinates[coordinate] - start_coordinate_y + start_coordinate_x
                 coordinates[coordinate + 1] = coordinates[coordinate + 1] + start_coordinate_y + start_coordinate_x
-        if angle == 'R180' or angle == 180:
+        elif angle == 'R180' or angle == 180:
             for coords in range(0, len(coordinates), 2):
                 coordinates[coords] = -coordinates[coords]
                 coordinates[coords + 1] = - coordinates[coords + 1]
@@ -209,7 +257,7 @@ class NewComponents:
                 coordinates[coordinate + 1] = coordinates[coordinate + 1] + 2 * start_coordinate_y
             window_x = 0
             window_y = 0
-        if angle == 'R270' or angle == 270:
+        elif angle == 'R270' or angle == 270:
             for coords in range(0, len(coordinates), 2):
                 # Swapping x and y
                 # through x = x + y
@@ -220,11 +268,10 @@ class NewComponents:
                 coordinates[coords] = coordinates[coords] - coordinates[coords + 1]
                 coordinates[coords] = - coordinates[coords]
             for coordinate in range(0, len(coordinates), 2):
-                coordinates[coordinate] = coordinates[coordinate] + start_coordinate_y + start_coordinate_x
-                coordinates[coordinate + 1] = coordinates[coordinate + 1] - start_coordinate_x + start_coordinate_y
+                coordinates[coordinate] = coordinates[coordinate] + start_coordinate_y + start_coordinate_x + 2*window_y
+                coordinates[coordinate + 1] = coordinates[coordinate + 1] - start_coordinate_x + start_coordinate_y - 2*window_x
 
-        # print('Rotation at an angle of:', angle, end='')
-        # print(' ', coordinates)
+        # print(tag, angle, window_x, window_y, start_coordinate_x, start_coordinate_y)
 
         if shape_to_draw == 'line':
             # Adjustment Required for capacitor at an angle of 90 degrees
@@ -232,14 +279,20 @@ class NewComponents:
             #                         coordinates[1] + 32,
             #                         coordinates[2] - 64,
             #                         coordinates[3] + 32, tags=tag + 'rotated')
-            self.canvas.create_line(coordinates[0] - window_x,
-                                    coordinates[1] + window_y,
-                                    coordinates[2] - window_x,
-                                    coordinates[3] + window_y, tags=tag + 'rotated')
+            self.canvas.create_line(coordinates[0] - window_y,
+                                    coordinates[1] + window_x,
+                                    coordinates[2] - window_y,
+                                    coordinates[3] + window_x, tags=tag + 'rotated')
         if shape_to_draw == 'circle':
-            self.canvas.create_oval(coordinates, tags=tag + 'rotated')
+            self.canvas.create_oval(coordinates[0] - window_y,
+                                    coordinates[1] + window_x,
+                                    coordinates[2] - window_y,
+                                    coordinates[3] + window_x, tags=tag + 'rotated')
         if shape_to_draw == 'rectangle':
-            self.canvas.create_rectangle(coordinates, tags=tag + 'rotated')
+            self.canvas.create_rectangle(coordinates[0] - window_y,
+                                         coordinates[1] + window_x,
+                                         coordinates[2] - window_y,
+                                         coordinates[3] + window_x, tags=tag + 'rotated')
 
     def sketch_component(self, component, file_name):
         self.canvas.delete("all")

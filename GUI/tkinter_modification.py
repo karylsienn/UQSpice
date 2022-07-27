@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter.font import Font
 from customtkinter import ThemeManager
 from customtkinter import AppearanceModeTracker
 from customtkinter import CTkBaseClass
@@ -14,8 +15,11 @@ class CTkMenu(tk.Menu, CTkBaseClass):
     def add_cascade(self, cnf={}, **kw):
         self.add('cascade', cnf or kw)
 
+    instances = []
+
     def __init__(self, master: tk.Tk, text_font="default_theme", cnf={}, **kw):
         super().__init__()
+        CTkMenu.instances.append(self)
         self.option_add('*tearOff', False)
 
         self.mode = AppearanceModeTracker.get_mode()
@@ -30,6 +34,10 @@ class CTkMenu(tk.Menu, CTkBaseClass):
         self.configure(borderwidth=0)
         self.configure(activebackground=ctk_hover_bg)
         self.config(font=self.text_font)
+
+    @classmethod
+    def get(cls):
+        return [inst for inst in cls.instances]
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -57,11 +65,11 @@ class ResizingCanvas(tk.Canvas):
 
     def __init__(self, parent, **kwargs):
         tk.Canvas.__init__(self, parent, **kwargs)
-        self.bind("<Configure>", self.on_resize)
         self.height = self.winfo_reqheight()
         self.width = self.winfo_reqwidth()
-        self.bind("<MouseWheel>", self.do_zoom)
-        self.bind('<ButtonPress-1>', lambda event: self.scan_mark(event.x, event.y))
+        self.bind("<Configure>", self.on_resize)  # Resizing canvas when resizing schematic analysis window
+        self.bind("<MouseWheel>", self.do_zoom)  # zoom for Windows and Mac
+        self.bind('<ButtonPress-1>', lambda event: self.scan_mark(event.x, event.y))  # Pan over canvas
         self.bind("<B1-Motion>", lambda event: self.scan_dragto(event.x, event.y, gain=1))
         self.bind('<Button-5>', self.do_zoom)  # zoom for Linux, wheel scroll down
         self.bind('<Button-4>', self.do_zoom)  # zoom for Linux, wheel scroll up

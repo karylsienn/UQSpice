@@ -232,7 +232,7 @@ class ComponentSketcher:
                                               start_coordinate_y + 25 + ground_line,
                                               fill='',
                                               outline='black',
-                                              tags='schematic')
+                                              tags='ground_flag')
 
     def draw_other_power_flags(self, start_coordinate_x, start_coordinate_y, power_flag):
         y_fixed_value = 15
@@ -250,7 +250,7 @@ class ComponentSketcher:
                                               start_coordinate_y - y_fixed_value,
                                               fill='',
                                               outline='black',
-                                              tags='Power_Flag')
+                                              tags='power_flag')
 
         # self.canvas_to_draw_in.create_text(start_coordinate_x + 35, start_coordinate_y, text=power_flag, fill="black")
 

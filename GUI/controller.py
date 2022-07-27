@@ -66,17 +66,19 @@ tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(spice_data, text='LTSpice data')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = tk.Frame(schematic_params, width=380, height=100)
+component_parameters_frame = tk.Frame(schematic_params, width=340, height=100)
 
 schematic_canvas_frame = tk.Frame(schematic_params,
                                   width=700,
                                   height=500,
-                                  background='white')
+                                  #background='gray86'
+                                  )
 
 canvas = tkmod.ResizingCanvas(schematic_canvas_frame,
                               width=1000,
                               height=600,
-                              highlightthickness=0
+                              highlightthickness=0,
+                              #background='gray86'
                               )
 
 all_component_parameters = []
@@ -274,16 +276,17 @@ enter_parameters_button.pack(padx=0, pady=10, side=tk.BOTTOM)
 openfile_button.pack(padx=0, pady=2, side=tk.BOTTOM)
 tabControl.pack(expand=True, fill=tk.BOTH)
 schematic_canvas_frame.pack(side='left', fill=tk.BOTH, expand=True)
+schematic_canvas_frame.pack_propagate(False)
 canvas.pack(fill=tk.BOTH, expand=True)
 chart_type.get_tk_widget().pack(side='top', fill='both')
 # separator = ttk.Separator(component_parameters_frame, orient='vertical')
 # separator.pack(fill='y')
 # TODO: Ensure Component Paramaters Frame, shows even when window is resized
 component_parameters_frame.pack(side='right', fill=tk.BOTH)
-component_parameters_frame.grid_columnconfigure(0, weight=1)
-component_parameters_frame.grid_rowconfigure(tuple(range(1000)), weight=1)
+
 # Prevents Component parameters Frame From Resizing
 component_parameters_frame.pack_propagate(False)
+canvas.pack_propagate(False)
 component_parameters_frame.grid_propagate(False)
 # Root window widgets and items
 logo.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)

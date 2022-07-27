@@ -1,9 +1,6 @@
 from tkinter import messagebox
-import matplotlib.pyplot as plt
 import mplcursors
-import pandas
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
-import numpy as np; np.random.seed(213)
 import tkinter as tk
 from tkinter import filedialog as fd
 import ntpath
@@ -15,9 +12,6 @@ import tksheet
 import re
 from pynput import keyboard
 import math
-# from svglib.svglib import svg2rlg
-# from reportlab.graphics import renderPDF, renderPM
-# from PIL import Image, ImageTk
 import customtkinter
 
 BACKGROUND_COLOUR = '#F0F0F0'
@@ -38,13 +32,35 @@ def light_theme_set(root):
     customtkinter.set_appearance_mode('light')  # Modes: system (default), light, dark
     root.withdraw()
     customtkinter.set_default_color_theme('dark-blue')  # Themes: blue (default), dark-blue, green
+    mode = customtkinter.AppearanceModeTracker.get_mode()
     root.withdraw()
+    # Changing Menu Colour
+    ctk_bg = customtkinter.ThemeManager.theme["color"]["frame_high"][mode]
+    ctk_fg = customtkinter.ThemeManager.theme["color"]["text"][mode]
+    ctk_hover_bg = customtkinter.ThemeManager.theme["color"]["button"][mode]
+    menu_instances = tkmod.CTkMenu.get()
+    for menu in menu_instances:
+        menu.configure(background=ctk_bg)
+        menu.configure(foreground=ctk_fg)
+        menu.configure(activebackground=ctk_hover_bg)
 
 
 def dark_theme_set(root):
     customtkinter.set_appearance_mode('dark')  # Modes: system (default), light, dark
     root.withdraw()
     customtkinter.set_default_color_theme('blue')  # Themes: blue (default), dark-blue, green
+    mode = customtkinter.AppearanceModeTracker.get_mode()
+
+    # Changing Menu Colour
+    ctk_bg = customtkinter.ThemeManager.theme["color"]["frame_high"][mode]
+    ctk_fg = customtkinter.ThemeManager.theme["color"]["text"][mode]
+    ctk_hover_bg = customtkinter.ThemeManager.theme["color"]["button"][mode]
+
+    menu_instances = tkmod.CTkMenu.get()
+    for menu in menu_instances:
+        menu.configure(background=ctk_bg)
+        menu.configure(foreground=ctk_fg)
+        menu.configure(activebackground=ctk_hover_bg)
     root.withdraw()
 
 
@@ -152,7 +168,7 @@ def open_asc_file(root, schematic_analysis):
                                                  analysis_y))
 
     # Set minimum width and height of schematic_analysis window
-    schematic_analysis.minsize(schematic_analysis_width, schematic_analysis_height)
+    #schematic_analysis.minsize(schematic_analysis_width, schematic_analysis_height)
 
     # Removing the root window if schematic analysis window has been destroyed
     schematic_analysis.protocol("WM_DELETE_WINDOW", lambda: root.destroy())
@@ -171,56 +187,61 @@ def open_raw_file(spice_data, graphs, column_1, column_2, figure, chart_type, ax
     Allows user to select the file, the .raw file is converted to a .csv file and stored with same name
     or new name if a file name is given
     """
-    # Open and return file path
-    raw_file_path = fd.askopenfilename(
-        title="Select a Schematic",
+    try:
+        # Open and return file path
+        raw_file_path = fd.askopenfilename(
+            title="Select a Schematic",
 
-        filetypes=(
-            ("Waveforms", "*.raw"),
-            ("All files", "*.*")
+            filetypes=(
+                ("Waveforms", "*.raw"),
+                ("All files", "*.*")
+            )
+
         )
+        if raw_file_path:
+            # read.parse_and_save("RawReader", raw_file_path, 'test')
+            raw_reader = read.RawReader(raw_file_path)
+            data = raw_reader.get_pandas()
+            data_as_list = data.values.tolist()
+            data_headers = list(data.columns.values)
 
-    )
-    if raw_file_path:
-        read.parse_and_save("RawReader", raw_file_path, 'test')
-        raw_reader = read.RawReader(raw_file_path)
-        data = raw_reader.get_pandas()
-        data_as_list = data.values.tolist()
-        data_headers = list(data.columns.values)
+            sheet = tksheet.Sheet(parent=spice_data,
+                                  headers=data_headers)
+            sheet.set_sheet_data(data_as_list)
+            sheet.enable_bindings()
+            sheet.pack(expand=True, fill=tk.BOTH)
+            col1_prefix_selected = tk.StringVar(graphs)
+            col1_prefix_selected.set(data_headers[0])
+            col2_prefix_selected = tk.StringVar(graphs)
+            col2_prefix_selected.set(data_headers[0])
+            column_1.configure(variable=col1_prefix_selected)
+            column_1.configure(values=data_headers)
+            column_2.configure(values=data_headers)
+            column_2.configure(variable=col2_prefix_selected)
 
-        sheet = tksheet.Sheet(parent=spice_data,
-                              headers=data_headers)
-        sheet.set_sheet_data(data_as_list)
-        sheet.enable_bindings()
-        sheet.pack(expand=True, fill=tk.BOTH)
-        col1_prefix_selected = tk.StringVar(graphs)
-        col1_prefix_selected.set(data_headers[0])
-        col2_prefix_selected = tk.StringVar(graphs)
-        col2_prefix_selected.set(data_headers[0])
-        column_1.configure(variable=col1_prefix_selected)
-        column_1.configure(values=data_headers)
-        column_2.configure(values=data_headers)
-        column_2.configure(variable=col2_prefix_selected)
+            column_1.configure(command=lambda arg=column_1.get: sketch_graphs(data, graphs, data_headers,
+                                                                              data_headers.index(column_1.get()),
+                                                                              data_headers.index(column_2.get()),
+                                                                              figure, ax, toolbar, new_subplot, 0))
+            column_2.configure(command=lambda arg=column_2.get: sketch_graphs(data, graphs, data_headers,
+                                                                              data_headers.index(column_1.get()),
+                                                                              data_headers.index(column_2.get()),
+                                                                              figure, ax, toolbar, new_subplot, 0))
+            print(data.iloc[:, 2])
 
-        column_1.configure(command=lambda arg=column_1.get: sketch_graphs(data, graphs, data_headers,
-                                                                          data_headers.index(column_1.get()),
-                                                                          data_headers.index(column_2.get()),
-                                                                          figure, ax, toolbar, new_subplot, 0))
-        column_2.configure(command=lambda arg=column_2.get: sketch_graphs(data, graphs, data_headers,
-                                                                          data_headers.index(column_1.get()),
-                                                                          data_headers.index(column_2.get()),
-                                                                          figure, ax, toolbar, new_subplot, 0))
-        print(data.iloc[:, 2])
+            # open_new_window(components,
+            #                 schematic_analysis,
+            #                 component_parameters_frame,
+            #                 entering_parameters_window,
+            #                 component_value_array,
+            #                 canvas)
 
-        # open_new_window(components,
-        #                 schematic_analysis,
-        #                 component_parameters_frame,
-        #                 entering_parameters_window,
-        #                 component_value_array,
-        #                 canvas)
-
-    else:
+    except FileNotFoundError:
         pass
+    except PermissionError:
+        messagebox.showerror('Access Denied', 'Permission is required to access this file')
+    except ValueError:
+        messagebox.showerror('Invalid File', 'Please select a Waveform .raw file')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -331,36 +352,24 @@ def get_file_path(component_parameters_frame,
                   root):
     """Obtains the file path selected from a dialog box, Event function for Open a schematic button.
 
-        Parameters
-        --------
-        component_parameters_frame : frame in which the component parameters are placed after selection
+        Parameters:
+            --------
+            component_parameters_frame : frame in which the component parameters are placed after selection
 
-        all_component_parameters: List for storing parameters of all components
+            all_component_parameters: List for storing parameters of all components
 
-        schematic_analysis: Window in which component parameters frame is placed inside
+            canvas: The canvas in which the components are sketched
 
-        enter_parameters_button: button to open a new window for entering parameters
+            schematic_analysis: Window in which component parameters frame is placed inside
 
-        entering_parameters_window: Window displayed when button is clicked to enter parameters
+            enter_parameters_button: button to open a new window for entering parameters
 
-        canvas: The canvas in which the components are sketched
+            entering_parameters_window: Window displayed when button is clicked to enter parameters
+
+            root: The main welcome window from which the program starts
     """
-    # Open and return file path
-    file_path = fd.askopenfilenames(
-        title="Select a Schematic",
-
-        filetypes=(
-            ("Schematic", "*.asc"),
-            ("All files", "*.*")
-        )
-
-    )
-
-    too_many_files_selected = tk.Label(canvas,
-                                       text='Please Select Two files,'
-                                            ' an LTSpice schematic and an image of the schematic'
-                                       )
-    while len(file_path) > 2:
+    try:
+        # Open and return file path
         file_path = fd.askopenfilenames(
             title="Select a Schematic",
 
@@ -371,68 +380,64 @@ def get_file_path(component_parameters_frame,
 
         )
 
-    # Image Implementation - not yet working
-# svg_schematic = svg2rlg('C:/Users/moaik/OneDrive - The University of Nottingham/NSERP/LTspice to latex/Delete.svg')
-    # renderPM.drawToFile(svg_schematic, "temp_schematic.png", fmt="PNG")
-    # img = Image.open('temp_schematic.png')
-    # pimg = ImageTk.PhotoImage(img)
-    # global delete_image
-    # delete_image = ImageTk.PhotoImage(img)
-    # size = img.size
-    # canvas.create_image(96 + 150, 224 + 150, image=pimg)
-    # #canvas.create_line(96-13+150, 224+150, 128 + 13 + 150, 224+150)
+        # Perform actions if a file has been selected
+        if file_path:
+            fpath = file_path[0]
+            file_name = ntpath.basename(fpath)
+            folder_location = remove_suffix(fpath, file_name)
+            file_name_no_extension = file_name.replace('.asc', '.txt')
+            new_schematic_file = folder_location + file_name_no_extension
 
-    # Perform actions if a file has been selected
-    if file_path:
-        fpath = file_path[0]
-        file_name = ntpath.basename(fpath)
-        folder_location = remove_suffix(fpath, file_name)
-        file_name_no_extension = file_name.replace('.asc', '.txt')
-        new_schematic_file = folder_location + file_name_no_extension
+            with open(fpath, 'rb') as ltspiceascfile:
+                first_line = ltspiceascfile.read(4)
+                print(first_line.decode('utf-8', errors='replace'))
+                print((first_line.decode('utf-16') == 'V'))
+                print(first_line.decode('utf-16 le').split('\n'))
+                if (first_line.decode('utf-16 le') == 'Ve') or (first_line.decode('utf-16 le') == '\ufeffV'):
+                    encoding = 'utf-16 le'
+                elif first_line.decode('utf-8', errors='ignore') == "Vers":
+                    encoding = 'utf-8'
 
-        with open(fpath, 'rb') as ltspiceascfile:
-            first_line = ltspiceascfile.read(4)
-            print(first_line)
-            if first_line.decode('utf-16 le') == 'Ve':
-                encoding = 'utf-16 le'
-            elif first_line.decode('utf-8') == "Vers":
-                encoding = 'utf-8'
+                else:
+                    raise ValueError("Unknown encoding.")
+            ltspiceascfile.close()
+            print(encoding)
+            # Open and store all file data
+            with open(fpath, mode='r', encoding=encoding, errors='replace') as file:
+                schematic_data = file.read()
+            file.close()
 
-            else:
-                raise ValueError("Unknown encoding.")
-        ltspiceascfile.close()
+            # Remove all 'µ' and replace them with 'u'
+            with open(new_schematic_file, mode='w', encoding=encoding) as clean_schematic_file:
+                clean_schematic_file.write(schematic_data.replace('�', 'u'))
+            clean_schematic_file.close()
 
-        # Open and store all file data
-        with open(fpath, mode='r', encoding=encoding, errors='replace') as file:
-            schematic_data = file.read()
-        file.close()
+            # Read clean file
+            with open(new_schematic_file, mode='r', encoding=encoding) as ltspiceascfile:
+                schematic = ltspiceascfile.readlines()
+            ltspiceascfile.close()
 
-        # Remove all 'µ' and replace them with 'u'
-        with open(new_schematic_file, mode='w', encoding=encoding) as clean_schematic_file:
-            clean_schematic_file.write(schematic_data.replace('�', 'u'))
-        clean_schematic_file.close()
+            sketch_schematic_asc(schematic,
+                                 component_parameters_frame,
+                                 all_component_parameters,
+                                 canvas,
+                                 schematic_analysis,
+                                 enter_parameters_button,
+                                 entering_parameters_window,
+                                 root,
+                                 encoding)
 
-        # Read clean file
-        with open(new_schematic_file, mode='r', encoding=encoding) as ltspiceascfile:
-            schematic = ltspiceascfile.readlines()
-        ltspiceascfile.close()
+            # Display file path at the bottom of the window
+            # l1 = Label(schematic_analysis, text="File path: " + file_path).pack()
 
-        sketch_schematic_asc(schematic,
-                             component_parameters_frame,
-                             all_component_parameters,
-                             canvas,
-                             schematic_analysis,
-                             enter_parameters_button,
-                             entering_parameters_window,
-                             root,
-                             encoding)
+        # Display an error in case no schematic has been selected from file dialog box
 
-        # Display file path at the bottom of the window
-        # l1 = Label(schematic_analysis, text="File path: " + file_path).pack()
-
-    # Display an error in case no schematic has been selected from file dialog box
-    else:
-        error_select_schematic(canvas)
+    # except ValueError:
+    #     messagebox.showerror('Invalid File', 'Please select a schematic .asc file')
+    except PermissionError:
+        messagebox.showerror('Access Denied', 'Permission is required to access this file')
+    except FileNotFoundError:
+        pass
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -504,16 +509,7 @@ def sketch_schematic_asc(schematic,
                                                            .replace('OpAmps\\\\', '') \
                                                            .replace('Digital\\', '')\
                                                            .replace('Digital\\\\', '')
-            trial += lines.replace("SYMBOL ", '').replace('\n', ' ')
-
-
-            full_list += lines.replace("SYMBOL ", '').replace('\n', ' ')\
-                                                           .replace('Comparators\\', '') \
-                                                           .replace('Comparators\\\\', '') \
-                                                           .replace('OpAmps\\', '') \
-                                                           .replace('OpAmps\\\\', '') \
-                                                           .replace('Digital\\', '')\
-                                                           .replace('Digital\\\\', '')
+            full_list += ntpath.basename(lines).replace("SYMBOL ", '')
 
         # Store all power flags used in the circuit
         if "FLAG" in lines:
@@ -531,208 +527,218 @@ def sketch_schematic_asc(schematic,
         if "SYMATTR Value" in lines:
             component_name_and_values += lines.replace("SYMATTR Value ", '')
 
-    # Used for testing window attribute
-    # canvas.create_rectangle(24 + 150, 56 + 150, 24 + 150 + 20, 8 + 150)
     # ------------------------------------------Cleaning and filtering of elements--------------------------------------
-    circuit_symbols_list = circuit_symbols.split(' ')
-    circuit_symbols_list.pop()
-    full_list = full_list.split('\n')
-    component_name_and_windows_list = component_name_and_windows.split('\n')
-    for window in range(0, len(component_name_and_windows_list)):
-        if 'Left' in component_name_and_windows_list[window]\
-                or 'Right' in component_name_and_windows_list[window]\
-                or 'VBottom' in component_name_and_windows_list[window]\
-                or 'VTop' in component_name_and_windows_list[window]:
-            component_name_and_windows_list[window] = re.sub(r"^\s+|\s+$", '',
-                                                             re.sub(r'[0-9].*? ', '', re.sub(r'[A-Z]', '',
-                                                                                         re.sub(r'[A-Z][a-z]*.' + '\d',
-                                                             '', component_name_and_windows_list[window])), 1))
+    try:
+        circuit_symbols_list = circuit_symbols.split(' ')
+        circuit_symbols_list.pop()
+        full_list = full_list.split('\n')
+        component_name_and_windows_list = component_name_and_windows.split('\n')
+        for window in range(0, len(component_name_and_windows_list)):
+            if 'Left' in component_name_and_windows_list[window] \
+                    or 'Right' in component_name_and_windows_list[window] \
+                    or 'VBottom' in component_name_and_windows_list[window] \
+                    or 'VTop' in component_name_and_windows_list[window]:
+                component_name_and_windows_list[window] = re.sub(r"^\s+|\s+$", '',
+                                                                 re.sub(r'[0-9].*? ', '', re.sub(r'[A-Z]', '',
+                                                                                                 re.sub(
+                                                                                                     r'[A-Z][a-z]*.' + '\d',
+                                                                                                     '',
+                                                                                                     component_name_and_windows_list[
+                                                                                                         window])), 1))
 
-    for window in range(0, len(full_list)):
-        if 'Left' in full_list[window]\
-                or 'Right' in full_list[window]\
-                or 'VBottom' in full_list[window]\
-                or 'VTop' in full_list[window]:
-            full_list[window] = re.sub(r'VBottom.' + '\d', '',re.sub(r'VTop.' + '\d', '',\
-                                re.sub(r'Right.' + '\d', '', re.sub(r'Left.' + '\d', '', full_list[window]))))
-    old_list = full_list
-    full_list = ' '.join(full_list).split(' ')
+        for window in range(0, len(full_list)):
+            if 'Left' in full_list[window] \
+                    or 'Right' in full_list[window] \
+                    or 'VBottom' in full_list[window] \
+                    or 'VTop' in full_list[window]:
+                full_list[window] = re.sub(r'VBottom.' + '\d', '', re.sub(r'VTop.' + '\d', '', \
+                                                                          re.sub(r'Right.' + '\d', '',
+                                                                                 re.sub(r'Left.' + '\d', '',
+                                                                                        full_list[window]))))
+        old_list = full_list
+        full_list = ' '.join(full_list).split(' ')
 
-    # Removing \\ from component names
-    for window in range(0, len(full_list)):
-        if '\\' or '\\\\' in full_list[window]:
-            full_list[window] = full_list[window].replace('\\', '').replace('\\\\', '')
+        # Removing \\ from component names
+        for window in range(0, len(full_list)):
+            if '\\' or '\\\\' in full_list[window]:
+                full_list[window] = full_list[window].replace('\\', '').replace('\\\\', '')
 
-    while '' in full_list:
-        full_list.remove('')
+        while '' in full_list:
+            full_list.remove('')
 
-    print(full_list)
-    # Removing extra unnecessary elements from window
-    for window in range(0, len(full_list)):
-        if (window + 5)<= len(full_list):
-            if ('R0' in full_list[window]
-                or 'R90' in full_list[window]
-                or 'R180' in full_list[window]
-                or 'R270' in full_list[window]) and not re.search('[a-zA-Z]', full_list[window]):
+        print(full_list)
+        # Removing extra unnecessary elements from window
+        for window in range(0, len(full_list)):
+            if (window + 5) < len(full_list):
+                if ('R0' in full_list[window]
+                    or 'R90' in full_list[window]
+                    or 'R180' in full_list[window]
+                    or 'R270' in full_list[window]) \
+                        and not re.search('[a-zA-Z]', full_list[window + 1]):
+                    print(full_list[window + 1])
                     full_list[window + 1] = re.sub('[0-9]', '', full_list[window + 1])
-                    full_list[window + 5] = ''
+                    full_list[window + 4] = ''
 
-    # Adding 0 for components which have no rotations
-    for window in range(0, len(full_list)):
-        if (window + 5) <= len(full_list):
-            if (('R0' in full_list[window]
-                or 'R90' in full_list[window]
-                or 'R180' in full_list[window]
-                or 'R270' in full_list[window])\
-                    and re.search('[a-zA-Z]', full_list[window + 1])):
-                print(full_list[window + 1])
-                full_list.insert(window + 1, str(0))
-                full_list.insert(window + 2, str(0))
-                full_list.insert(window + 3, str(0))
-                full_list.insert(window + 4, str(0))
+        while '' in full_list:
+            full_list.remove('')
 
-            if (('R0' in full_list[window]
-                         or 'R90' in full_list[window]
-                         or 'R180' in full_list[window]
-                         or 'R270' in full_list[window])
-                        and re.search('[a-zA-Z][0-9]', full_list[window + 1])):
-                print(full_list[window + 1])
-                full_list.insert(window + 1, str(0))
-                full_list.insert(window + 2, str(0))
-                full_list.insert(window + 3, str(0))
-                full_list.insert(window + 4, str(0))
+        print(full_list)
+        while_window_counter = 0
+        # Adding 0 for components which have no rotations
+        while while_window_counter < len(full_list):
+            if (while_window_counter + 1) < len(full_list):
+                if (('R0' in full_list[while_window_counter]
+                     or 'R90' in full_list[while_window_counter]
+                     or 'R180' in full_list[while_window_counter]
+                     or 'R270' in full_list[while_window_counter]) \
+                        and re.search('[a-zA-Z]', full_list[while_window_counter + 1])):
+                    # print(full_list[while_window_counter + 1])
+                    full_list.insert(while_window_counter + 1, str(0))
+                    full_list.insert(while_window_counter + 2, str(0))
+                    full_list.insert(while_window_counter + 3, str(0))
+                    full_list.insert(while_window_counter + 4, str(0))
 
-            if ('R0' in full_list[window]
-                or 'R90' in full_list[window]
-                or 'R180' in full_list[window]
-                or 'R270' in full_list[window]) \
-                    and full_list[window + 3].isalpha():
-                full_list.insert(window + 3, str(0))
-                full_list.insert(window + 4, str(0))
+                if (('R0' in full_list[while_window_counter]
+                     or 'R90' in full_list[while_window_counter]
+                     or 'R180' in full_list[while_window_counter]
+                     or 'R270' in full_list[while_window_counter])
+                        and re.search('[a-zA-Z][0-9]', full_list[while_window_counter + 1])):
+                    # print(full_list[while_window_counter + 1])
+                    full_list.insert(while_window_counter + 1, str(0))
+                    full_list.insert(while_window_counter + 2, str(0))
+                    full_list.insert(while_window_counter + 3, str(0))
+                    full_list.insert(while_window_counter + 4, str(0))
 
-    print(full_list)
-    component_name_and_windows_list.pop()
-    filtered_component_name_and_window = ' '.join(component_name_and_windows_list).split(' ')
+                if ('R0' in full_list[while_window_counter]
+                    or 'R90' in full_list[while_window_counter]
+                    or 'R180' in full_list[while_window_counter]
+                    or 'R270' in full_list[while_window_counter]) \
+                        and full_list[while_window_counter + 3].isalpha():
+                    full_list.insert(while_window_counter + 3, str(0))
+                    full_list.insert(while_window_counter + 4, str(0))
+            while_window_counter += 1
 
-    for element in range(0, len(circuit_symbols_list), 4):
-        circuit_symbols_list[element + 1] = int(circuit_symbols_list[element + 1])
-        circuit_symbols_list[element + 2] = int(circuit_symbols_list[element + 2])
-        #circuit_symbols_list[element + 3] = int(circuit_symbols_list[element + 3].replace('R', ''))
-    # Store all component names and values
-    component_name_and_values = component_name_and_values.split('\n')
-    component_name_and_values.pop()
-    component_details_dictionary = {}
-    # Creating a dictionary to store component names and values
-    # for comps in range(0, len(component_name_and_values) + 1, 2):
-    #     if (comps + 1) >= len(component_name_and_values):
-    #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
-    #         break
-    #     else:
-    #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
-    # print(component_details_dictionary)
+        if ('R0' in full_list[len(full_list) - 1]
+                or 'R90' in full_list[len(full_list) - 1]
+                or 'R180' in full_list[len(full_list) - 1]
+                or 'R270' in full_list[len(full_list) - 1]):
+            full_list.append(str(0))
+            full_list.append(str(0))
+            full_list.append(str(0))
+            full_list.append(str(0))
+        print('full filtered list ', end='')
+        print(len(full_list), end='')
+        print(' ', full_list)
+        component_name_and_windows_list.pop()
+        filtered_component_name_and_window = ' '.join(component_name_and_windows_list).split(' ')
 
-    # Store all component names in a list after removing new lines
-    components = components.split('\n')
-    # Remove last element which is empty
-    components.pop()
+        for element in range(0, len(circuit_symbols_list), 4):
+            circuit_symbols_list[element + 1] = int(circuit_symbols_list[element + 1])
+            circuit_symbols_list[element + 2] = int(circuit_symbols_list[element + 2])
+            # circuit_symbols_list[element + 3] = int(circuit_symbols_list[element + 3].replace('R', ''))
+        # Store all component names and values
+        component_name_and_values = component_name_and_values.split('\n')
+        component_name_and_values.pop()
+        component_details_dictionary = {}
+        # Creating a dictionary to store component names and values
+        # for comps in range(0, len(component_name_and_values) + 1, 2):
+        #     if (comps + 1) >= len(component_name_and_values):
+        #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
+        #         break
+        #     else:
+        #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
+        # print(component_details_dictionary)
 
-    # Stores whether a component is stored as a :
-    # Constant: Take same values from LTSpice and just use them
-    # Random: Adjusted by the user in enter parameters window, which automatically changes Constant to Random
-    # when the user clicks the save parameters button
-    component_value_array = ['Constant'] * len(components)
-    enter_parameters_button.configure(command=lambda: open_new_window(components,
-                                                                      schematic_analysis,
-                                                                      component_parameters_frame,
-                                                                      entering_parameters_window,
-                                                                      component_value_array,
-                                                                      canvas))
+        # Store all component names in a list after removing new lines
+        components = components.split('\n')
+        # Remove last element which is empty
+        components.pop()
 
-    # Some components are drawn at negative values, which do not appear at all in the canvas, for this reason an
-    # adjustment is made to all coordinates to move them into an area which can be displayed in.
-    adjustment = 150
-    # -------------------------------------------- Separating Wires ----------------------------------------------------
-    modified_coordinates = filter_components(wires, adjustment)
+        # Stores whether a component is stored as a :
+        # Constant: Take same values from LTSpice and just use them
+        # Random: Adjusted by the user in enter parameters window, which automatically changes Constant to Random
+        # when the user clicks the save parameters button
+        component_value_array = ['Constant'] * len(components)
+        enter_parameters_button.configure(command=lambda: open_new_window(components,
+                                                                          root,
+                                                                          schematic_analysis,
+                                                                          component_parameters_frame,
+                                                                          entering_parameters_window,
+                                                                          component_value_array,
+                                                                          canvas))
 
-    # ------------------------------------------- Separating Power Flags -----------------------------------------------
-    ground_flags = []
-    other_power_flags = []
-    power_flags = power_flags.split('\n')
-    power_flags = [flag for pwr_flag in power_flags for flag in pwr_flag.split(' ')]
-    power_flags.pop()
+        # Some components are drawn at negative values, which do not appear at all in the canvas, for this reason an
+        # adjustment is made to all coordinates to move them into an area which can be displayed in.
+        adjustment = 0
+# -------------------------------------------- Separating Wires --------------------------------------------------------
+        modified_coordinates = filter_components(wires, adjustment)
 
-    # If a flag has the value '0' this means it ground
-    # If a flag has ANY value OTHER THAN '0' this means it is NOT a ground
-    print(power_flags)
-    for flag_coordinates in range(2, len(power_flags), 3):
-        # Store all ground power flags
-        if power_flags[flag_coordinates] == '0':
-            ground_flags.append(power_flags[flag_coordinates - 2])
-            ground_flags.append(power_flags[flag_coordinates - 1])
-        # Store all other power flags
-        elif power_flags[flag_coordinates] != '0':
-            other_power_flags.append(power_flags[flag_coordinates - 2])
-            other_power_flags.append(power_flags[flag_coordinates - 1])
-            other_power_flags.append(power_flags[flag_coordinates])
+# ------------------------------------------- Separating Power Flags ---------------------------------------------------
+        ground_flags = []
+        other_power_flags = []
+        power_flags = power_flags.split('\n')
+        power_flags = [flag for pwr_flag in power_flags for flag in pwr_flag.split(' ')]
+        power_flags.pop()
 
-    ground_flags = [int(coordinate) for coordinate in ground_flags]
+        # If a flag has the value '0' this means it ground
+        # If a flag has ANY value OTHER THAN '0' this means it is NOT a ground
+        print(power_flags)
+        for flag_coordinates in range(2, len(power_flags), 3):
+            # Store all ground power flags
+            if power_flags[flag_coordinates] == '0':
+                ground_flags.append(power_flags[flag_coordinates - 2])
+                ground_flags.append(power_flags[flag_coordinates - 1])
+            # Store all other power flags
+            elif power_flags[flag_coordinates] != '0':
+                other_power_flags.append(power_flags[flag_coordinates - 2])
+                other_power_flags.append(power_flags[flag_coordinates - 1])
+                other_power_flags.append(power_flags[flag_coordinates])
 
-    for power_flag in range(0, len(other_power_flags), 3):
-        other_power_flags[power_flag] = int(other_power_flags[power_flag]) + adjustment
-        other_power_flags[power_flag + 1] = int(other_power_flags[power_flag + 1]) + adjustment
+        ground_flags = [int(coordinate) for coordinate in ground_flags]
 
-    print('other power flags:', end='')
-    print(other_power_flags)
-    modified_ground_flags = [modification + adjustment for modification in ground_flags]
+        for power_flag in range(0, len(other_power_flags), 3):
+            other_power_flags[power_flag] = int(other_power_flags[power_flag]) + adjustment
+            other_power_flags[power_flag + 1] = int(other_power_flags[power_flag + 1]) + adjustment
 
-    drawing_components = comp.ComponentSketcher(canvas)
-    # -------------------------------------------- Drawing Grounds -----------------------------------------------------
-    drawn_ground_flags = len(ground_flags) * [None]
-    drawing_components.sketch_components(modified_ground_flags,
-                                         drawn_ground_flags,
-                                         drawing_components.draw_ground_flags)
+        print('other power flags:', end='')
+        print(other_power_flags)
+        modified_ground_flags = [modification + adjustment for modification in ground_flags]
 
-    # ---------------------------------------------- Drawing Wires -----------------------------------------------------
-    for coordinate in range(0, len(modified_coordinates), 4):
+        drawing_components = comp.ComponentSketcher(canvas)
+# -------------------------------------------- Drawing Grounds ---------------------------------------------------------
+        drawn_ground_flags = len(ground_flags) * [None]
+        drawing_components.sketch_components(modified_ground_flags,
+                                             drawn_ground_flags,
+                                             drawing_components.draw_ground_flags)
 
-        canvas.create_line(modified_coordinates[coordinate],
-                           modified_coordinates[coordinate + 1],
-                           modified_coordinates[coordinate + 2],
-                           modified_coordinates[coordinate + 3],
-                           tags='schematic')
+# ---------------------------------------------- Drawing Wires ---------------------------------------------------------
+        for coordinate in range(0, len(modified_coordinates), 4):
+            canvas.create_line(modified_coordinates[coordinate],
+                               modified_coordinates[coordinate + 1],
+                               modified_coordinates[coordinate + 2],
+                               modified_coordinates[coordinate + 3],
+                               tags='wire')
 
-    # -------------------------------------------- Drawing Other Power Flags -------------------------------------------
-    # TODO: Implement remaining power flags
-    # angle = 0
-    # angle = math.radians(angle)
-    # cos_val = math.cos(angle)
-    # sin_val = math.sin(angle)
-    # x_old = other_power_flags[0]
-    # y_old = other_power_flags[1]
-    # centre_x = ((other_power_flags[0] - (other_power_flags[0] + 75))/2)
-    # centre_y = (other_power_flags[1])
-    for power_flag in range(0, len(other_power_flags), 3):
-        # other_power_flags[power_flag] = other_power_flags[power_flag] - centre_x
-        # other_power_flags[power_flag + 1] = other_power_flags[power_flag + 1] - centre_y
-        # x_new = other_power_flags[power_flag] * cos_val - other_power_flags[power_flag + 1] * sin_val
-        # y_new = other_power_flags[power_flag] * sin_val - other_power_flags[power_flag + 1] * cos_val
+# -------------------------------------------- Drawing Other Power Flags -------------------------------------------
+        # TODO: Implement names in remaining power flags
 
-        drawing_components.draw_other_power_flags(start_coordinate_x=other_power_flags[power_flag],
-                                                  start_coordinate_y=other_power_flags[power_flag + 1],
-                                                  power_flag=other_power_flags[power_flag + 2])
+        for power_flag in range(0, len(other_power_flags), 3):
+            drawing_components.draw_other_power_flags(start_coordinate_x=other_power_flags[power_flag],
+                                                      start_coordinate_y=other_power_flags[power_flag + 1],
+                                                      power_flag=other_power_flags[power_flag + 2])
 
-    circuit_comps = new_comp.NewComponents(canvas, root)
-    print(filtered_component_name_and_window)
-    component_drawn = ''
-    list_to_add = []
-    components_dictionary = {}
+        circuit_comps = new_comp.NewComponents(canvas, root)
+        print(circuit_symbols_list)
+        component_drawn = ''
+        list_to_add = []
+        components_dictionary = {}
 
-    for symbol in range(0, len(circuit_symbols_list), 4):
-        # if circuit_symbols_list[symbol + 3] == 0:
-            circuit_comps.load_component(file_name=circuit_symbols_list[symbol], encoding=encoding,
-                                         x_coordinate=circuit_symbols_list[symbol + 1] + adjustment,
-                                         y_coordinate=circuit_symbols_list[symbol + 2] + adjustment,
-                                         angle=circuit_symbols_list[symbol + 3], window_x=0, window_y=0)
+        # for symbol in range(0, len(circuit_symbols_list), 4):
+        #     # if circuit_symbols_list[symbol + 3] == 0:
+        #     circuit_comps.load_component(file_name=circuit_symbols_list[symbol], encoding=encoding,
+        #                                  x_coordinate=circuit_symbols_list[symbol + 1] + adjustment,
+        #                                  y_coordinate=circuit_symbols_list[symbol + 2] + adjustment,
+        #                                  angle=circuit_symbols_list[symbol + 3], window_x=0, window_y=0)
 
         # if circuit_symbols_list[symbol + 3] != 0:
         #     for component in range(len(filtered_component_name_and_window)):
@@ -752,24 +758,39 @@ def sketch_schematic_asc(schematic,
         #                                                  angle=circuit_symbols_list[symbol + 3],
         #                                                  window_x=window_x, window_y=window_y)
 
+        for symbol in range(0, len(full_list), 8):
+            try:
+                if full_list[symbol + 3] == 'R0' or full_list[symbol + 3] == 0:
+                    print(full_list[symbol + 1], full_list[symbol + 2])
+                    circuit_comps.load_component(file_name=full_list[symbol], encoding=encoding,
+                                                 x_coordinate=int(full_list[symbol + 1]) + adjustment,
+                                                 y_coordinate=int(full_list[symbol + 2]) + adjustment,
+                                                 angle=full_list[symbol + 3],
+                                                 window_x=0,
+                                                 window_y=0)
+                # TODO: Fix Rotation issue with other components
+                elif full_list[symbol + 3] != 'R0' or full_list[symbol + 3] != 0:
+                    circuit_comps.load_component(file_name=full_list[symbol], encoding=encoding,
+                                                 x_coordinate=int(full_list[symbol + 1]) + adjustment,
+                                                 y_coordinate=int(full_list[symbol + 2]) + adjustment,
+                                                 angle=full_list[symbol + 3],
+                                                 window_x=int(full_list[symbol + 4]) + int(full_list[symbol + 6]),
+                                                 window_y=int(full_list[symbol + 5]) + int(full_list[symbol + 7]))
+            except ValueError:
+                print(ValueError)
 
-    # for symbol in range(0, len(full_list), 8):
-    #     try:
-    #         circuit_comps.load_component(file_name=full_list[symbol], encoding=encoding,
-    #                                      x_coordinate=int(full_list[symbol + 1]) + adjustment,
-    #                                      y_coordinate=int(full_list[symbol + 2]) + adjustment,
-    #                                      angle=full_list[symbol + 3], window_x=0, window_y=0)
-    #     except ValueError:
-    #         print('Error in list')
-
-
+        tags_to_not_hover = canvas.find_withtag('power_flag') + canvas.find_withtag('wire')\
+                                                              + canvas.find_withtag('ground_flag')
+        #print(tags_to_not_hover)
 
     # ------------------------------------ Binding events to drawn shapes ----------------------------------------------
 
     # # --------------------------- Making voltage sources change colour when hovered over -----------------------------
-    # for vol_elements in drawn_voltage_sources:
-    #     canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg, canvas))
-    #     canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg, canvas))
+    #     for highlighting_tag in canvas.find_withtag('all'):
+    #         if highlighting_tag not in tags_to_not_hover:
+    #             canvas.itemconfig(highlighting_tag, activefill='green', disabledfill='black')
+    #       # canvas.tag_bind(vol_elements, '<Enter>', lambda event, arg=vol_elements: on_enter(event, arg, canvas))
+    #       # canvas.tag_bind(vol_elements, '<Leave>', lambda event, arg=vol_elements: on_leave(event, arg, canvas))
     #
     # while None in drawn_resistors:
     #     drawn_resistors.remove(None)
@@ -780,6 +801,9 @@ def sketch_schematic_asc(schematic,
     #     canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
     #                     lambda event,
     #                     elem=resistor_elements: on_resistor_press(event, elem, components, canvas))
+
+    except IndexError:
+        messagebox.showerror('No Components', 'Please select a schematic with components')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1021,6 +1045,7 @@ def change_component(master_window, starting_canvas):
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for entering parameters
 def open_new_window(components,
+                    root,
                     schematic_analysis,
                     component_parameters_frame,
                     parameters_window,
@@ -1071,12 +1096,12 @@ def open_new_window(components,
             entering_parameters_window.title("Enter Component Parameters")
 
             # Find the location of the main schematic analysis window
-            schematic_x = schematic_analysis.winfo_x()
-            schematic_y = schematic_analysis.winfo_y()
+            # schematic_x = root.winfo_x()
+            # schematic_y = root.winfo_y()
             # set the size and location of the new window created for entering parameters
-            entering_parameters_window.geometry("460x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
+            # entering_parameters_window.geometry("460x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
             # make the entering parameters window on top of the main schematic analysis window
-            entering_parameters_window.wm_transient(schematic_analysis)
+            # entering_parameters_window.wm_transient(schematic_analysis)
 
             component_name_array = [None] * len(components)
             component_distribution_array = [None] * len(components)
@@ -1087,7 +1112,7 @@ def open_new_window(components,
             name_label_array = [None] * len(components)
             param1_prefix_drop_down_list_array = [None] * len(components)
             param2_prefix_drop_down_list_array = [None] * len(components)
-            component_full_information_array = [None] * len(components)
+            parameters_frame = [None] * len(components)
             delete_button = [None] * len(components)
             # Example Structure
             # name: L1
@@ -1200,20 +1225,25 @@ def open_new_window(components,
                                                 values=prefixes,
                                                 width=max_distribution_width)
 
-                name_label_array[circuit_component] = customtkinter.CTkLabel(component_parameters_frame,
+                parameters_frame[circuit_component] = tk.Frame(component_parameters_frame,
+                                                               background='white',
+                                                               highlightbackground='black',
+                                                               highlightthickness=1,
+                                                               height=100
+                                                               )
+
+                name_label_array[circuit_component] = customtkinter.CTkLabel(parameters_frame[circuit_component],
                                                                              width=100,
                                                                              height=25,
-                                                                             highlightcolor='black',
-                                                                             borderwidth=1,
                                                                              relief='solid',
                                                                              justify='left',
                                                                              text_color='black'
                                                                              )
 
-                delete_button[circuit_component] = customtkinter.CTkButton(name_label_array[circuit_component],
+                delete_button[circuit_component] = customtkinter.CTkButton(parameters_frame[circuit_component],
                                                                            text='x',
                                                                            text_color='#A9A9A9',
-                                                                           width=20,
+                                                                           width=10,
                                                                            height=15,
                                                                            bg_color='#212325',
                                                                            fg_color='#212325',
@@ -1226,10 +1256,11 @@ def open_new_window(components,
                                                                                         t,
                                                                                         delete_button,
                                                                                         all_component_parameters,
-                                                                                        components)
+                                                                                        components,
+                                                                                        parameters_frame)
                                                                            )
 
-                delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
+                delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.5)
 
                 # component_full_information_array[circuit_component] = tk.Entry(component_parameters_frame)
 
@@ -1301,7 +1332,8 @@ def open_new_window(components,
                                         components,
                                         component_parameters_frame,
                                         param1_prefix_drop_down_list_array,
-                                        param2_prefix_drop_down_list_array)
+                                        param2_prefix_drop_down_list_array,
+                                        parameters_frame)
             )
 
             # Button for saving all parameters
@@ -1319,7 +1351,8 @@ def open_new_window(components,
                                                             component_parameters_frame,
                                                             delete_button,
                                                             param1_prefix_drop_down_list_array,
-                                                            param2_prefix_drop_down_list_array)
+                                                            param2_prefix_drop_down_list_array,
+                                                            parameters_frame)
             )
 
             component_name_row = 3
@@ -1365,7 +1398,9 @@ def open_new_window(components,
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for deleting entered parameters ------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def delete_label(label_to_remove, label_index, delete_label_button, all_stored_components, components):
+def delete_label(label_to_remove, label_index,
+                 delete_label_button, all_stored_components, components,
+                 parameters_frame):
     """
     Event Function for when the delete button of label has been clicked
 
@@ -1389,16 +1424,18 @@ def delete_label(label_to_remove, label_index, delete_label_button, all_stored_c
     label_to_remove[label_index].configure(borderwidth=0)
 
     # Remove button from label
-    delete_label_button[label_index].grid_forget()
+    #delete_label_button[label_index].grid_forget()
+    parameters_frame[label_index].pack_forget()
     # Deleting Item from dictionary
-    # TODO: Fix Out of range issue
+    component_counter = 0
     if all_stored_components:
-        for stored_comp in range(len(all_stored_components)):
-            if component_name == list(all_stored_components[stored_comp].keys()):
+        while component_counter < len(all_stored_components):
+            if component_name == list(all_stored_components[component_counter].keys()):
                 print(len(all_stored_components))
-                print(stored_comp)
-                del all_stored_components[stored_comp]
+                print(component_counter)
+                del all_stored_components[component_counter]
                 print(all_stored_components)
+            component_counter += 1
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1420,7 +1457,8 @@ def save_entered_parameters(entering_parameters_window,
                             components,
                             component_parameters_frame,
                             prefix1,
-                            prefix2):
+                            prefix2,
+                            parameters_frame):
     global all_component_parameters
     global component_index
 
@@ -1441,42 +1479,42 @@ def save_entered_parameters(entering_parameters_window,
         component_param1 = float(component_param1)
         component_param2 = float(component_param2)
         if prefix1[index].get() == 'm':
-            component_param1 = component_param1 / 1000
+            component_param1 = component_param1 * 1e-3
         elif prefix1[index].get() == 'μ':
-            component_param1 = component_param1 / 1000000
+            component_param1 = component_param1 * 1e-6
         elif prefix1[index].get() == 'n':
-            component_param1 = component_param1 / 1000000000
+            component_param1 = component_param1 * 1e-9
         elif prefix1[index].get() == 'p':
-            component_param1 = component_param1 / 1000000000000
+            component_param1 = component_param1 * 1e-12
         elif prefix1[index].get() == 'f':
-            component_param1 = component_param1 / 1000000000000000
+            component_param1 = component_param1 * 1e-15
         elif prefix1[index].get() == 'K':
-            component_param1 = component_param1 * 1000
+            component_param1 = component_param1 * 1e3
         elif prefix1[index].get() == 'MEG':
-            component_param1 = component_param1 * 1000000
+            component_param1 = component_param1 * 1e6
         elif prefix1[index].get() == 'G':
-            component_param1 = component_param1 * 1000000000
+            component_param1 = component_param1 * 1e9
         elif prefix1[index].get() == 'T':
-            component_param1 = component_param1 * 1000000000000
+            component_param1 = component_param1 * 1e12
 
         if prefix2[index].get() == 'm':
-            component_param2 = component_param2 / 1000
+            component_param2 = component_param2 * 1e-3
         elif prefix2[index].get() == 'μ':
-            component_param2 = component_param2 / 1000000
+            component_param2 = component_param2 * 1e-6
         elif prefix2[index].get() == 'n':
-            component_param2 = component_param2 / 1000000000
+            component_param2 = component_param2 * 1e-9
         elif prefix2[index].get() == 'p':
-            component_param2 = component_param2 / 1000000000000
+            component_param2 = component_param2 * 1e-12
         elif prefix2[index].get() == 'f':
-            component_param2 = component_param2 / 1000000000000000
+            component_param2 = component_param2 * 1e-15
         elif prefix2[index].get() == 'K':
-            component_param2 = component_param2 * 1000
+            component_param2 = component_param2 * 1e3
         elif prefix2[index].get() == 'MEG':
-            component_param2 = component_param2 * 1000000
+            component_param2 = component_param2 * 1e6
         elif prefix2[index].get() == 'G':
-            component_param2 = component_param2 * 1000000000
+            component_param2 = component_param2 * 1e9
         elif prefix2[index].get() == 'T':
-            component_param2 = component_param2 * 1000000000000
+            component_param2 = component_param2 * 1e12
 
         if len(all_component_parameters) == 0:
             all_component_parameters.append({component_name:
@@ -1522,9 +1560,9 @@ def save_entered_parameters(entering_parameters_window,
 
         # --------------------------------- Displaying entered parameters on schematic_analysis window -----------------
         # print(component_index)
-        full_name_labels[index].configure(borderwidth=1)
+        # full_name_labels[index].configure(borderwidth=1)
         full_name_labels[index].configure(text='')
-        delete_label_button[index].grid(row=0, column=0, sticky='nw')
+        delete_label_button[index].place(x=0, y=0, relwidth=0.05, relheight=0.2)
 
         full_name_labels[index].configure(text='\n' + component_name +
                                           '\nDistribution: ' + component_distribution
@@ -1541,15 +1579,9 @@ def save_entered_parameters(entering_parameters_window,
                                           + '\n' + component_param1_label + '=' + str(component_param1)
                                           + '\n' + component_param2_label + '=' + str(component_param2)
                                           + '\n')
-        tk.Grid.rowconfigure(component_parameters_frame, tuple(range(len(components))), weight=1)
 
-    for component in range(len(components)):
-        tk.Grid.columnconfigure(full_name_labels[component], component, weight=1)
-        tk.Grid.rowconfigure(full_name_labels[component], component, weight=1)
-        tk.Grid.rowconfigure(component_parameters_frame, component, weight=1)
-        tk.Grid.columnconfigure(component_parameters_frame, component, weight=1)
-
-    full_name_labels[component_index].grid(row=component_index, column=1, sticky='nsew')
+    full_name_labels[component_index].place(x=0, y=1, relwidth=1.0, relheight=1.0)
+    parameters_frame[component_index].pack(expand=False, fill=tk.BOTH, side=tk.TOP)
 
     print(all_component_parameters)
 
@@ -1568,7 +1600,8 @@ def save_all_entered_parameters(component_name,
                                 component_parameters_frame,
                                 delete_button,
                                 prefix1,
-                                prefix2
+                                prefix2,
+                                parameters_frame
                                 ):
     global all_component_parameters
     all_component_parameters.clear()
@@ -1593,7 +1626,7 @@ def save_all_entered_parameters(component_name,
         if component_value_array[circuit_component] == 'Random':
             # print(component_name)
             # clearing the name label of all parameters
-            full_name_labels[circuit_component].configure(borderwidth=1)
+            # full_name_labels[circuit_component].configure(borderwidth=1)
             full_name_labels[circuit_component].configure(text='')
 
             param1 = float(component_param1_array[circuit_component].get())
@@ -1650,10 +1683,10 @@ def save_all_entered_parameters(component_name,
                                        + '\n'
                                        )
 
-            tk.Grid.rowconfigure(component_parameters_frame, circuit_component, weight=1)
             # Placing the name label of all parameters on the schematic_analysis window
-            delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
-            full_name_labels[circuit_component].grid(row=circuit_component, column=1, sticky='nsew')
+            delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
+            full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=1.0)
+            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP)
 
             # Storing all components with their parameters in a dictionary
             all_component_parameters.append(
@@ -1672,7 +1705,7 @@ def save_all_entered_parameters(component_name,
 
         # If value is Constant, display label only. DO NOT store in dictionary
         elif component_value_array[circuit_component] == 'Constant':
-            full_name_labels[circuit_component].configure(borderwidth=1)
+            # full_name_labels[circuit_component].configure(borderwidth=1)
             full_name_labels[circuit_component].configure(text='')
 
             # Storing the name label of all parameters
@@ -1682,13 +1715,9 @@ def save_all_entered_parameters(component_name,
                                                           + '\n           '
                                                           + '\n')
 
-            tk.Grid.columnconfigure(full_name_labels[circuit_component], circuit_component, weight=1)
-            tk.Grid.rowconfigure(full_name_labels[circuit_component], circuit_component, weight=1)
-            tk.Grid.rowconfigure(component_parameters_frame, circuit_component, weight=1)
-            # Placing the name label of all parameters on the schematic_analysis window
-            tk.Grid.columnconfigure(component_parameters_frame, circuit_component, weight=1)
-            delete_button[circuit_component].grid(row=0, column=0, sticky=tk.NW)
-            full_name_labels[circuit_component].grid(row=circuit_component, column=1, sticky='nsew')
+            delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
+            full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=1.0)
+            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP)
 
     # print(all_component_parameters)
 
@@ -1727,6 +1756,7 @@ def error_select_schematic(canvas):
 #     component_value_array = ['Constant'] * len(components)
 #     if components:
 #         open_new_window(components,
+#                         root,
 #                         schematic_analysis,
 #                         component_parameters_frame,
 #                         entering_parameters_window,
