@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import customtkinter
+import tksheet
 from matplotlib import pyplot as plt, backend_bases
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -16,6 +17,8 @@ import gui_events as guievents
 # ----------------------------------------------------------------------------------------------------------------------
 
 BACKGROUND_COLOUR = '#F0F0F0'
+DARK_THEME_COLOUR = '#2A2D2E'
+LOGO_BACKGROUND_COLOUR = '#212325'
 FONT_SIZE = ("", 10)
 
 # Set the colour of the background
@@ -55,6 +58,16 @@ root.geometry('%dx%d+%d+%d' % (root_width, root_height, root_x, root_y))
 root.resizable(height=False, width=False)
 root.title('Welcome to EMC Statistical Analysis Tool')
 # Creating tabs in tkinter schematic_analysis window
+
+# style = ttk.Style()
+# style.theme_create("dark_theme", parent="alt", settings={
+#         "TNotebook": {"configure": {"tabmargins": [2, 5, 2, 0] } },
+#         "TNotebook.Tab": {
+#             "configure": {"padding": [5, 1], "background": DARK_THEME_COLOUR, "foreground": 'white'},
+#             "map":       {"background": [("selected", 'blue')],
+#                           "expand": [("selected", [1, 1, 1, 0])] } } } )
+#
+# style.theme_use("dark_theme")
 tabControl = ttk.Notebook(schematic_analysis)
 
 # Creating a tab for drawing schematics and another tab for graphs
@@ -78,7 +91,7 @@ canvas = tkmod.ResizingCanvas(schematic_canvas_frame,
                               width=1000,
                               height=600,
                               highlightthickness=0,
-                              #background='gray86'
+                              #background=DARK_THEME_COLOUR
                               )
 
 all_component_parameters = []
@@ -95,7 +108,8 @@ enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
                                                   command=lambda: guievents.error_select_schematic(canvas)
                                                   )
 
-logo = tk.Canvas(root, width=200, height=50, background='#212325', highlightthickness=0)
+logo = tk.Canvas(root, width=200, height=50, background=LOGO_BACKGROUND_COLOUR,
+                 highlightthickness=0)
 factor = 2
 adjustment_x = 60
 adjustment_y = 20
@@ -158,7 +172,7 @@ fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
 
 fileMenu.add_command(label="Add a new component", font=FONT_SIZE,
                      command=lambda: guievents.open_new_components(root))
-
+fileMenu.add_separator()
 fileMenu.add_command(label="Exit",
                      font=FONT_SIZE,
                      command=lambda: root.destroy())
@@ -171,8 +185,11 @@ menu.add_cascade(label="File",
 editMenu = tkmod.CTkMenu(menu)
 editMenu.add_command(label="Undo", font=FONT_SIZE)
 editMenu.add_command(label="Redo", font=FONT_SIZE)
-editMenu.add_command(label="Dark Theme", font=FONT_SIZE, command=lambda: guievents.dark_theme_set(root))
-editMenu.add_command(label="Light Theme", font=FONT_SIZE, command=lambda: guievents.light_theme_set(root))
+theme_submenu = tkmod.CTkMenu(editMenu)
+theme_submenu.add_command(label="Dark Theme", font=FONT_SIZE, command=lambda: guievents.dark_theme_set(root, canvas))
+theme_submenu.add_command(label="Light Theme", font=FONT_SIZE, command=lambda: guievents.light_theme_set(root, canvas))
+editMenu.add_cascade(label='Theme', menu=theme_submenu)
+editMenu.add_cascade(label='Preferences', command= lambda: guievents.set_preferences(root, schematic_analysis))
 editMenu.config(font=FONT_SIZE)
 menu.add_cascade(label="Edit", font=FONT_SIZE, menu=editMenu)
 
@@ -208,16 +225,38 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
                                                                                   root)
                                           )
 
+lines_array = [None]
+# --------------------------------------------- Table Tab --------------------------------------------------------------
+data_table = tksheet.Sheet(parent=spice_data, show_table=True,
+                           total_columns=26, total_rows=100,
+                           # header_bg=DARK_THEME_COLOUR, header_fg='white', table_bg='#3D4D5C'
+                           )
+data_table.enable_bindings()
+data_table.pack(expand=True, fill=tk.BOTH)
+
+raw_file_button_table = customtkinter.CTkButton(spice_data,
+                                                text='Open a raw file',
+                                                command=lambda: guievents.open_raw_file(graphs, data_table,
+                                                                                        column_to_plot_1,
+                                                                                        column_to_plot_2,
+                                                                                        figure,
+                                                                                        ax, lines_array,
+                                                                                        toolbar,
+                                                                                        new_subplot, subplot_number,
+                                                                                        subplots))
+
+raw_file_button_table.pack(pady=6, padx=6, side=tk.BOTTOM)
+
 # ------------------------------------------------- Graph Tab ----------------------------------------------------------
 figure = plt.Figure(figsize=(8, 6), dpi=100)
+figure.tight_layout()
 chart_type = FigureCanvasTkAgg(figure, master=graphs)
 ax = [figure.add_subplot(111)]
 
-
 backend_bases.NavigationToolbar2.toolitems = (
     ('Home', 'Reset original view', 'home', 'home'),
-    ('Back', 'Back to  previous view', 'back', 'back'),
-    ('Forward', 'Forward to next view', 'forward', 'forward'),
+    # ('Back', 'Back to  previous view', 'back', 'back'),
+    # ('Forward', 'Forward to next view', 'forward', 'forward'),
     (None, None, None, None),
     ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
     ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
@@ -230,14 +269,38 @@ ax[0].set_title('Empty Plot')
 ax[0].grid('on')
 toolbar = NavigationToolbar2Tk(chart_type, graphs, pack_toolbar=False)
 
+# Change colour of toolbar and it's elements
+# toolbar.config(background='red')
+# for element in toolbar.winfo_children():
+#     element.config(background='red')
+
 toolbar.update()
 toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=1)
 
+x_axis = customtkinter.CTkLabel(toolbar,
+                                text='  x axis:',
+                                text_color='black',
+                                width=15)
+
 column_to_plot_1 = customtkinter.CTkOptionMenu(toolbar,
-                                             values=[''])
+                                               values=[''])
+
+y_axis = customtkinter.CTkLabel(toolbar,
+                                text='y axis:',
+                                text_color='black',
+                                width=15)
 
 column_to_plot_2 = customtkinter.CTkOptionMenu(toolbar,
-                                             values=[''])
+                                               values=[''])
+
+
+plot_number = tk.StringVar(toolbar)
+subplots = ['1']
+plot_number.set(subplots[0])
+
+subplot_number = customtkinter.CTkOptionMenu(toolbar,
+                                             values=subplots,
+                                             variable=plot_number)
 
 check_var = tk.StringVar()
 new_subplot = customtkinter.CTkCheckBox(master=toolbar, text="New Subplot",
@@ -258,14 +321,14 @@ add_new_component_button = customtkinter.CTkButton(root,
 
 open_raw_file_button = customtkinter.CTkButton(root,
                                                text='Open LTspice Waveform .raw file',
-                                               command=lambda: guievents.open_raw_file(spice_data, graphs,
+                                               command=lambda: guievents.open_raw_file(graphs, data_table,
                                                                                        column_to_plot_1,
                                                                                        column_to_plot_2,
                                                                                        figure,
-                                                                                       chart_type,
-                                                                                       ax,
+                                                                                       ax, lines_array,
                                                                                        toolbar,
-                                                                                       new_subplot))
+                                                                                       new_subplot, subplot_number,
+                                                                                       subplots))
 
 exit_app_button = customtkinter.CTkButton(root,
                                           text='Exit EMC Analysis',
@@ -281,7 +344,6 @@ canvas.pack(fill=tk.BOTH, expand=True)
 chart_type.get_tk_widget().pack(side='top', fill='both')
 # separator = ttk.Separator(component_parameters_frame, orient='vertical')
 # separator.pack(fill='y')
-# TODO: Ensure Component Paramaters Frame, shows even when window is resized
 component_parameters_frame.pack(side='right', fill=tk.BOTH)
 
 # Prevents Component parameters Frame From Resizing
@@ -290,7 +352,9 @@ canvas.pack_propagate(False)
 component_parameters_frame.grid_propagate(False)
 # Root window widgets and items
 logo.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+x_axis.pack(side=tk.LEFT)
 column_to_plot_1.pack(side=tk.LEFT, padx=10)
+y_axis.pack(side=tk.LEFT)
 column_to_plot_2.pack(side=tk.LEFT, padx=10)
 new_subplot.pack(side=tk.LEFT, padx=10)
 open_raw_file_button.pack(pady=6, padx=6, anchor=tk.NE)

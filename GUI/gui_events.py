@@ -8,6 +8,7 @@ import component_sketcher as comp
 import readers as read
 import tkinter_modification as tkmod
 import new_components as new_comp
+from tkinter.colorchooser import askcolor
 import tksheet
 import re
 from pynput import keyboard
@@ -28,7 +29,7 @@ def _create_circle(self, x_coordinate, y_coordinate, r, **kwargs):
 tk.Canvas.create_circle = _create_circle
 
 
-def light_theme_set(root):
+def light_theme_set(root, canvas):
     customtkinter.set_appearance_mode('light')  # Modes: system (default), light, dark
     root.withdraw()
     customtkinter.set_default_color_theme('dark-blue')  # Themes: blue (default), dark-blue, green
@@ -38,14 +39,16 @@ def light_theme_set(root):
     ctk_bg = customtkinter.ThemeManager.theme["color"]["frame_high"][mode]
     ctk_fg = customtkinter.ThemeManager.theme["color"]["text"][mode]
     ctk_hover_bg = customtkinter.ThemeManager.theme["color"]["button"][mode]
+    print(ctk_bg, ctk_fg, ctk_hover_bg)
     menu_instances = tkmod.CTkMenu.get()
     for menu in menu_instances:
         menu.configure(background=ctk_bg)
         menu.configure(foreground=ctk_fg)
         menu.configure(activebackground=ctk_hover_bg)
+    # canvas.config(background='#D1D5D8')
 
 
-def dark_theme_set(root):
+def dark_theme_set(root, canvas):
     customtkinter.set_appearance_mode('dark')  # Modes: system (default), light, dark
     root.withdraw()
     customtkinter.set_default_color_theme('blue')  # Themes: blue (default), dark-blue, green
@@ -55,13 +58,100 @@ def dark_theme_set(root):
     ctk_bg = customtkinter.ThemeManager.theme["color"]["frame_high"][mode]
     ctk_fg = customtkinter.ThemeManager.theme["color"]["text"][mode]
     ctk_hover_bg = customtkinter.ThemeManager.theme["color"]["button"][mode]
-
+    print(ctk_bg, ctk_fg, ctk_hover_bg)
     menu_instances = tkmod.CTkMenu.get()
     for menu in menu_instances:
         menu.configure(background=ctk_bg)
         menu.configure(foreground=ctk_fg)
         menu.configure(activebackground=ctk_hover_bg)
     root.withdraw()
+    # canvas.config(background='#2A2D2E')
+
+
+def slider_event(slider_label, slider, canvas):
+    line_thickness = round(slider.get(), 1)
+    slider_label.configure(text=str(line_thickness))
+
+    sample_elements = canvas.find_withtag('all')
+    for sample_element in sample_elements:
+        canvas.itemconfig(sample_element, width=line_thickness)
+
+
+def change_colour(colour_to_change, canvas):
+    colour = askcolor(title="Tkinter Color Chooser")
+    colour_to_change = colour[1]
+
+    sample_elements = canvas.find_withtag('triangle') + canvas.find_withtag('rectangle')\
+                      + canvas.find_withtag('circle') + canvas.find_withtag('ground_flag')
+
+    canvas.itemconfig(canvas.find_withtag('arrow'), fill=colour_to_change)
+
+    lines = canvas.find_withtag('line')
+    for sample_element in sample_elements:
+        canvas.itemconfig(sample_element, outline=colour_to_change)
+
+    for line in lines:
+        canvas.itemconfig(line, fill=colour_to_change)
+
+
+def set_preferences(root, schematic_analysis):
+    preferences_window = customtkinter.CTkToplevel(schematic_analysis)
+
+    # Setting up window size and position
+    preferences_window_width = 800  # width for the Tk schematic_analysis
+    preferences_window_height = 400  # height for the Tk schematic_analysis
+    # Find the location of the main schematic analysis window
+    screen_width = root.winfo_x()  # width of the screen
+    screen_height = root.winfo_y()  # height of the screen
+    # calculate x and y coordinates for the Tk schematic_analysis window
+    preferences_window_x = screen_width - (preferences_window_width / 2)
+    preferences_window_y = screen_height - (preferences_window_height / 2)
+
+    # set the dimensions of schematic analysis window and its position
+    preferences_window.geometry('%dx%d+%d+%d' % (preferences_window_width,
+                                                 preferences_window_height,
+                                                 preferences_window_x,
+                                                 preferences_window_y))
+    # Set minimum width and height of schematic_analysis window
+
+    colour = 'black'
+    preferences_canvas = tk.Canvas(preferences_window, width=preferences_window_width-200)
+    preferences_canvas.grid(row=0, column=0, columnspan=3, sticky=tk.NSEW)
+
+    # Window Children
+    preferences_window.minsize(preferences_window_width, preferences_window_height)
+    preferences_window.resizable(height=False, width=False)
+
+    slider_label = customtkinter.CTkLabel(master=preferences_window, width=20, text='3')
+    slider = customtkinter.CTkSlider(master=preferences_window, from_=1, to=5, number_of_steps=40)
+    print(slider.get())
+
+    slider_label.grid(row=0, column=4, sticky=tk.NE)
+    slider.grid(row=1, column=4, sticky=tk.NE)
+
+    slider.configure(command=lambda value: slider_event(slider_label, slider, preferences_canvas))
+    colour_picker_button = customtkinter.CTkButton(preferences_window,
+                                                   text='Select a Colour',
+                                                   command=lambda: change_colour(colour, preferences_canvas))
+    colour_picker_button.grid(row=2, column=4)
+
+    sample_components = comp.ComponentSketcher(preferences_canvas)
+    sample_components.draw_ground_flags(400, 60)
+    sample_components.draw_diode(50, 50)
+    sample_components.draw_npn_transistor(200, 60)
+    preferences_canvas.create_line(50, 200, 400, 200, tags='line')
+    exit_preferences_button = customtkinter.CTkButton(preferences_window,
+                                                      text='Cancel',
+                                                      command=preferences_window.destroy)
+    exit_preferences_button.grid(row=4, column=0)
+
+    save_preferences_button = customtkinter.CTkButton(preferences_window,
+                                                      text='Save Preferences',
+                                                      command=print('saved'))
+
+    save_preferences_button.grid(row=4, column=1)
+
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -180,7 +270,9 @@ def open_asc_file(root, schematic_analysis):
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for opening a .raw file --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def open_raw_file(spice_data, graphs, column_1, column_2, figure, chart_type, ax, toolbar, new_subplot):
+def open_raw_file(graphs, data_table,
+                  column_1_dropdown_list, column_2_dropdown_list,
+                  figure, ax, lines_array, toolbar, new_subplot, subplot_number, subplots):
     """
     Event Function used when the button to open a .raw file is clicked.
 
@@ -204,29 +296,30 @@ def open_raw_file(spice_data, graphs, column_1, column_2, figure, chart_type, ax
             data = raw_reader.get_pandas()
             data_as_list = data.values.tolist()
             data_headers = list(data.columns.values)
-
-            sheet = tksheet.Sheet(parent=spice_data,
-                                  headers=data_headers)
-            sheet.set_sheet_data(data_as_list)
-            sheet.enable_bindings()
-            sheet.pack(expand=True, fill=tk.BOTH)
+            data_table.headers(data_headers)
+            data_table.set_sheet_data(data_as_list)
+            data_table.enable_bindings()
             col1_prefix_selected = tk.StringVar(graphs)
             col1_prefix_selected.set(data_headers[0])
             col2_prefix_selected = tk.StringVar(graphs)
             col2_prefix_selected.set(data_headers[0])
-            column_1.configure(variable=col1_prefix_selected)
-            column_1.configure(values=data_headers)
-            column_2.configure(values=data_headers)
-            column_2.configure(variable=col2_prefix_selected)
+            column_1_dropdown_list.configure(variable=col1_prefix_selected)
+            column_1_dropdown_list.configure(values=data_headers)
+            column_2_dropdown_list.configure(values=data_headers)
+            column_2_dropdown_list.configure(variable=col2_prefix_selected)
 
-            column_1.configure(command=lambda arg=column_1.get: sketch_graphs(data, graphs, data_headers,
-                                                                              data_headers.index(column_1.get()),
-                                                                              data_headers.index(column_2.get()),
-                                                                              figure, ax, toolbar, new_subplot, 0))
-            column_2.configure(command=lambda arg=column_2.get: sketch_graphs(data, graphs, data_headers,
-                                                                              data_headers.index(column_1.get()),
-                                                                              data_headers.index(column_2.get()),
-                                                                              figure, ax, toolbar, new_subplot, 0))
+            column_1_dropdown_list.configure(command=lambda arg=column_1_dropdown_list.get:
+                                             sketch_graphs(data, graphs, data_headers,
+                                                           data_headers.index(column_1_dropdown_list.get()),
+                                                           data_headers.index(column_2_dropdown_list.get()),
+                                                           figure, ax, lines_array, toolbar, new_subplot,
+                                                           subplot_number, subplots))
+            column_2_dropdown_list.configure(command=lambda arg=column_2_dropdown_list.get:
+                                             sketch_graphs(data, graphs, data_headers,
+                                                           data_headers.index(column_1_dropdown_list.get()),
+                                                           data_headers.index(column_2_dropdown_list.get()),
+                                                           figure, ax, lines_array, toolbar, new_subplot,
+                                                           subplot_number, subplots))
             print(data.iloc[:, 2])
 
             # open_new_window(components,
@@ -250,30 +343,60 @@ def open_raw_file(spice_data, graphs, column_1, column_2, figure, chart_type, ax
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Function for sketching graphs on tab 2 ----------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def sketch_graphs(data, frame_to_display, column_headings, column1, column2, figure, ax, toolbar,
-                  new_subplot, plot_index):
-    print(new_subplot.get())
+def sketch_graphs(data, frame_to_display, column_headings, column1, column2, figure, ax, lines_array, toolbar,
+                  new_subplot, plot_index, subplots):
     if new_subplot.get() == 'off':
-        ax[plot_index].clear()
-        line, = ax[plot_index].plot(data.iloc[:, column1], data.iloc[:, column2])
-        ax[plot_index].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
-        ax[plot_index].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
-        ax[plot_index].grid('on')
+        ax[int(plot_index.get()) - 1].clear()
+        lines_array[int(plot_index.get()) - 1], = ax[int(plot_index.get()) - 1].plot(data.iloc[:, column1], data.iloc[:, column2])
+        ax[int(plot_index.get()) - 1].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
+        ax[int(plot_index.get()) - 1].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
+        ax[int(plot_index.get()) - 1].grid('on')
         figure.canvas.draw()
         figure.canvas.flush_events()
         toolbar.update()
-        mplcursors.cursor(line, hover=mplcursors.HoverMode.Transient)
+        mplcursors.cursor(lines_array[int(plot_index.get()) - 1], hover=mplcursors.HoverMode.Transient)
 
-    # if new_subplot.get() == 'on':
-    #     ax.append(figure.add_subplot(len(ax), 1, len(ax)))
-    #     line, = ax[plot_index + 1].plot(data.iloc[:, column1], data.iloc[:, column2])
-    #     ax[plot_index + 1].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
-    #     ax[plot_index + 1].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
-    #     ax[plot_index + 1].grid('on')
-    #     figure.canvas.draw()
-    #     figure.canvas.flush_events()
-    #     toolbar.update()
-    #     mplcursors.cursor(line, hover=mplcursors.HoverMode.Transient)
+    if new_subplot.get() == 'on':
+        # Retrieve line data from previous sketched axes
+        previous_line_data = [None] * len(lines_array)
+        previous_line_title = [None] * len(lines_array)
+        previous_line_xlabels = [None] * len(lines_array)
+        previous_line_ylabels = [None] * len(lines_array)
+        for axis in range(len(ax)):
+            previous_line_data[axis] = lines_array[axis].get_data()
+            previous_line_title[axis] = ax[axis].get_title()
+            previous_line_xlabels[axis] = ax[axis].get_xlabel()
+            previous_line_ylabels[axis] = ax[axis].get_ylabel()
+        print(previous_line_title, previous_line_xlabels, previous_line_ylabels)
+        # Clear old figure and add new axis
+        figure.clear()
+        ax.append(figure.add_subplot(len(ax) + 1, 1, len(ax) + 1))
+        lines_array.append(None)
+
+        # Add new axis to graph
+        for axis in range(len(ax)):
+            if axis is not len(ax)-1:
+                ax[axis] = figure.add_subplot(len(ax), 1, axis + 1)
+                lines_array[axis], = ax[axis].plot(previous_line_data[axis][0], previous_line_data[axis][1])
+                ax[axis].set_title(previous_line_xlabels[axis] + ' against ' + previous_line_ylabels[axis])
+                ax[axis].set(xlabel=previous_line_xlabels[axis], ylabel=previous_line_ylabels[axis])
+                mplcursors.cursor(lines_array[axis], hover=mplcursors.HoverMode.Transient)
+                ax[axis].grid('on')
+                print(axis)
+
+        subplots.append(str(len(ax)))
+        plot_index.configure(values=subplots)
+        print(subplots)
+        lines_array[len(ax) - 1], = ax[len(ax) - 1].plot(data.iloc[:, column1], data.iloc[:, column2])
+        ax[len(ax) - 1].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
+        ax[len(ax) - 1].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
+        ax[len(ax) - 1].grid('on')
+        mplcursors.cursor(lines_array[len(ax) - 1], hover=mplcursors.HoverMode.Transient)
+        figure.tight_layout()
+        figure.canvas.draw()
+        figure.canvas.flush_events()
+        toolbar.update()
+        plot_index.pack(side=tk.LEFT)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -401,7 +524,6 @@ def get_file_path(component_parameters_frame,
                 else:
                     raise ValueError("Unknown encoding.")
             ltspiceascfile.close()
-            print(encoding)
             # Open and store all file data
             with open(fpath, mode='r', encoding=encoding, errors='replace') as file:
                 schematic_data = file.read()
@@ -575,7 +697,6 @@ def sketch_schematic_asc(schematic,
                     or 'R180' in full_list[window]
                     or 'R270' in full_list[window]) \
                         and not re.search('[a-zA-Z]', full_list[window + 1]):
-                    print(full_list[window + 1])
                     full_list[window + 1] = re.sub('[0-9]', '', full_list[window + 1])
                     full_list[window + 4] = ''
 
@@ -761,7 +882,6 @@ def sketch_schematic_asc(schematic,
         for symbol in range(0, len(full_list), 8):
             try:
                 if full_list[symbol + 3] == 'R0' or full_list[symbol + 3] == 0:
-                    print(full_list[symbol + 1], full_list[symbol + 2])
                     circuit_comps.load_component(file_name=full_list[symbol], encoding=encoding,
                                                  x_coordinate=int(full_list[symbol + 1]) + adjustment,
                                                  y_coordinate=int(full_list[symbol + 2]) + adjustment,
@@ -776,8 +896,29 @@ def sketch_schematic_asc(schematic,
                                                  angle=full_list[symbol + 3],
                                                  window_x=int(full_list[symbol + 4]) + int(full_list[symbol + 6]),
                                                  window_y=int(full_list[symbol + 5]) + int(full_list[symbol + 7]))
+
+
             except ValueError:
-                print(ValueError)
+                pass
+                #print(ValueError)
+
+        not_found_symbols = circuit_comps.get_symbols_not_found()
+        if not_found_symbols:
+            yes_or_no = messagebox.askyesnocancel('Components not found', str(len(not_found_symbols))
+                                      + ' components have not been found, do you want to view their names?',
+                                      default=messagebox.YES)
+            print(yes_or_no)
+            if yes_or_no:
+                not_found_symbols_string = ''
+                for symbol in range(len(not_found_symbols)):
+                    if symbol is not len(not_found_symbols)-1:
+                        not_found_symbols_string += not_found_symbols[symbol] + ', '
+                    else:
+                        not_found_symbols_string += not_found_symbols[symbol]
+                messagebox.showinfo('Names of Components',
+                                    not_found_symbols_string + ' have not been found.')
+            else:
+                pass
 
         tags_to_not_hover = canvas.find_withtag('power_flag') + canvas.find_withtag('wire')\
                                                               + canvas.find_withtag('ground_flag')
@@ -1096,12 +1237,12 @@ def open_new_window(components,
             entering_parameters_window.title("Enter Component Parameters")
 
             # Find the location of the main schematic analysis window
-            # schematic_x = root.winfo_x()
-            # schematic_y = root.winfo_y()
+            schematic_x = schematic_analysis.winfo_x()
+            schematic_y = schematic_analysis.winfo_y()
             # set the size and location of the new window created for entering parameters
-            # entering_parameters_window.geometry("460x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
-            # make the entering parameters window on top of the main schematic analysis window
-            # entering_parameters_window.wm_transient(schematic_analysis)
+            entering_parameters_window.geometry("460x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
+            # make entering parameters window on top of the main schematic analysis window
+            entering_parameters_window.wm_transient(schematic_analysis)
 
             component_name_array = [None] * len(components)
             component_distribution_array = [None] * len(components)
