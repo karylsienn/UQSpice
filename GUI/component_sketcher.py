@@ -27,32 +27,37 @@ class ComponentSketcher:
         # npn transistor circle around shape
         self.canvas_to_draw_in.create_circle(start_coordinate_x + 40,
                                              start_coordinate_y + y_adjustment,
-                                             53)
+                                             53,
+                                             tags='circle')
 
         # npn transistor base (wire going into rectangle)
         self.canvas_to_draw_in.create_line(start_coordinate_x,
                                            start_coordinate_y + y_adjustment,
                                            start_coordinate_x + 12,
-                                           start_coordinate_y + y_adjustment)
+                                           start_coordinate_y + y_adjustment,
+                                           tags='line')
 
         # npn transistor collector (wire going upwards from rectangle)
         self.canvas_to_draw_in.create_line(start_coordinate_x + 20,
                                            start_coordinate_y - 10 + y_adjustment,
                                            start_coordinate_x + 64,
-                                           start_coordinate_y - 48 + y_adjustment)
+                                           start_coordinate_y - 48 + y_adjustment,
+                                           tags='line')
 
         # Centre rectangle of npn transistor
         self.canvas_to_draw_in.create_rectangle(start_coordinate_x + 12,
                                                 start_coordinate_y - 24 + y_adjustment,
                                                 start_coordinate_x + 20,
-                                                start_coordinate_y + 24 + y_adjustment)
+                                                start_coordinate_y + 24 + y_adjustment,
+                                                tags='rectangle')
 
         # npn transistor emitter (wire going downwards from rectangle)
         # Wire to arrow of emitter
         self.canvas_to_draw_in.create_line(start_coordinate_x + 20,
                                            start_coordinate_y + 10 + y_adjustment,
                                            start_coordinate_x + 64,
-                                           start_coordinate_y + 48 + y_adjustment)
+                                           start_coordinate_y + 48 + y_adjustment,
+                                           tags='line')
 
         # Triangle Shape of npn transistor (arrow showing direction of electrons)
         self.canvas_to_draw_in.create_polygon(start_coordinate_x + 34,
@@ -60,7 +65,8 @@ class ComponentSketcher:
                                               start_coordinate_x + 34 + 10,
                                               start_coordinate_y + 20 + y_adjustment,
                                               start_coordinate_x + 57,
-                                              start_coordinate_y + 42 + y_adjustment)
+                                              start_coordinate_y + 42 + y_adjustment,
+                                              tags='arrow')
 
     def draw_resistor(self, start_coordinate_x, start_coordinate_y):
         # adjusting the x and y coordinates of the resistors so that they match on schematic
@@ -71,13 +77,15 @@ class ComponentSketcher:
         self.canvas_to_draw_in.create_line(start_coordinate_x + 16,
                                            start_coordinate_y + resistor_y_adjustment,
                                            start_coordinate_x + resistor_y_adjustment,
-                                           start_coordinate_y + resistor_y_adjustment + 5)
+                                           start_coordinate_y + resistor_y_adjustment + 5,
+                                           tags='line')
 
         # wire at end of resistor
         self.canvas_to_draw_in.create_line(start_coordinate_x + 16,
                                            start_coordinate_y + 65 + resistor_y_adjustment + 5,
                                            start_coordinate_x + 16,
-                                           start_coordinate_y + 65 + 2 * resistor_y_adjustment)
+                                           start_coordinate_y + 65 + 2 * resistor_y_adjustment,
+                                           tags='line')
 
         # resistor shape: rectangle
         return self.canvas_to_draw_in.create_rectangle(start_coordinate_x + resistor_x_adjustment,
@@ -88,7 +96,7 @@ class ComponentSketcher:
                                                        outline='black',
                                                        activefill='green',
                                                        disabledfill='',
-                                                       tags='schematic')
+                                                       tags='rectangle')
 
     def draw_capacitor(self, start_coordinate_x, start_coordinate_y):
         y_adjustment = 25
@@ -107,24 +115,28 @@ class ComponentSketcher:
         self.canvas_to_draw_in.create_line(start_coordinate_x + 16,
                                            start_coordinate_y,
                                            start_coordinate_x + 16,
-                                           start_coordinate_y + y_adjustment)
+                                           start_coordinate_y + y_adjustment,
+                                           tags='line')
 
         # Wire after capacitor
         self.canvas_to_draw_in.create_line(start_coordinate_x + 16,
                                            start_coordinate_y + y_adjustment + 12 + 5,
                                            start_coordinate_x + 16,
-                                           start_coordinate_y + y_adjustment + y_adjustment + 12 + 5)
+                                           start_coordinate_y + y_adjustment + y_adjustment + 12 + 5,
+                                           tags='line')
 
         # Capacitor shape - 2 rectangles
         self.canvas_to_draw_in.create_rectangle(start_coordinate_x - 10,
                                                 start_coordinate_y + y_adjustment,
                                                 start_coordinate_x + 40,
-                                                start_coordinate_y + y_adjustment + 5)
+                                                start_coordinate_y + y_adjustment + 5,
+                                                tags='rectangle')
 
         self.canvas_to_draw_in.create_rectangle(start_coordinate_x - 10,
                                                 start_coordinate_y + y_adjustment + 12,
                                                 start_coordinate_x + 40,
-                                                start_coordinate_y + y_adjustment + 12 + 5)
+                                                start_coordinate_y + y_adjustment + 12 + 5,
+                                                tags='rectangle')
 
     def draw_inductor(self, start_coordinate_x, start_coordinate_y):
         radius = 12
@@ -189,13 +201,15 @@ class ComponentSketcher:
         self.canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
                                            start_coordinate_y,
                                            start_coordinate_x + x_adjustment,
-                                           start_coordinate_y + ground_line)
+                                           start_coordinate_y + ground_line,
+                                           tags='line')
 
         # wire after diode
         self.canvas_to_draw_in.create_line(start_coordinate_x + x_adjustment,
                                            start_coordinate_y + 35 + ground_line,
                                            start_coordinate_x + x_adjustment,
-                                           start_coordinate_y + 35 + ground_line + 20)
+                                           start_coordinate_y + 35 + ground_line + 20,
+                                           tags='line')
 
         # triangle shape of diode
         self.canvas_to_draw_in.create_polygon(start_coordinate_x - 25 + x_adjustment,
@@ -206,13 +220,14 @@ class ComponentSketcher:
                                               start_coordinate_y + 35 + ground_line,
                                               fill='',
                                               outline='black',
-                                              tags='schematic')
+                                              tags='triangle')
 
         # Diode line in front of triangle shape
         self.canvas_to_draw_in.create_line(start_coordinate_x - 25 + x_adjustment,
                                            start_coordinate_y + 35 + ground_line,
                                            start_coordinate_x + 25 + x_adjustment,
-                                           start_coordinate_y + 35 + ground_line)
+                                           start_coordinate_y + 35 + ground_line,
+                                           tags='line')
 
     def draw_ground_flags(self, start_coordinate_x, start_coordinate_y):
         ground_line = 10
@@ -221,7 +236,8 @@ class ComponentSketcher:
         self.canvas_to_draw_in.create_line(start_coordinate_x,
                                            start_coordinate_y,
                                            start_coordinate_x,
-                                           start_coordinate_y + ground_line)
+                                           start_coordinate_y + ground_line,
+                                           tags='line')
 
         # Triangle shape of ground
         self.canvas_to_draw_in.create_polygon(start_coordinate_x - 25,

@@ -78,6 +78,9 @@ class NewComponents:
         self.component_information = {}
         self.encoding = None
         self.error_number = 0
+        self.line_colour = 'black'
+        self.line_width = 1
+        self.symbols_not_found_list = []
 
     def move_component(self, event):
         component_coords = self.canvas.coords(self.file_name)
@@ -97,7 +100,7 @@ class NewComponents:
 
                     yes_or_no = messagebox.askyesnocancel('File Already Exists',
                                                           message=overwrite_symbol_message, default=messagebox.YES)
-                    if yes_or_no == 'yes':
+                    if yes_or_no:
                         with open(path_to_symbol, 'w') as file:
                             json.dump(self.component_information, file, indent=4)
                         messagebox.showinfo('Component Saved',
@@ -212,11 +215,12 @@ class NewComponents:
             if file_name == '':
                 messagebox.showerror('Error', 'Please select a symbol first')
             else:
-                if self.error_number >= 5:
+                if self.error_number > 5:
                     self.error_number += 1
-                    pass
+                    self._set_symbol_not_found(file_name)
                 else:
                     self.error_number += 1
+                    self._set_symbol_not_found(file_name)
                     messagebox.showerror('Error',
                                          file_name
                                          + ' has not been found, please add the file to Symbols folder')
@@ -282,17 +286,26 @@ class NewComponents:
             self.canvas.create_line(coordinates[0] - window_y,
                                     coordinates[1] + window_x,
                                     coordinates[2] - window_y,
-                                    coordinates[3] + window_x, tags=tag + 'rotated')
+                                    coordinates[3] + window_x,
+                                    tags=tag + 'rotated',
+                                    width=self.line_width,
+                                    fill=self.line_colour)
         if shape_to_draw == 'circle':
             self.canvas.create_oval(coordinates[0] - window_y,
                                     coordinates[1] + window_x,
                                     coordinates[2] - window_y,
-                                    coordinates[3] + window_x, tags=tag + 'rotated')
+                                    coordinates[3] + window_x,
+                                    tags=tag + 'rotated',
+                                    width=self.line_width,
+                                    outline=self.line_colour)
         if shape_to_draw == 'rectangle':
             self.canvas.create_rectangle(coordinates[0] - window_y,
                                          coordinates[1] + window_x,
                                          coordinates[2] - window_y,
-                                         coordinates[3] + window_x, tags=tag + 'rotated')
+                                         coordinates[3] + window_x,
+                                         tags=tag + 'rotated',
+                                         width=self.line_width,
+                                         outline=self.line_colour)
 
     def sketch_component(self, component, file_name):
         self.canvas.delete("all")
@@ -406,7 +419,7 @@ class NewComponents:
                     title="Select a Symbol",
 
                     filetypes=(
-                        ("Schematic", "*.asy"),
+                        ("Symbol", "*.asy"),
                         ("All files", "*.*")
                     )
                 )
@@ -443,7 +456,7 @@ class NewComponents:
                     title="Select a Symbol",
 
                     filetypes=(
-                        ("Schematic", "*.asy"),
+                        ("Symbols", "*.asy"),
                         ("All files", "*.*")
                     )
                 )
@@ -465,7 +478,6 @@ class NewComponents:
                 with open(fpath[symbol], mode='r', encoding=self.encoding, errors='replace') as ltspiceascfile:
                     schematic = ltspiceascfile.readlines()
                 ltspiceascfile.close()
-
                 file_name = ntpath.basename(fpath[symbol])
                 self.file_name = file_name
                 self.sketch_component(schematic, file_name)
@@ -475,3 +487,11 @@ class NewComponents:
         except FileNotFoundError:
             pass
 
+    def get_error_number(self):
+        return self.error_number
+
+    def _set_symbol_not_found(self, symbol):
+        self.symbols_not_found_list.append(symbol)
+
+    def get_symbols_not_found(self):
+        return list(dict.fromkeys(self.symbols_not_found_list))
