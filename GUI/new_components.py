@@ -68,6 +68,10 @@ class NewComponents:
         sketch_component: sketches the component after it has been selected, is called by open_component method
         open_component: opens a symbol of type .asy and then calls sketch_component for sketching
     """
+    line_width = 1
+    line_colour = 'black'
+    fill_colour = ''
+
     def __init__(self, canvas_to_draw_component, master_window, *args, **kwargs):
         self.canvas = canvas_to_draw_component
         self.root = master_window
@@ -78,8 +82,9 @@ class NewComponents:
         self.component_information = {}
         self.encoding = None
         self.error_number = 0
-        self.line_colour = 'black'
-        self.line_width = 1
+        # self.line_colour = 'black'
+        # self.fill_colour = ''
+        # self.line_width = 1
         self.symbols_not_found_list = []
 
     def move_component(self, event):
@@ -164,7 +169,10 @@ class NewComponents:
             with open(os.path.expanduser('Symbols/' + file_name), 'r', encoding='utf-8', errors='replace') as file:
                 items = json.load(file)
             for item in items.keys():
-
+                #     x_ = int(items['pins'][0]) + int(items['pins'][2])
+                #     y_ = int(items['pins'][1]) + int(items['pins'][3])
+                #     print(file_name, x_, y_)
+                #     print(file_name, window_x, window_y)
                 if item == 'line':
                     for line in range(0, len(items['line']), 4):
                         line_coordinates = [items['line'][line] + x_coordinate,
@@ -237,7 +245,9 @@ class NewComponents:
         # coordinates = self.canvas.coords(tag)
         # print(coordinates)
         #self.canvas.delete(tag)
-
+        if angle == 'R0' or angle == 0:
+            start_coordinate_x = 0
+            start_coordinate_y = 0
         if angle == 'R90' or angle == 90:
             for coords in range(0, len(coordinates), 2):
                 # Swapping x and y
@@ -297,7 +307,9 @@ class NewComponents:
                                     coordinates[3] + window_x,
                                     tags=tag + 'rotated',
                                     width=self.line_width,
-                                    outline=self.line_colour)
+                                    outline=self.line_colour,
+                                    fill=self.fill_colour
+                                    )
         if shape_to_draw == 'rectangle':
             self.canvas.create_rectangle(coordinates[0] - window_y,
                                          coordinates[1] + window_x,
@@ -305,7 +317,9 @@ class NewComponents:
                                          coordinates[3] + window_x,
                                          tags=tag + 'rotated',
                                          width=self.line_width,
-                                         outline=self.line_colour)
+                                         outline=self.line_colour,
+                                         fill=self.fill_colour
+                                         )
 
     def sketch_component(self, component, file_name):
         self.canvas.delete("all")
@@ -315,6 +329,7 @@ class NewComponents:
         circles = ''
         rectangles = ''
         arcs = ''
+        pins = ''
 
         # finds the connection wires in the circuit
         for lines in component:
@@ -331,6 +346,17 @@ class NewComponents:
             # Store all arcs
             if "ARC" in lines:
                 arcs += lines.replace("ARC Normal ", '')
+            # Store starting and ending point of component
+            if "PIN " in lines:
+                pins += lines.replace("PIN ", '')
+
+        pins_list = ' '.join(pins.split('\n')).split(' ')
+        pins_list.pop()
+        for pin in range(0, len(pins_list), 4):
+            pins_list[pin + 2] = ''
+            pins_list[pin + 3] = ''
+        while '' in pins_list:
+            pins_list.remove('')
 
         # self.canvas.create_arc(40, 20, 56, 36, start=0, style=tk.ARC)
         # # self.canvas.create_arc(56, 28, 40, 24, start=90, style=tk.ARC)
@@ -407,6 +433,7 @@ class NewComponents:
             self.component_information['line'] = modified_lines
         if modified_arcs:
             self.component_information['arc'] = modified_arcs
+        self.component_information['pins'] = pins_list
         self.component_information['tags'] = self.canvas.itemconfig(self.file_name)
 
         self.root.bind('<Button-3>', self.move_component)
@@ -492,6 +519,20 @@ class NewComponents:
 
     def _set_symbol_not_found(self, symbol):
         self.symbols_not_found_list.append(symbol)
+
+    @staticmethod
+    def set_line_width(line_width):
+        NewComponents.line_width = line_width
+
+    @staticmethod
+    def set_outline_colour(outline_colour):
+        line_colour = outline_colour
+        NewComponents.line_colour = outline_colour
+
+    @staticmethod
+    def set_fill_colour(fill_colour):
+        fill_colour = fill_colour
+        NewComponents.fill_colour = fill_colour
 
     def get_symbols_not_found(self):
         return list(dict.fromkeys(self.symbols_not_found_list))

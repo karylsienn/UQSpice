@@ -106,7 +106,7 @@ class ComponentSketcher:
                                                 start_coordinate_x + 42,
                                                 start_coordinate_y + y_adjustment + 12 + 7,
                                                 outline=self.OUTLINE_COLOUR,
-                                                tags='Capacitor Highlight',
+                                                tags='highlight',
                                                 width=0,
                                                 activefill=self.OUTLINE_COLOUR
                                                 )
@@ -229,7 +229,7 @@ class ComponentSketcher:
                                            start_coordinate_y + 35 + ground_line,
                                            tags='line')
 
-    def draw_ground_flags(self, start_coordinate_x, start_coordinate_y):
+    def draw_ground_flags(self, start_coordinate_x, start_coordinate_y, outline, width, fill):
         ground_line = 10
 
         # Wire above ground
@@ -237,7 +237,9 @@ class ComponentSketcher:
                                            start_coordinate_y,
                                            start_coordinate_x,
                                            start_coordinate_y + ground_line,
-                                           tags='line')
+                                           tags='line',
+                                           fill=outline,
+                                           width=width)
 
         # Triangle shape of ground
         self.canvas_to_draw_in.create_polygon(start_coordinate_x - 25,
@@ -246,9 +248,10 @@ class ComponentSketcher:
                                               start_coordinate_y + ground_line,
                                               start_coordinate_x,
                                               start_coordinate_y + 25 + ground_line,
-                                              fill='',
-                                              outline='black',
-                                              tags='ground_flag')
+                                              fill=fill,
+                                              outline=outline,
+                                              tags='ground_flag',
+                                              width=width)
 
     def draw_other_power_flags(self, start_coordinate_x, start_coordinate_y, power_flag):
         y_fixed_value = 15
@@ -273,8 +276,11 @@ class ComponentSketcher:
     def sketch_components(self,
                           component_coordinate_list,
                           drawn_components,
+                          outline,
+                          width,
+                          fill,
                           draw_function):
 
         for element in range(0, len(component_coordinate_list), 2):
             drawn_components[element] = draw_function(component_coordinate_list[element],
-                                                      component_coordinate_list[element + 1])
+                                                      component_coordinate_list[element + 1], outline, width, fill)

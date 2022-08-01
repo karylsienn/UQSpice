@@ -37,6 +37,12 @@
         16,
         8
     ],
+    "pins": [
+        "0",
+        "-32",
+        "0",
+        "32"
+    ],
     "tags": {
         "activedash": [
             "activedash",
