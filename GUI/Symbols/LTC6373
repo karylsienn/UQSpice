@@ -83,6 +83,34 @@
         112,
         -144
     ],
+    "pins": [
+        "-144",
+        "-96",
+        "176",
+        "-112",
+        "112",
+        "-144",
+        "-80",
+        "-240",
+        "-16",
+        "-208",
+        "336",
+        "-32",
+        "336",
+        "48",
+        "-144",
+        "0",
+        "16",
+        "192",
+        "112",
+        "144",
+        "48",
+        "-176",
+        "-144",
+        "96",
+        "-80",
+        "240"
+    ],
     "tags": {
         "activedash": [
             "activedash",
@@ -93,20 +121,6 @@
         ],
         "activefill": [
             "activefill",
-            "",
-            "",
-            "",
-            ""
-        ],
-        "activeoutline": [
-            "activeoutline",
-            "",
-            "",
-            "",
-            ""
-        ],
-        "activeoutlinestipple": [
-            "activeoutlinestipple",
             "",
             "",
             "",
@@ -125,6 +139,34 @@
             "",
             "0.0",
             "0.0"
+        ],
+        "arrow": [
+            "arrow",
+            "",
+            "",
+            "none",
+            "none"
+        ],
+        "arrowshape": [
+            "arrowshape",
+            "",
+            "",
+            "8 10 3",
+            "8 10 3"
+        ],
+        "capstyle": [
+            "capstyle",
+            "",
+            "",
+            "butt",
+            "butt"
+        ],
+        "fill": [
+            "fill",
+            "",
+            "",
+            "SystemButtonText",
+            "SystemButtonText"
         ],
         "dash": [
             "dash",
@@ -154,20 +196,6 @@
             "",
             ""
         ],
-        "disabledoutline": [
-            "disabledoutline",
-            "",
-            "",
-            "",
-            ""
-        ],
-        "disabledoutlinestipple": [
-            "disabledoutlinestipple",
-            "",
-            "",
-            "",
-            ""
-        ],
         "disabledstipple": [
             "disabledstipple",
             "",
@@ -180,14 +208,14 @@
             "",
             "",
             "0.0",
-            "0"
+            "0.0"
         ],
-        "fill": [
-            "fill",
+        "joinstyle": [
+            "joinstyle",
             "",
             "",
-            "",
-            ""
+            "round",
+            "round"
         ],
         "offset": [
             "offset",
@@ -196,26 +224,19 @@
             "0,0",
             "0,0"
         ],
-        "outline": [
-            "outline",
+        "smooth": [
+            "smooth",
             "",
             "",
-            "SystemButtonText",
-            "SystemButtonText"
+            "0",
+            "0"
         ],
-        "outlineoffset": [
-            "outlineoffset",
+        "splinesteps": [
+            "splinesteps",
             "",
             "",
-            "0,0",
-            "0,0"
-        ],
-        "outlinestipple": [
-            "outlinestipple",
-            "",
-            "",
-            "",
-            ""
+            "12",
+            "12"
         ],
         "state": [
             "state",

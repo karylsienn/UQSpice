@@ -1,4 +1,4 @@
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 import mplcursors
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import tkinter as tk
@@ -9,16 +9,62 @@ import readers as read
 import tkinter_modification as tkmod
 import new_components as new_comp
 from tkinter.colorchooser import askcolor
-import tksheet
 import re
-from pynput import keyboard
-import math
 import customtkinter
 
 BACKGROUND_COLOUR = '#F0F0F0'
 Mode = 'dark'
 all_component_parameters = []
 entering_parameters_window = None
+preferences_window = None
+LINE_WIDTH = 1
+OUTLINE_COLOUR = 'black'
+FILL_COLOUR = ''
+
+
+def draw_logo(logo, root):
+    factor = 2
+    adjustment_x = 60
+    adjustment_y = 20
+    logo.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     48 * factor + adjustment_x, 96 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(16 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     48 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(16 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     24 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     24 * factor + adjustment_x, 44 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
+                     24 * factor + adjustment_x, 52 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(24 * factor + adjustment_x, 44 * factor + adjustment_y,
+                     24 * factor + adjustment_x, 52 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(16 * factor + adjustment_x, 8 * factor + adjustment_y,
+                     16 * factor + adjustment_x, 24 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(16 * factor + adjustment_x, 40 * factor + adjustment_y,
+                     16 * factor + adjustment_x, 56 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(16 * factor + adjustment_x, 72 * factor + adjustment_y,
+                     16 * factor + adjustment_x, 88 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(0 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     8 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(8 * factor + adjustment_x, 16 * factor + adjustment_y,
+                     8 * factor + adjustment_x, 80 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(48 * factor + adjustment_x, 16 * factor + adjustment_y,
+                     16 * factor + adjustment_x, 16 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
+    logo.create_line(48 * factor + adjustment_x, 0 * factor + adjustment_y,
+                     48 * factor + adjustment_x, 16 * factor + adjustment_y,
+                     tags='MOSFET', fill='#1F6AA5')
 
 
 # Replacing the oval function of tkinter with a simpler function for circles
@@ -69,89 +115,151 @@ def dark_theme_set(root, canvas):
 
 
 def slider_event(slider_label, slider, canvas):
+    global LINE_WIDTH
     line_thickness = round(slider.get(), 1)
-    slider_label.configure(text=str(line_thickness))
+    slider_label.configure(text='Line Width = ' + str(line_thickness))
 
     sample_elements = canvas.find_withtag('all')
     for sample_element in sample_elements:
         canvas.itemconfig(sample_element, width=line_thickness)
 
+    LINE_WIDTH = line_thickness
 
-def change_colour(colour_to_change, canvas):
-    colour = askcolor(title="Tkinter Color Chooser")
+
+def change_colour(canvas, fill=True, outline=False):
+    title = 'Select Colour'
+    if outline:
+        title = 'Select Outline Colour'
+    if fill:
+        title = 'Select Fill Colour'
+    colour = askcolor(title=title)
     colour_to_change = colour[1]
+    global FILL_COLOUR
+    global OUTLINE_COLOUR
 
-    sample_elements = canvas.find_withtag('triangle') + canvas.find_withtag('rectangle')\
-                      + canvas.find_withtag('circle') + canvas.find_withtag('ground_flag')
-
-    canvas.itemconfig(canvas.find_withtag('arrow'), fill=colour_to_change)
+    sample_elements_outline = canvas.find_withtag('triangle') + canvas.find_withtag('rectangle') \
+                             + canvas.find_withtag('circle') + canvas.find_withtag('ground_flag')
 
     lines = canvas.find_withtag('line')
-    for sample_element in sample_elements:
-        canvas.itemconfig(sample_element, outline=colour_to_change)
 
-    for line in lines:
-        canvas.itemconfig(line, fill=colour_to_change)
+    if outline:
+
+        canvas.itemconfig(canvas.find_withtag('arrow'), fill=colour_to_change)
+
+        for sample_element in sample_elements_outline:
+            canvas.itemconfig(sample_element, outline=colour_to_change)
+
+        for line in lines:
+            canvas.itemconfig(line, fill=colour_to_change)
+
+        OUTLINE_COLOUR = colour_to_change
+
+    if fill:
+
+        for sample_element in sample_elements_outline:
+            canvas.itemconfig(sample_element, fill=colour_to_change)
+
+        FILL_COLOUR = colour_to_change
+
+
+def save_preferences():
+    global LINE_WIDTH
+    global FILL_COLOUR
+    global OUTLINE_COLOUR
+
+    new_comp.NewComponents.set_line_width(LINE_WIDTH)
+    new_comp.NewComponents.set_outline_colour(OUTLINE_COLOUR)
+    new_comp.NewComponents.set_fill_colour(FILL_COLOUR)
+
+    messagebox.showinfo('Preferences Saved', 'The selected preferences have been saved')
 
 
 def set_preferences(root, schematic_analysis):
-    preferences_window = customtkinter.CTkToplevel(schematic_analysis)
+    # Creating a new window for entering parameters
+    # Check if preferences window is already open:
+    # if TRUE: lift it on top of schematic analysis window
+    global preferences_window
+    if preferences_window is not None and preferences_window.winfo_exists():
+        preferences_window.lift(schematic_analysis)
+        # preferences_window.wm_transient(schematic_analysis)
+    # if FALSE: Create a new preferences window
+    else:
+        preferences_window = customtkinter.CTkToplevel(schematic_analysis)
 
-    # Setting up window size and position
-    preferences_window_width = 800  # width for the Tk schematic_analysis
-    preferences_window_height = 400  # height for the Tk schematic_analysis
-    # Find the location of the main schematic analysis window
-    screen_width = root.winfo_x()  # width of the screen
-    screen_height = root.winfo_y()  # height of the screen
-    # calculate x and y coordinates for the Tk schematic_analysis window
-    preferences_window_x = screen_width - (preferences_window_width / 2)
-    preferences_window_y = screen_height - (preferences_window_height / 2)
+        # Setting up window size and position
+        preferences_window_width = 800  # width for the Tk schematic_analysis
+        preferences_window_height = 400  # height for the Tk schematic_analysis
+        # Find the location of the main schematic analysis window
+        screen_width = root.winfo_x()  # width of the screen
+        screen_height = root.winfo_y()  # height of the screen
+        # calculate x and y coordinates for the Tk schematic_analysis window
+        preferences_window_x = screen_width - (preferences_window_width / 2)
+        preferences_window_y = screen_height - (preferences_window_height / 2)
 
-    # set the dimensions of schematic analysis window and its position
-    preferences_window.geometry('%dx%d+%d+%d' % (preferences_window_width,
-                                                 preferences_window_height,
-                                                 preferences_window_x,
-                                                 preferences_window_y))
-    # Set minimum width and height of schematic_analysis window
+        # set the dimensions of schematic analysis window and its position
+        preferences_window.geometry('%dx%d+%d+%d' % (preferences_window_width,
+                                                     preferences_window_height,
+                                                     preferences_window_x,
+                                                     preferences_window_y))
 
-    colour = 'black'
-    preferences_canvas = tk.Canvas(preferences_window, width=preferences_window_width-200)
-    preferences_canvas.grid(row=0, column=0, columnspan=3, sticky=tk.NSEW)
+        preferences_window.title("Customise Components")
+        # Set minimum width and height of schematic_analysis window
 
-    # Window Children
-    preferences_window.minsize(preferences_window_width, preferences_window_height)
-    preferences_window.resizable(height=False, width=False)
+        exit_preferences_button = customtkinter.CTkButton(preferences_window,
+                                                          text='Cancel',
+                                                          command=preferences_window.destroy)
+        exit_preferences_button.pack(side=tk.BOTTOM, pady=2)
 
-    slider_label = customtkinter.CTkLabel(master=preferences_window, width=20, text='3')
-    slider = customtkinter.CTkSlider(master=preferences_window, from_=1, to=5, number_of_steps=40)
-    print(slider.get())
+        save_preferences_button = customtkinter.CTkButton(preferences_window,
+                                                          text='Save Preferences',
+                                                          command=save_preferences)
 
-    slider_label.grid(row=0, column=4, sticky=tk.NE)
-    slider.grid(row=1, column=4, sticky=tk.NE)
+        save_preferences_button.pack(side=tk.BOTTOM, pady=10)
 
-    slider.configure(command=lambda value: slider_event(slider_label, slider, preferences_canvas))
-    colour_picker_button = customtkinter.CTkButton(preferences_window,
-                                                   text='Select a Colour',
-                                                   command=lambda: change_colour(colour, preferences_canvas))
-    colour_picker_button.grid(row=2, column=4)
+        all_preferences_frame = tk.Frame(preferences_window)
+        all_preferences_frame.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH)
 
-    sample_components = comp.ComponentSketcher(preferences_canvas)
-    sample_components.draw_ground_flags(400, 60)
-    sample_components.draw_diode(50, 50)
-    sample_components.draw_npn_transistor(200, 60)
-    preferences_canvas.create_line(50, 200, 400, 200, tags='line')
-    exit_preferences_button = customtkinter.CTkButton(preferences_window,
-                                                      text='Cancel',
-                                                      command=preferences_window.destroy)
-    exit_preferences_button.grid(row=4, column=0)
+        preferences_frame = tk.Frame(all_preferences_frame, borderwidth=2)
+        preferences_frame.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH)
 
-    save_preferences_button = customtkinter.CTkButton(preferences_window,
-                                                      text='Save Preferences',
-                                                      command=print('saved'))
+        border_label = ttk.Separator(all_preferences_frame, orient='vertical')
+        border_label.pack(side=tk.RIGHT, expand=True, fill=tk.Y)
 
-    save_preferences_button.grid(row=4, column=1)
+        preferences_canvas = tk.Canvas(all_preferences_frame, width=preferences_window_width - 200)
+        preferences_canvas.pack(expand=True, fill=tk.BOTH)
 
+        # Window Children
+        preferences_window.minsize(preferences_window_width, preferences_window_height)
+        preferences_window.resizable(height=False, width=False)
 
+        slider_label = customtkinter.CTkLabel(master=preferences_frame, width=20, text='Line Width = 3',
+                                              text_color='black')
+        slider = customtkinter.CTkSlider(master=preferences_frame, from_=1, to=5, number_of_steps=40)
+
+        slider_label.pack(side=tk.TOP, pady=5)
+        slider.pack(side=tk.TOP, pady=5)
+
+        slider.configure(command=lambda value: slider_event(slider_label, slider, preferences_canvas))
+        outline_colour_button = customtkinter.CTkButton(preferences_frame,
+                                                        text='Components Outline Colour',
+                                                        command=lambda: change_colour(preferences_canvas,
+                                                                                      fill=False, outline=True))
+
+        outline_colour_button.pack(side=tk.TOP, pady=5)
+
+        fill_colour_button = customtkinter.CTkButton(preferences_frame,
+                                                     text='Components Fill Colour',
+                                                     command=lambda: change_colour(preferences_canvas,
+                                                                                   fill=True, outline=False))
+
+        fill_colour_button.pack(side=tk.TOP, pady=5)
+
+        sample_components = comp.ComponentSketcher(preferences_canvas)
+        sample_components.draw_ground_flags(400, 60, 'black', 1.0, '')
+        sample_components.draw_diode(50, 50)
+        sample_components.draw_npn_transistor(200, 60)
+        sample_components.draw_capacitor(500, 60)
+        preferences_canvas.create_line(50, 200, 400, 200, tags='line')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -258,10 +366,10 @@ def open_asc_file(root, schematic_analysis):
                                                  analysis_y))
 
     # Set minimum width and height of schematic_analysis window
-    #schematic_analysis.minsize(schematic_analysis_width, schematic_analysis_height)
+    # schematic_analysis.minsize(schematic_analysis_width, schematic_analysis_height)
 
     # Removing the root window if schematic analysis window has been destroyed
-    schematic_analysis.protocol("WM_DELETE_WINDOW", lambda: root.destroy())
+    schematic_analysis.protocol("WM_DELETE_WINDOW", root.destroy)
     # make the entering parameters window on top of the main schematic analysis window and showing it
     # schematic_analysis.wm_transient(root)
     schematic_analysis.deiconify()
@@ -346,15 +454,16 @@ def open_raw_file(graphs, data_table,
 def sketch_graphs(data, frame_to_display, column_headings, column1, column2, figure, ax, lines_array, toolbar,
                   new_subplot, plot_index, subplots):
     if new_subplot.get() == 'off':
-        ax[int(plot_index.get()) - 1].clear()
-        lines_array[int(plot_index.get()) - 1], = ax[int(plot_index.get()) - 1].plot(data.iloc[:, column1], data.iloc[:, column2])
-        ax[int(plot_index.get()) - 1].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
-        ax[int(plot_index.get()) - 1].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
-        ax[int(plot_index.get()) - 1].grid('on')
+        plot_number = int(plot_index.get()) - 1
+        ax[plot_number].clear()
+        lines_array[plot_number], = ax[plot_number].plot(data.iloc[:, column1], data.iloc[:, column2])
+        ax[plot_number].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
+        ax[plot_number].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
+        ax[plot_number].grid('on')
         figure.canvas.draw()
         figure.canvas.flush_events()
         toolbar.update()
-        mplcursors.cursor(lines_array[int(plot_index.get()) - 1], hover=mplcursors.HoverMode.Transient)
+        mplcursors.cursor(lines_array[plot_number], hover=mplcursors.HoverMode.Transient)
 
     if new_subplot.get() == 'on':
         # Retrieve line data from previous sketched axes
@@ -362,36 +471,48 @@ def sketch_graphs(data, frame_to_display, column_headings, column1, column2, fig
         previous_line_title = [None] * len(lines_array)
         previous_line_xlabels = [None] * len(lines_array)
         previous_line_ylabels = [None] * len(lines_array)
-        for axis in range(len(ax)):
-            previous_line_data[axis] = lines_array[axis].get_data()
-            previous_line_title[axis] = ax[axis].get_title()
-            previous_line_xlabels[axis] = ax[axis].get_xlabel()
-            previous_line_ylabels[axis] = ax[axis].get_ylabel()
-        print(previous_line_title, previous_line_xlabels, previous_line_ylabels)
-        # Clear old figure and add new axis
-        figure.clear()
-        ax.append(figure.add_subplot(len(ax) + 1, 1, len(ax) + 1))
-        lines_array.append(None)
 
-        # Add new axis to graph
-        for axis in range(len(ax)):
-            if axis is not len(ax)-1:
-                ax[axis] = figure.add_subplot(len(ax), 1, axis + 1)
-                lines_array[axis], = ax[axis].plot(previous_line_data[axis][0], previous_line_data[axis][1])
-                ax[axis].set_title(previous_line_xlabels[axis] + ' against ' + previous_line_ylabels[axis])
-                ax[axis].set(xlabel=previous_line_xlabels[axis], ylabel=previous_line_ylabels[axis])
-                mplcursors.cursor(lines_array[axis], hover=mplcursors.HoverMode.Transient)
-                ax[axis].grid('on')
-                print(axis)
+        if lines_array[0] is not None:
+            for axis in range(len(ax)):
+                previous_line_data[axis] = lines_array[axis].get_data()
+                previous_line_title[axis] = ax[axis].get_title()
+                previous_line_xlabels[axis] = ax[axis].get_xlabel()
+                previous_line_ylabels[axis] = ax[axis].get_ylabel()
+            print(previous_line_title, previous_line_xlabels, previous_line_ylabels)
+            # Clear old figure and add new axis
+            figure.clear()
+            ax.append(figure.add_subplot(len(ax) + 1, 1, len(ax) + 1))
+            lines_array.append(None)
 
-        subplots.append(str(len(ax)))
-        plot_index.configure(values=subplots)
-        print(subplots)
-        lines_array[len(ax) - 1], = ax[len(ax) - 1].plot(data.iloc[:, column1], data.iloc[:, column2])
-        ax[len(ax) - 1].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
-        ax[len(ax) - 1].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
-        ax[len(ax) - 1].grid('on')
-        mplcursors.cursor(lines_array[len(ax) - 1], hover=mplcursors.HoverMode.Transient)
+            # Add new axis to graph
+            for axis in range(len(ax)):
+                if axis is not len(ax) - 1:
+                    ax[axis] = figure.add_subplot(len(ax), 1, axis + 1)
+                    lines_array[axis], = ax[axis].plot(previous_line_data[axis][0], previous_line_data[axis][1])
+                    ax[axis].set_title(previous_line_xlabels[axis] + ' against ' + previous_line_ylabels[axis])
+                    ax[axis].set(xlabel=previous_line_xlabels[axis], ylabel=previous_line_ylabels[axis])
+                    mplcursors.cursor(lines_array[axis], hover=mplcursors.HoverMode.Transient)
+                    ax[axis].grid('on')
+                    print(axis)
+
+            subplots.append(str(len(ax)))
+            plot_index.configure(values=subplots)
+            print(subplots)
+            lines_array[len(ax) - 1], = ax[len(ax) - 1].plot(data.iloc[:, column1], data.iloc[:, column2])
+            ax[len(ax) - 1].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
+            ax[len(ax) - 1].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
+            ax[len(ax) - 1].grid('on')
+            mplcursors.cursor(lines_array[len(ax) - 1], hover=mplcursors.HoverMode.Transient)
+        else:
+            ax[int(plot_index.get()) - 1].clear()
+            lines_array[int(plot_index.get()) - 1], = ax[int(plot_index.get()) - 1].plot(data.iloc[:, column1],
+                                                                                         data.iloc[:, column2])
+            ax[int(plot_index.get()) - 1].set_title(
+                str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
+            ax[int(plot_index.get()) - 1].set(xlabel=str(column_headings[column1]),
+                                              ylabel=str(column_headings[column2]))
+            ax[int(plot_index.get()) - 1].grid('on')
+
         figure.tight_layout()
         figure.canvas.draw()
         figure.canvas.flush_events()
@@ -654,6 +775,7 @@ def sketch_schematic_asc(schematic,
         circuit_symbols_list = circuit_symbols.split(' ')
         circuit_symbols_list.pop()
         full_list = full_list.split('\n')
+        flag_error = 'Window Filtering 1'
         component_name_and_windows_list = component_name_and_windows.split('\n')
         for window in range(0, len(component_name_and_windows_list)):
             if 'Left' in component_name_and_windows_list[window] \
@@ -679,7 +801,7 @@ def sketch_schematic_asc(schematic,
                                                                                         full_list[window]))))
         old_list = full_list
         full_list = ' '.join(full_list).split(' ')
-
+        flag_error = 'Window Filtering 2'
         # Removing \\ from component names
         for window in range(0, len(full_list)):
             if '\\' or '\\\\' in full_list[window]:
@@ -705,6 +827,7 @@ def sketch_schematic_asc(schematic,
 
         print(full_list)
         while_window_counter = 0
+        flag_error = 'Window Filtering 3'
         # Adding 0 for components which have no rotations
         while while_window_counter < len(full_list):
             if (while_window_counter + 1) < len(full_list):
@@ -753,6 +876,7 @@ def sketch_schematic_asc(schematic,
         component_name_and_windows_list.pop()
         filtered_component_name_and_window = ' '.join(component_name_and_windows_list).split(' ')
 
+        flag_error = 'Symbols integers'
         for element in range(0, len(circuit_symbols_list), 4):
             circuit_symbols_list[element + 1] = int(circuit_symbols_list[element + 1])
             circuit_symbols_list[element + 2] = int(circuit_symbols_list[element + 2])
@@ -760,15 +884,26 @@ def sketch_schematic_asc(schematic,
         # Store all component names and values
         component_name_and_values = component_name_and_values.split('\n')
         component_name_and_values.pop()
-        component_details_dictionary = {}
+        value = 0
+        flag_error = 'Dictionary Values and Names'
+        print(component_name_and_values)
+        while value <= len(component_name_and_values) - 2:
+            if (not component_name_and_values[value].isdigit()) and (not component_name_and_values[value + 1].isdigit()):
+                component_name_and_values.insert(value + 1, '0')
+            value += 1
+        if not component_name_and_values[-1].isdigit():
+            component_name_and_values.insert(len(component_name_and_values), '0')
+        print(component_name_and_values)
+        component_details_dictionary = {'Component Name': 1}
         # Creating a dictionary to store component names and values
-        # for comps in range(0, len(component_name_and_values) + 1, 2):
-        #     if (comps + 1) >= len(component_name_and_values):
-        #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
-        #         break
-        #     else:
-        #         component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
-        # print(component_details_dictionary)
+        for comps in range(0, len(component_name_and_values) + 1, 2):
+            if (comps + 1) >= len(component_name_and_values):
+                component_details_dictionary[component_name_and_values[comps - 2]] = component_name_and_values[comps - 1]
+                break
+            else:
+                component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
+        print(component_details_dictionary)
+
 
         # Store all component names in a list after removing new lines
         components = components.split('\n')
@@ -827,9 +962,16 @@ def sketch_schematic_asc(schematic,
 
         drawing_components = comp.ComponentSketcher(canvas)
 # -------------------------------------------- Drawing Grounds ---------------------------------------------------------
+        circuit_comps = new_comp.NewComponents(canvas, root)
+        circuit_comps.set_line_width(LINE_WIDTH)
+        circuit_comps.set_outline_colour(OUTLINE_COLOUR)
+        circuit_comps.set_fill_colour(FILL_COLOUR)
         drawn_ground_flags = len(ground_flags) * [None]
         drawing_components.sketch_components(modified_ground_flags,
                                              drawn_ground_flags,
+                                             OUTLINE_COLOUR,
+                                             LINE_WIDTH,
+                                             FILL_COLOUR,
                                              drawing_components.draw_ground_flags)
 
 # ---------------------------------------------- Drawing Wires ---------------------------------------------------------
@@ -838,7 +980,9 @@ def sketch_schematic_asc(schematic,
                                modified_coordinates[coordinate + 1],
                                modified_coordinates[coordinate + 2],
                                modified_coordinates[coordinate + 3],
-                               tags='wire')
+                               tags='wire',
+                               fill=OUTLINE_COLOUR,
+                               width=LINE_WIDTH)
 
 # -------------------------------------------- Drawing Other Power Flags -------------------------------------------
         # TODO: Implement names in remaining power flags
@@ -848,36 +992,12 @@ def sketch_schematic_asc(schematic,
                                                       start_coordinate_y=other_power_flags[power_flag + 1],
                                                       power_flag=other_power_flags[power_flag + 2])
 
-        circuit_comps = new_comp.NewComponents(canvas, root)
+        flag_error = 'Drawing Symbols'
         print(circuit_symbols_list)
         component_drawn = ''
         list_to_add = []
         components_dictionary = {}
 
-        # for symbol in range(0, len(circuit_symbols_list), 4):
-        #     # if circuit_symbols_list[symbol + 3] == 0:
-        #     circuit_comps.load_component(file_name=circuit_symbols_list[symbol], encoding=encoding,
-        #                                  x_coordinate=circuit_symbols_list[symbol + 1] + adjustment,
-        #                                  y_coordinate=circuit_symbols_list[symbol + 2] + adjustment,
-        #                                  angle=circuit_symbols_list[symbol + 3], window_x=0, window_y=0)
-
-        # if circuit_symbols_list[symbol + 3] != 0:
-        #     for component in range(len(filtered_component_name_and_window)):
-        #         if not filtered_component_name_and_window[component].isdigit():
-        #             if filtered_component_name_and_window[component - 1].isdigit():
-        #                 print(filtered_component_name_and_window[component])
-        #                 component_drawn = filtered_component_name_and_window[component]
-        #                 if not component_drawn == filtered_component_name_and_window[component]:
-        #                     component_drawn = filtered_component_name_and_window[component]
-        #                     window_x = int(filtered_component_name_and_window[component - 1]) \
-        #                                + int(filtered_component_name_and_window[component - 2])
-        #                     window_y = int(filtered_component_name_and_window[component - 3]) \
-        #                                + int(filtered_component_name_and_window[component - 4])
-        #                     circuit_comps.load_component(file_name=circuit_symbols_list[symbol], encoding=encoding,
-        #                                                  x_coordinate=circuit_symbols_list[symbol + 1] + adjustment,
-        #                                                  y_coordinate=circuit_symbols_list[symbol + 2] + adjustment,
-        #                                                  angle=circuit_symbols_list[symbol + 3],
-        #                                                  window_x=window_x, window_y=window_y)
 
         for symbol in range(0, len(full_list), 8):
             try:
@@ -897,7 +1017,6 @@ def sketch_schematic_asc(schematic,
                                                  window_x=int(full_list[symbol + 4]) + int(full_list[symbol + 6]),
                                                  window_y=int(full_list[symbol + 5]) + int(full_list[symbol + 7]))
 
-
             except ValueError:
                 pass
                 #print(ValueError)
@@ -905,9 +1024,9 @@ def sketch_schematic_asc(schematic,
         not_found_symbols = circuit_comps.get_symbols_not_found()
         if not_found_symbols:
             yes_or_no = messagebox.askyesnocancel('Components not found', str(len(not_found_symbols))
-                                      + ' components have not been found, do you want to view their names?',
-                                      default=messagebox.YES)
-            print(yes_or_no)
+                                                  + ' components have not been found,'
+                                                  ' do you want to view their names?',
+                                                  default=messagebox.YES)
             if yes_or_no:
                 not_found_symbols_string = ''
                 for symbol in range(len(not_found_symbols)):
@@ -945,6 +1064,7 @@ def sketch_schematic_asc(schematic,
 
     except IndexError:
         messagebox.showerror('No Components', 'Please select a schematic with components')
+        print(flag_error)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1055,19 +1175,14 @@ def select_distribution_type(distribution_type,
 # -------------------------------------- Check if entered parameters are numbers ---------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def if_number(parameter_value, value_before):
-    print(value_before)
-    number_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.']
+    print(value_before, parameter_value)
+    number_list = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '-', '+']
     smaller_values_list = ['m', 'u', 'n', 'p', 'f', 'K', 'M', 'G', 'T']
-    print(parameter_value)
-    matches = [a for a in smaller_values_list if a in value_before]
-    # values = [b for b in value_before if b in smaller_values_list]
-    # print(values)
-    # TODO: Remove characters entered when backspace is used
+
+    # matches = [a for a in smaller_values_list if a in value_before]
     if parameter_value in number_list:
         return True
-    # if parameter_value == decimal or decimal not in value_before:
-    #     return True
-    elif (parameter_value in smaller_values_list) and (parameter_value not in value_before) and len(matches) == 0:
+    if parameter_value.isalpha():
         return True
     else:
         return False
@@ -1142,37 +1257,37 @@ def change_component(master_window, starting_canvas):
     start_coordinate_y = adjustment_y
     # wire before diode
     starting_canvas.create_line(start_coordinate_x + x_adjustment,
-                                       start_coordinate_y,
-                                       start_coordinate_x + x_adjustment,
-                                       start_coordinate_y + ground_line,
-                                       tags='Diode',
-                                       fill='#212325')
+                                start_coordinate_y,
+                                start_coordinate_x + x_adjustment,
+                                start_coordinate_y + ground_line,
+                                tags='Diode',
+                                fill='#212325')
 
     # wire after diode
     starting_canvas.create_line(start_coordinate_x + x_adjustment,
-                                       start_coordinate_y + 35 + ground_line,
-                                       start_coordinate_x + x_adjustment,
-                                       start_coordinate_y + 35 + ground_line + 20,
+                                start_coordinate_y + 35 + ground_line,
+                                start_coordinate_x + x_adjustment,
+                                start_coordinate_y + 35 + ground_line + 20,
                                 tags='Diode',
                                 fill='#212325')
 
     # triangle shape of diode
     starting_canvas.create_polygon(start_coordinate_x - 25 + x_adjustment,
-                                          start_coordinate_y + ground_line,
-                                          start_coordinate_x + 25 + x_adjustment,
-                                          start_coordinate_y + ground_line,
-                                          start_coordinate_x + x_adjustment,
-                                          start_coordinate_y + 35 + ground_line,
-                                          fill='',
-                                          outline='#212325',
-                                          tags='Diode')
+                                   start_coordinate_y + ground_line,
+                                   start_coordinate_x + 25 + x_adjustment,
+                                   start_coordinate_y + ground_line,
+                                   start_coordinate_x + x_adjustment,
+                                   start_coordinate_y + 35 + ground_line,
+                                   fill='',
+                                   outline='#212325',
+                                   tags='Diode')
 
     # Diode line in front of triangle shape
     starting_canvas.create_line(start_coordinate_x - 25 + x_adjustment,
-                                       start_coordinate_y + 35 + ground_line,
-                                       start_coordinate_x + 25 + x_adjustment,
-                                       start_coordinate_y + 35 + ground_line,
-                                       tags='Diode',
+                                start_coordinate_y + 35 + ground_line,
+                                start_coordinate_x + 25 + x_adjustment,
+                                start_coordinate_y + 35 + ground_line,
+                                tags='Diode',
                                 fill='#212325')
 
     starting_canvas.after(3200, starting_canvas.itemconfig, light)
@@ -1412,8 +1527,8 @@ def open_new_window(components,
                 component_distribution_array[circuit_component].insert(tk.INSERT, 'Normal')
                 component_param1_label_array[circuit_component].configure(text='Mean (μ)')
                 component_param2_label_array[circuit_component].configure(text= 'Standard deviation (σ)')
-                component_param1_entry_box_array[circuit_component].insert(0, '1')
-                component_param2_entry_box_array[circuit_component].insert(0, '2')
+                # component_param1_entry_box_array[circuit_component].insert(0, '1')
+                # component_param2_entry_box_array[circuit_component].insert(0, '2')
 
             global component_index
             component_index = 0
@@ -1565,7 +1680,7 @@ def delete_label(label_to_remove, label_index,
     label_to_remove[label_index].configure(borderwidth=0)
 
     # Remove button from label
-    #delete_label_button[label_index].grid_forget()
+    # delete_label_button[label_index].grid_forget()
     parameters_frame[label_index].pack_forget()
     # Deleting Item from dictionary
     component_counter = 0
@@ -1604,7 +1719,8 @@ def save_entered_parameters(entering_parameters_window,
     global component_index
 
     component_value_array[index] = 'Random'
-    # print(component_value_array)
+
+    prefixes = {'m': 1e-3, 'μ': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9, 'T': 1e12}
 
     if component_value_array[index] == 'Random':
         if component_distribution == 'Normal':
@@ -1617,112 +1733,106 @@ def save_entered_parameters(entering_parameters_window,
             component_param1_dictionary_input = 'alpha'
             component_param2_dictionary_input = 'beta'
 
-        component_param1 = float(component_param1)
-        component_param2 = float(component_param2)
-        if prefix1[index].get() == 'm':
-            component_param1 = component_param1 * 1e-3
-        elif prefix1[index].get() == 'μ':
-            component_param1 = component_param1 * 1e-6
-        elif prefix1[index].get() == 'n':
-            component_param1 = component_param1 * 1e-9
-        elif prefix1[index].get() == 'p':
-            component_param1 = component_param1 * 1e-12
-        elif prefix1[index].get() == 'f':
-            component_param1 = component_param1 * 1e-15
-        elif prefix1[index].get() == 'K':
-            component_param1 = component_param1 * 1e3
-        elif prefix1[index].get() == 'MEG':
-            component_param1 = component_param1 * 1e6
-        elif prefix1[index].get() == 'G':
-            component_param1 = component_param1 * 1e9
-        elif prefix1[index].get() == 'T':
-            component_param1 = component_param1 * 1e12
+        try:
+            first_prefix = prefix1[index].get()
+            second_prefix = prefix2[index].get()
 
-        if prefix2[index].get() == 'm':
-            component_param2 = component_param2 * 1e-3
-        elif prefix2[index].get() == 'μ':
-            component_param2 = component_param2 * 1e-6
-        elif prefix2[index].get() == 'n':
-            component_param2 = component_param2 * 1e-9
-        elif prefix2[index].get() == 'p':
-            component_param2 = component_param2 * 1e-12
-        elif prefix2[index].get() == 'f':
-            component_param2 = component_param2 * 1e-15
-        elif prefix2[index].get() == 'K':
-            component_param2 = component_param2 * 1e3
-        elif prefix2[index].get() == 'MEG':
-            component_param2 = component_param2 * 1e6
-        elif prefix2[index].get() == 'G':
-            component_param2 = component_param2 * 1e9
-        elif prefix2[index].get() == 'T':
-            component_param2 = component_param2 * 1e12
+            allowed_characters_list = ['m', 'u', 'n', 'p', 'f', 'K', 'M', 'G', 'T']
+            first_prefix_typed = "".join([character for character in allowed_characters_list if character in component_param1])
+            second_prefix_typed = "".join([character for character in allowed_characters_list if character in component_param2])
+            if (first_prefix_typed and first_prefix == 'None') or (first_prefix == first_prefix_typed):
+                for prefix in prefixes:
+                    if first_prefix_typed == prefix:
+                        component_param1 = float(component_param1.strip(prefix))
+                        component_param1 = component_param1 * prefixes[prefix]
+                    if second_prefix_typed == prefix:
+                        component_param2 = float(component_param2.strip(prefix))
+                        component_param2 = component_param2 * prefixes[prefix]
 
-        if len(all_component_parameters) == 0:
-            all_component_parameters.append({component_name:
-                                            {'distribution': component_distribution,
-                                             'parameters': {component_param1_dictionary_input: component_param1,
-                                                            component_param2_dictionary_input: component_param2}
-                                             }
-                                             }
-                                            )
-        # print(all_component_parameters)
-        # -------------------------- removing duplicates and storing in a list of dictionaries -------------------------
-        appending_flag = 0
-        for parameters in range(len(all_component_parameters)):
-            if component_name == list(all_component_parameters[parameters].keys())[-1]:
-                # If the last entered component is similar to the previously entered one then,
-                # replace the old parameters with the new ones
-                all_component_parameters[parameters] = ({component_name:
-                                                        {'distribution': component_distribution,
-                                                         'parameters': {
+            elif first_prefix_typed == '' and second_prefix_typed == '':
+                component_param1 = float(component_param1)
+                component_param2 = float(component_param2)
+                for prefix in prefixes:
+                    if first_prefix == prefix:
+                        component_param1 = component_param1 * prefixes[prefix]
+                    if second_prefix == prefix:
+                        component_param2 = component_param2 * prefixes[prefix]
+
+            print(component_param1, component_param2)
+
+            if len(all_component_parameters) == 0:
+                all_component_parameters.append({component_name:
+                                                     {'distribution': component_distribution,
+                                                      'parameters': {
                                                           component_param1_dictionary_input: component_param1,
                                                           component_param2_dictionary_input: component_param2}
-                                                         }
-                                                         }
-
-                )
-                # Ensures no appending takes place
-                appending_flag = 0
-                break
-            else:
-                # If the last entered component is NOT similar to the previously entered one then,
-                # ensure to add the component to the end of the list
-                appending_flag = 1
-
-        if appending_flag == 1:
-            all_component_parameters.append({component_name:
-                                            {'distribution': component_distribution,
-                                             'parameters': {component_param1_dictionary_input: component_param1,
-                                                            component_param2_dictionary_input: component_param2}
-                                             }
-                                             }
-                                            )
+                                                      }
+                                                 }
+                                                )
+                # print(all_component_parameters)
+            # -------------------------- removing duplicates and storing in a list of dictionaries ---------------------
             appending_flag = 0
+            for parameters in range(len(all_component_parameters)):
+                if component_name == list(all_component_parameters[parameters].keys())[-1]:
+                    # If the last entered component is similar to the previously entered one then,
+                    # replace the old parameters with the new ones
+                    all_component_parameters[parameters] = ({component_name:
+                                                                 {'distribution': component_distribution,
+                                                                  'parameters': {
+                                                                   component_param1_dictionary_input: component_param1,
+                                                                   component_param2_dictionary_input: component_param2}
+                                                                  }
+                                                             }
 
-        # --------------------------------- Displaying entered parameters on schematic_analysis window -----------------
-        # print(component_index)
-        # full_name_labels[index].configure(borderwidth=1)
-        full_name_labels[index].configure(text='')
-        delete_label_button[index].place(x=0, y=0, relwidth=0.05, relheight=0.2)
+                    )
+                    # Ensures no appending takes place
+                    appending_flag = 0
+                    break
+                else:
+                    # If the last entered component is NOT similar to the previously entered one then,
+                    # ensure to add the component to the end of the list
+                    appending_flag = 1
 
-        full_name_labels[index].configure(text='\n' + component_name +
-                                          '\nDistribution: ' + component_distribution
-                                          + '\n' + component_param1_label + '=' + str(component_param1)
-                                          + '\n' + component_param2_label + '=' + str(component_param2)
-                                          + '\n')
+            if appending_flag == 1:
+                all_component_parameters.append({component_name:
+                                                     {'distribution': component_distribution,
+                                                      'parameters': {
+                                                          component_param1_dictionary_input: component_param1,
+                                                          component_param2_dictionary_input: component_param2}
+                                                      }
+                                                 }
+                                                )
+                appending_flag = 0
 
-    # If value is constant just display the label only.
-    elif component_value_array[index] == 'Constant':
-        full_name_labels[index].configure(text='')
+            # --------------------------- Displaying entered parameters on schematic_analysis window -------------------
+            # print(component_index)
+            # full_name_labels[index].configure(borderwidth=1)
+            full_name_labels[index].configure(text='')
+            delete_label_button[index].place(x=0, y=0, relwidth=0.05, relheight=0.2)
 
-        full_name_labels[index].configure(text='\n' + component_name +
-                                          '\nDistribution: ' + component_distribution
-                                          + '\n' + component_param1_label + '=' + str(component_param1)
-                                          + '\n' + component_param2_label + '=' + str(component_param2)
-                                          + '\n')
+            full_name_labels[index].configure(text='\n' + component_name +
+                                                   '\nDistribution: ' + component_distribution
+                                                   + '\n' + component_param1_label + '=' + str(component_param1)
+                                                   + '\n' + component_param2_label + '=' + str(component_param2)
+                                                   + '\n')
 
-    full_name_labels[component_index].place(x=0, y=1, relwidth=1.0, relheight=1.0)
-    parameters_frame[component_index].pack(expand=False, fill=tk.BOTH, side=tk.TOP)
+            full_name_labels[component_index].place(x=0, y=1, relwidth=1.0, relheight=0.95)
+            parameters_frame[component_index].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=2)
+        except ValueError:
+              messagebox.showerror(title='Illegal Value entered',
+                                   message='Please enter only numbers with prefixes such as n, p, m, etc.')
+
+    # # If value is constant just display the label only.
+    # elif component_value_array[index] == 'Constant':
+    #     full_name_labels[index].configure(text='')
+    #
+    #     full_name_labels[index].configure(text='\n' + component_name +
+    #                                       '\nDistribution: ' + component_distribution
+    #                                       + '\n' + component_param1_label + '=' + str(component_param1)
+    #                                       + '\n' + component_param2_label + '=' + str(component_param2)
+    #                                       + '\n')
+
+
 
     print(all_component_parameters)
 
@@ -1773,43 +1883,16 @@ def save_all_entered_parameters(component_name,
             param1 = float(component_param1_array[circuit_component].get())
             param2 = float(component_param2_array[circuit_component].get())
 
-            if prefix1[circuit_component].get() == 'm':
-                param1 = param1 / 1000
-            elif prefix1[circuit_component].get() == 'μ':
-                param1 = param1 / 1000000
-            elif prefix1[circuit_component].get() == 'n':
-                param1 = param1 / 1000000000
-            elif prefix1[circuit_component].get() == 'p':
-                param1 = param1/ 1000000000000
-            elif prefix1[circuit_component].get() == 'f':
-                param1 = param1 / 1000000000000000
-            elif prefix1[circuit_component].get() == 'K':
-                param1 = param1 * 1000
-            elif prefix1[circuit_component].get() == 'MEG':
-                param1 = param1 * 1000000
-            elif prefix1[circuit_component].get() == 'G':
-                param1 = param1 * 1000000000
-            elif prefix1[circuit_component].get() == 'T':
-                param1 = param1 * 1000000000000
+            prefixes = {'m': 1e-3, 'μ': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9,
+                        'T': 1e12}
 
-            if prefix2[circuit_component].get() == 'm':
-                param2 = param2 / 1000
-            elif prefix2[circuit_component].get() == 'μ':
-                param2 = param2 / 1000000
-            elif prefix2[circuit_component].get() == 'n':
-                param2 = param2 / 1000000000
-            elif prefix2[circuit_component].get() == 'p':
-                param2 = param2 / 1000000000000
-            elif prefix2[circuit_component].get() == 'f':
-                param2 = param2 / 1000000000000000
-            elif prefix2[circuit_component].get() == 'K':
-                param2 = param2 * 1000
-            elif prefix2[circuit_component].get() == 'MEG':
-                param2 = param2 * 1000000
-            elif prefix2[circuit_component].get() == 'G':
-                param2 = param2 * 1000000000
-            elif prefix2[circuit_component].get() == 'T':
-                param2 = param2 * 1000000000000
+            first_prefix = prefix1[circuit_component].get()
+            second_prefix = prefix2[circuit_component].get()
+            for prefix in prefixes:
+                if first_prefix == prefix:
+                    param1 = param1 * prefixes[prefix]
+                if second_prefix == prefix:
+                    param2 = param2 * prefixes[prefix]
 
             # Storing the name label of all parameters
             full_name_labels[circuit_component].configure(
@@ -1826,8 +1909,8 @@ def save_all_entered_parameters(component_name,
 
             # Placing the name label of all parameters on the schematic_analysis window
             delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
-            full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=1.0)
-            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP)
+            full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
+            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=2)
 
             # Storing all components with their parameters in a dictionary
             all_component_parameters.append(
@@ -1857,8 +1940,8 @@ def save_all_entered_parameters(component_name,
                                                           + '\n')
 
             delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
-            full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=1.0)
-            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP)
+            full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
+            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=2)
 
     # print(all_component_parameters)
 

@@ -1,8 +1,10 @@
 import tkinter as tk
+from tkinter import filedialog as fd, ttk
 from tkinter.font import Font
 from customtkinter import ThemeManager
 from customtkinter import AppearanceModeTracker
 from customtkinter import CTkBaseClass
+from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 
 
 class CTkMenu(tk.Menu, CTkBaseClass):
@@ -85,6 +87,68 @@ class ResizingCanvas(tk.Canvas):
         # rescale all the objects tagged with the "all" tag
         self.scale("all", 0, 0, width_scale, height_scale)
 
+
+class CustomToolbar(NavigationToolbar2Tk):
+    def delete_all_subplots(self):
+        self.axes.clear()
+        self.figure.clf()
+        self.axes.append(self.figure.add_subplot(1, 1, 1))
+        self.axes[0].set_title('Empty Plot')
+        self.axes[0].grid('on')
+        self.canvas.draw()
+
+    def __init__(self, canvas_, parent_, axes, figure):
+        # delete_icon = fd.askopenfilename(
+        #     title="Select a Schematic",
+        #
+        #     filetypes=(
+        #         ("Waveforms", "*.png"),
+        #         ("All files", "*.*")
+        #     )
+        # )
+        # print(delete_icon.removesuffix('.png'))
+        self.toolitems = (
+                          ('Home', 'Reset original view', 'home', 'home'),
+                          # ('Back', 'Back to  previous view', 'back', 'back'),
+                          # ('Forward', 'Forward to next view', 'forward', 'forward'),
+                          (None, None, None, None),
+                          ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
+                          ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
+                          ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'),
+                          ('Save', 'Save the figure', 'filesave', 'save_figure'),
+                          (None, None, None, None),
+                          ('Delete subplots', 'Deletes all current subplots', 'trash_can', 'delete_all_subplots')
+                          )
+        self.axes = axes
+        self.figure = figure
+        NavigationToolbar2Tk.__init__(self, canvas_, parent_)
+
+    def set_toolbar_colour(self, colour):
+        self.config(background=colour)
+        for element in self.winfo_children():
+            element.configure(background=colour)
+
+
+class ScrollableFrame(tk.Frame):
+    def __init__(self, container, *args, **kwargs):
+        super().__init__(master=container, *args, **kwargs)
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = tk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw", width=460)
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
 # class ResizingFrame(tk.Frame):
 #

@@ -1,9 +1,9 @@
+import os
 import tkinter as tk
 from tkinter import ttk
 import customtkinter
 import tksheet
-from matplotlib import pyplot as plt, backend_bases
-from matplotlib.backends._backend_tk import NavigationToolbar2Tk
+from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 import tkinter_modification as tkmod
@@ -79,7 +79,8 @@ tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(spice_data, text='LTSpice data')
 tabControl.add(graphs, text='Graphs')
 
-component_parameters_frame = tk.Frame(schematic_params, width=340, height=100)
+# component_parameters_frame = tk.Frame(schematic_params, width=340, height=100)
+component_parameters_frame = tkmod.ScrollableFrame(schematic_params, width=340, height=100)
 
 schematic_canvas_frame = tk.Frame(schematic_params,
                                   width=700,
@@ -110,48 +111,7 @@ enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
 
 logo = tk.Canvas(root, width=200, height=50, background=LOGO_BACKGROUND_COLOUR,
                  highlightthickness=0)
-factor = 2
-adjustment_x = 60
-adjustment_y = 20
-logo.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
-                 48 * factor + adjustment_x, 96 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16 * factor + adjustment_x, 80 * factor + adjustment_y,
-                 48 * factor + adjustment_x, 80 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16 * factor + adjustment_x, 48 * factor + adjustment_y,
-                 24 * factor + adjustment_x, 48 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
-                 24 * factor + adjustment_x, 44 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
-                 24 * factor + adjustment_x, 52 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(24 * factor + adjustment_x, 44 * factor + adjustment_y,
-                 24 * factor + adjustment_x, 52 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16 * factor + adjustment_x, 8 * factor + adjustment_y,
-                 16 * factor + adjustment_x, 24 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16 * factor + adjustment_x, 40 * factor + adjustment_y,
-                 16 * factor + adjustment_x, 56 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(16 * factor + adjustment_x, 72 * factor + adjustment_y,
-                 16 * factor + adjustment_x, 88 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(0 * factor + adjustment_x, 80 * factor + adjustment_y,
-                 8 * factor + adjustment_x, 80 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(8 * factor + adjustment_x, 16 * factor + adjustment_y,
-                 8 * factor + adjustment_x, 80 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48 * factor + adjustment_x, 16 * factor + adjustment_y,
-                 16 * factor + adjustment_x, 16 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
-logo.create_line(48 * factor + adjustment_x, 0 * factor + adjustment_y,
-                 48 * factor + adjustment_x, 16 * factor + adjustment_y,
-                 tags='MOSFET', fill='#1F6AA5')
+guievents.draw_logo(logo, root)
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------------ Menu Bar ------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -162,7 +122,7 @@ schematic_analysis.config(menu=menu)
 # File menu
 fileMenu = tkmod.CTkMenu(menu)
 fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
-                     command=lambda: guievents.get_file_path(component_parameters_frame,
+                     command=lambda: guievents.get_file_path(component_parameters_frame.scrollable_frame,
                                                              all_component_parameters,
                                                              canvas,
                                                              schematic_analysis,
@@ -216,7 +176,7 @@ menu.add_cascade(label="Help", font=FONT_SIZE, menu=helpMenu)
 # Select a schematic using a button
 openfile_button = customtkinter.CTkButton(schematic_analysis,
                                           text='Open a Schematic',
-                                          command=lambda: guievents.get_file_path(component_parameters_frame,
+                                          command=lambda: guievents.get_file_path(component_parameters_frame.scrollable_frame,
                                                                                   all_component_parameters,
                                                                                   canvas,
                                                                                   schematic_analysis,
@@ -252,28 +212,30 @@ figure = plt.Figure(figsize=(8, 6), dpi=100)
 figure.tight_layout()
 chart_type = FigureCanvasTkAgg(figure, master=graphs)
 ax = [figure.add_subplot(111)]
+delete_icon_path = 'trash_can'
 
-backend_bases.NavigationToolbar2.toolitems = (
-    ('Home', 'Reset original view', 'home', 'home'),
-    # ('Back', 'Back to  previous view', 'back', 'back'),
-    # ('Forward', 'Forward to next view', 'forward', 'forward'),
-    (None, None, None, None),
-    ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
-    ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
-    ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'),
-    (None, None, None, None),
-    ('Save', 'Save the figure', 'filesave', 'save_figure'),
-  )
+# backend_bases.NavigationToolbar2.toolitems = (
+#     ('Home', 'Reset original view', 'home', 'home'),
+#     # ('Back', 'Back to  previous view', 'back', 'back'),
+#     # ('Forward', 'Forward to next view', 'forward', 'forward'),
+#     (None, None, None, None),
+#     ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
+#     ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
+#     ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'),
+#     ('Save', 'Save the figure', 'filesave', 'save_figure'),
+#     (None, None, None, None),
+#     ('Delete subplots', 'Deletes all current subplots', delete_icon_path, 'delete_subplot')
+#   )
 
 ax[0].set_title('Empty Plot')
 ax[0].grid('on')
-toolbar = NavigationToolbar2Tk(chart_type, graphs, pack_toolbar=False)
+toolbar = tkmod.CustomToolbar(chart_type, graphs, ax, figure)
 
 # Change colour of toolbar and it's elements
 # toolbar.config(background='red')
 # for element in toolbar.winfo_children():
 #     element.config(background='red')
-
+toolbar.set_toolbar_colour('white')
 toolbar.update()
 toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=1)
 
@@ -347,9 +309,8 @@ chart_type.get_tk_widget().pack(side='top', fill='both')
 component_parameters_frame.pack(side='right', fill=tk.BOTH)
 
 # Prevents Component parameters Frame From Resizing
-component_parameters_frame.pack_propagate(False)
+# component_parameters_frame.pack_propagate(False)
 canvas.pack_propagate(False)
-component_parameters_frame.grid_propagate(False)
 # Root window widgets and items
 logo.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
 x_axis.pack(side=tk.LEFT)
