@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import filedialog as fd, ttk
 from tkinter.font import Font
@@ -96,6 +97,9 @@ class CustomToolbar(NavigationToolbar2Tk):
         self.axes[0].set_title('Empty Plot')
         self.axes[0].grid('on')
         self.canvas.draw()
+        subplot_number = self.get_child(14)
+        subplot_number.configure(values='1')
+        subplot_number.pack_forget()
 
     def __init__(self, canvas_, parent_, axes, figure):
         # delete_icon = fd.askopenfilename(
@@ -107,6 +111,7 @@ class CustomToolbar(NavigationToolbar2Tk):
         #     )
         # )
         # print(delete_icon.removesuffix('.png'))
+        delete_icon = os.path.dirname(os.path.abspath('trash_can.png'))
         self.toolitems = (
                           ('Home', 'Reset original view', 'home', 'home'),
                           # ('Back', 'Back to  previous view', 'back', 'back'),
@@ -117,11 +122,18 @@ class CustomToolbar(NavigationToolbar2Tk):
                           ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'),
                           ('Save', 'Save the figure', 'filesave', 'save_figure'),
                           (None, None, None, None),
-                          ('Delete subplots', 'Deletes all current subplots', 'trash_can', 'delete_all_subplots')
+                          # ('Delete subplots', 'Deletes all current subplots', 'trash_can', 'delete_all_subplots')
                           )
         self.axes = axes
         self.figure = figure
         NavigationToolbar2Tk.__init__(self, canvas_, parent_)
+
+    def get_child(self, index):
+        return self.winfo_children()[index]
+
+    def get_children(self):
+        for element in self.winfo_children():
+            print(element)
 
     def set_toolbar_colour(self, colour):
         self.config(background=colour)
