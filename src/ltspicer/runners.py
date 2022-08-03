@@ -38,6 +38,7 @@ class LTSpiceRunner:
 
     def create_netlist(self):
         # TODO: Create a Netlist from a schematic file. Asc file cannot be run from command line on macOS.
+        
         pass
 
     def run(self, file_to_run, ascii=False, timeout=20):
