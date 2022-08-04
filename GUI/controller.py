@@ -23,7 +23,7 @@ FONT_SIZE = ("", 10)
 
 # Set the colour of the background
 Mode = 'dark'
-theme_colour = ''
+theme_colour = 'dark-blue'
 if Mode == 'light':
     theme_colour = 'dark-blue'
 if Mode == 'dark':
@@ -35,6 +35,7 @@ customtkinter.set_default_color_theme(theme_colour)  # Themes: blue (default), d
 data = []
 # create the schematic_analysis window
 root = customtkinter.CTk()
+
 schematic_analysis = customtkinter.CTkToplevel(root)
 schematic_analysis.withdraw()
 schematic_analysis.title('EMC Analysis')
@@ -80,7 +81,8 @@ tabControl.add(spice_data, text='LTSpice data')
 tabControl.add(graphs, text='Graphs')
 
 # component_parameters_frame = tk.Frame(schematic_params, width=340, height=100)
-component_parameters_frame = tkmod.ScrollableFrame(schematic_params, width=340, height=100)
+component_parameters_frame = tk.Frame(schematic_params, width=340, height=100)
+component_parameters_frame_scroll = tkmod.ScrollableFrame(component_parameters_frame, width=340, height=100)
 
 schematic_canvas_frame = tk.Frame(schematic_params,
                                   width=700,
@@ -92,6 +94,7 @@ canvas = tkmod.ResizingCanvas(schematic_canvas_frame,
                               width=1000,
                               height=600,
                               highlightthickness=0,
+                              resize_zoom=True
                               #background=DARK_THEME_COLOUR
                               )
 
@@ -103,15 +106,7 @@ entering_parameters_window = None
 # column_1 = customtkinter.CTkOptionMenu(master=graphs,
 #                                        variable=param1_prefix_selected)
 
-# Button for entering the parameters of the circuit
-enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
-                                                  text='Enter All Parameters',
-                                                  command=lambda: guievents.error_select_schematic(canvas)
-                                                  )
 
-logo = tk.Canvas(root, width=200, height=50, background=LOGO_BACKGROUND_COLOUR,
-                 highlightthickness=0)
-guievents.draw_logo(logo, root)
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------------ Menu Bar ------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -122,7 +117,7 @@ schematic_analysis.config(menu=menu)
 # File menu
 fileMenu = tkmod.CTkMenu(menu)
 fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
-                     command=lambda: guievents.get_file_path(component_parameters_frame.scrollable_frame,
+                     command=lambda: guievents.get_file_path(component_parameters_frame_scroll.scrollable_frame,
                                                              all_component_parameters,
                                                              canvas,
                                                              schematic_analysis,
@@ -145,11 +140,14 @@ menu.add_cascade(label="File",
 editMenu = tkmod.CTkMenu(menu)
 editMenu.add_command(label="Undo", font=FONT_SIZE)
 editMenu.add_command(label="Redo", font=FONT_SIZE)
-theme_submenu = tkmod.CTkMenu(editMenu)
-theme_submenu.add_command(label="Dark Theme", font=FONT_SIZE, command=lambda: guievents.dark_theme_set(root, canvas))
-theme_submenu.add_command(label="Light Theme", font=FONT_SIZE, command=lambda: guievents.light_theme_set(root, canvas))
-editMenu.add_cascade(label='Theme', menu=theme_submenu)
-editMenu.add_cascade(label='Preferences', command= lambda: guievents.set_preferences(root, schematic_analysis))
+Preferences_submenu = tkmod.CTkMenu(editMenu)
+Preferences_submenu.add_command(label='Component Drawings Preferences',
+                                font=FONT_SIZE, command=lambda: guievents.set_preferences(root, schematic_analysis))
+Preferences_submenu.add_command(label="Dark Theme",
+                                font=FONT_SIZE, command=lambda: guievents.dark_theme_set(root, canvas))
+Preferences_submenu.add_command(label="Light Theme",
+                                font=FONT_SIZE, command=lambda: guievents.light_theme_set(root, canvas))
+editMenu.add_cascade(label='Preferences', menu=Preferences_submenu)
 editMenu.config(font=FONT_SIZE)
 menu.add_cascade(label="Edit", font=FONT_SIZE, menu=editMenu)
 
@@ -172,18 +170,33 @@ menu.add_cascade(label="Help", font=FONT_SIZE, menu=helpMenu)
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-# --------------------------------------- Schematic Analysis Window Buttons --------------------------------------------
+# --------------------------------------- Schematic Analysis Tab -------------------------------------------------------
+# Button for entering the parameters of the circuit
+enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
+                                                  text='Enter All Parameters',
+                                                  command=lambda: guievents.error_select_schematic(canvas)
+                                                  )
+
+delete_all_constants_button = customtkinter.CTkButton(component_parameters_frame,
+                                                      text='Delete constants')
+
 # Select a schematic using a button
 openfile_button = customtkinter.CTkButton(schematic_analysis,
                                           text='Open a Schematic',
-                                          command=lambda: guievents.get_file_path(component_parameters_frame.scrollable_frame,
-                                                                                  all_component_parameters,
-                                                                                  canvas,
-                                                                                  schematic_analysis,
-                                                                                  enter_parameters_button,
-                                                                                  entering_parameters_window,
-                                                                                  root)
+                                          command=lambda:
+                                          guievents.get_file_path(component_parameters_frame_scroll.scrollable_frame,
+                                                                  all_component_parameters,
+                                                                  canvas,
+                                                                  schematic_analysis,
+                                                                  enter_parameters_button,
+                                                                  entering_parameters_window,
+                                                                  delete_all_constants_button,
+                                                                  root)
                                           )
+
+clear_canvas_button = customtkinter.CTkButton(canvas,
+                                              text='Clear Canvas',
+                                              command=lambda: canvas.delete('all'))
 
 lines_array = [None]
 # --------------------------------------------- Table Tab --------------------------------------------------------------
@@ -196,14 +209,17 @@ data_table.pack(expand=True, fill=tk.BOTH)
 
 raw_file_button_table = customtkinter.CTkButton(spice_data,
                                                 text='Open a raw file',
-                                                command=lambda: guievents.open_raw_file(graphs, data_table,
+                                                command=lambda: guievents.open_raw_file(root, schematic_analysis,
+                                                                                        tabControl.select(1),
+                                                                                        graphs, data_table,
                                                                                         column_to_plot_1,
                                                                                         column_to_plot_2,
                                                                                         figure,
                                                                                         ax, lines_array,
                                                                                         toolbar,
                                                                                         new_subplot, subplot_number,
-                                                                                        subplots))
+                                                                                        subplots,
+                                                                                        schematic_analysis_open=True))
 
 raw_file_button_table.pack(pady=6, padx=6, side=tk.BOTTOM)
 
@@ -213,19 +229,6 @@ figure.tight_layout()
 chart_type = FigureCanvasTkAgg(figure, master=graphs)
 ax = [figure.add_subplot(111)]
 delete_icon_path = 'trash_can'
-
-# backend_bases.NavigationToolbar2.toolitems = (
-#     ('Home', 'Reset original view', 'home', 'home'),
-#     # ('Back', 'Back to  previous view', 'back', 'back'),
-#     # ('Forward', 'Forward to next view', 'forward', 'forward'),
-#     (None, None, None, None),
-#     ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
-#     ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
-#     ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'),
-#     ('Save', 'Save the figure', 'filesave', 'save_figure'),
-#     (None, None, None, None),
-#     ('Delete subplots', 'Deletes all current subplots', delete_icon_path, 'delete_subplot')
-#   )
 
 ax[0].set_title('Empty Plot')
 ax[0].grid('on')
@@ -269,56 +272,71 @@ new_subplot = customtkinter.CTkCheckBox(master=toolbar, text="New Subplot",
                                         variable=check_var, onvalue="on", offvalue="off",
                                         text_color='black')
 
-# ------------------------------------------- Root Window Buttons ------------------------------------------------------
+# ------------------------------------------- Root Window  -------------------------------------------------------------
 graph_value = 0
+root_frame = customtkinter.CTkFrame(root)
 
+logo = tkmod.ResizingCanvas(root_frame, width=200, height=50, background=DARK_THEME_COLOUR, resize_zoom=False,
+                            highlightthickness=0)
 
-open_asc_file_button = customtkinter.CTkButton(root,
+guievents.draw_logo(logo, root_frame)
+
+open_asc_file_button = customtkinter.CTkButton(root_frame,
                                                text='Open LTspice Schematic .asc file',
                                                command=lambda: guievents.open_asc_file(root, schematic_analysis))
 
-add_new_component_button = customtkinter.CTkButton(root,
+add_new_component_button = customtkinter.CTkButton(root_frame,
                                                    text='Add new component',
                                                    command=lambda: guievents.open_new_components(root))
 
-open_raw_file_button = customtkinter.CTkButton(root,
+open_raw_file_button = customtkinter.CTkButton(root_frame,
                                                text='Open LTspice Waveform .raw file',
-                                               command=lambda: guievents.open_raw_file(graphs, data_table,
+                                               command=lambda: guievents.open_raw_file(root, schematic_analysis,
+                                                                                       tabControl.select(1),
+                                                                                       graphs, data_table,
                                                                                        column_to_plot_1,
                                                                                        column_to_plot_2,
                                                                                        figure,
                                                                                        ax, lines_array,
                                                                                        toolbar,
                                                                                        new_subplot, subplot_number,
-                                                                                       subplots))
+                                                                                       subplots,
+                                                                                       schematic_analysis_open=False))
 
-exit_app_button = customtkinter.CTkButton(root,
+exit_app_button = customtkinter.CTkButton(root_frame,
                                           text='Exit EMC Analysis',
                                           command=lambda: root.destroy())
-
-# open file button, tab control and canvas location in schematic_analysis window
+# Root window widgets and items
+# Root window components
+logo.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+open_raw_file_button.pack(pady=6, padx=6, anchor=tk.NE)
+open_asc_file_button.pack(pady=6, padx=4, anchor=tk.NE)
+add_new_component_button.pack(pady=6, padx=30, anchor=tk.NE)
+exit_app_button.pack(pady=6, padx=30, anchor=tk.NE)
+root_frame.pack(expand=True, fill=tk.BOTH)
+# open file button and tab control in schematic_analysis window
 enter_parameters_button.pack(padx=0, pady=10, side=tk.BOTTOM)
 openfile_button.pack(padx=0, pady=2, side=tk.BOTTOM)
 tabControl.pack(expand=True, fill=tk.BOTH)
+chart_type.get_tk_widget().pack(side='top', fill='both')
+# schematic params frame children
+# delete_all_constants_button.pack(anchor=tk.SW, side=tk.BOTTOM)
+component_parameters_frame_scroll.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+component_parameters_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
+clear_canvas_button.pack(padx=2, side=tk.BOTTOM, anchor=tk.SW)
+canvas.pack(fill=tk.BOTH, expand=True)
+canvas.pack_propagate(False)
+separator = ttk.Separator(schematic_params, orient='vertical')
+separator.pack(side=tk.RIGHT, fill=tk.Y)
 schematic_canvas_frame.pack(side='left', fill=tk.BOTH, expand=True)
 schematic_canvas_frame.pack_propagate(False)
-canvas.pack(fill=tk.BOTH, expand=True)
-chart_type.get_tk_widget().pack(side='top', fill='both')
-# separator = ttk.Separator(component_parameters_frame, orient='vertical')
-# separator.pack(fill='y')
-component_parameters_frame.pack(side='right', fill=tk.BOTH)
-
 # Prevents Component parameters Frame From Resizing
-# component_parameters_frame.pack_propagate(False)
-canvas.pack_propagate(False)
-# Root window widgets and items
-logo.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+# component_parameters_frame_scroll.pack_propagate(False)
+
+# graph tab components and widgets
 x_axis.pack(side=tk.LEFT)
 column_to_plot_1.pack(side=tk.LEFT, padx=10)
 y_axis.pack(side=tk.LEFT)
 column_to_plot_2.pack(side=tk.LEFT, padx=10)
 new_subplot.pack(side=tk.LEFT, padx=10)
-open_raw_file_button.pack(pady=6, padx=6, anchor=tk.NE)
-open_asc_file_button.pack(pady=6, padx=4, anchor=tk.NE)
-add_new_component_button.pack(pady=6, padx=30, anchor=tk.NE)
-exit_app_button.pack(pady=6, padx=30, anchor=tk.NE)
+

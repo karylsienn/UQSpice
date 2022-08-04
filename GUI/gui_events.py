@@ -1,6 +1,5 @@
 from tkinter import messagebox, ttk
 import mplcursors
-from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import tkinter as tk
 from tkinter import filedialog as fd
 import ntpath
@@ -14,12 +13,15 @@ import customtkinter
 
 BACKGROUND_COLOUR = '#F0F0F0'
 Mode = 'dark'
+
 all_component_parameters = []
 entering_parameters_window = None
 preferences_window = None
-LINE_WIDTH = 1
-OUTLINE_COLOUR = 'black'
-FILL_COLOUR = ''
+
+# Canvas preferences
+line_width = 1
+outline_colour = 'black'
+fill_colour = ''
 
 
 def draw_logo(logo, root):
@@ -91,6 +93,16 @@ def light_theme_set(root, canvas):
         menu.configure(background=ctk_bg)
         menu.configure(foreground=ctk_fg)
         menu.configure(activebackground=ctk_hover_bg)
+
+    # outline = new_comp.NewComponents.get_outline_colour()
+    # if outline == 'white':
+    #     new_comp.NewComponents.set_outline_colour('black')
+    # canvas_instances = tkmod.ResizingCanvas.get()
+    # canvas_bg = customtkinter.ThemeManager.theme["color"]["frame_low"][mode]
+    # tkmod.ResizingCanvas.set_background_colour(canvas_bg)
+    # for canvas in canvas_instances:
+    #     canvas.configure(background=canvas_bg)
+
     # canvas.config(background='#D1D5D8')
 
 
@@ -110,12 +122,21 @@ def dark_theme_set(root, canvas):
         menu.configure(background=ctk_bg)
         menu.configure(foreground=ctk_fg)
         menu.configure(activebackground=ctk_hover_bg)
+
+    # outline = new_comp.NewComponents.get_outline_colour()
+    # if outline == 'black':
+    #     new_comp.NewComponents.set_outline_colour('white')
+    # canvas_instances = tkmod.ResizingCanvas.get()
+    # canvas_bg = customtkinter.ThemeManager.theme["color"]["frame_low"][mode]
+    # tkmod.ResizingCanvas.set_background_colour(canvas_bg)
+    # for canvas in canvas_instances:
+    #     canvas.configure(background=canvas_bg)
     root.withdraw()
     # canvas.config(background='#2A2D2E')
 
 
 def slider_event(slider_label, slider, canvas):
-    global LINE_WIDTH
+    global line_width
     line_thickness = round(slider.get(), 1)
     slider_label.configure(text='Line Width = ' + str(line_thickness))
 
@@ -123,7 +144,7 @@ def slider_event(slider_label, slider, canvas):
     for sample_element in sample_elements:
         canvas.itemconfig(sample_element, width=line_thickness)
 
-    LINE_WIDTH = line_thickness
+    line_width = line_thickness
 
 
 def change_colour(canvas, fill=True, outline=False):
@@ -134,8 +155,8 @@ def change_colour(canvas, fill=True, outline=False):
         title = 'Select Fill Colour'
     colour = askcolor(title=title)
     colour_to_change = colour[1]
-    global FILL_COLOUR
-    global OUTLINE_COLOUR
+    global fill_colour
+    global outline_colour
 
     sample_elements_outline = canvas.find_withtag('triangle') + canvas.find_withtag('rectangle') \
                              + canvas.find_withtag('circle') + canvas.find_withtag('ground_flag')
@@ -152,24 +173,24 @@ def change_colour(canvas, fill=True, outline=False):
         for line in lines:
             canvas.itemconfig(line, fill=colour_to_change)
 
-        OUTLINE_COLOUR = colour_to_change
+        outline_colour = colour_to_change
 
     if fill:
 
         for sample_element in sample_elements_outline:
             canvas.itemconfig(sample_element, fill=colour_to_change)
 
-        FILL_COLOUR = colour_to_change
+        fill_colour = colour_to_change
 
 
 def save_preferences():
-    global LINE_WIDTH
-    global FILL_COLOUR
-    global OUTLINE_COLOUR
+    global line_width
+    global fill_colour
+    global outline_colour
 
-    new_comp.NewComponents.set_line_width(LINE_WIDTH)
-    new_comp.NewComponents.set_outline_colour(OUTLINE_COLOUR)
-    new_comp.NewComponents.set_fill_colour(FILL_COLOUR)
+    new_comp.NewComponents.set_line_width(line_width)
+    new_comp.NewComponents.set_outline_colour(outline_colour)
+    new_comp.NewComponents.set_fill_colour(fill_colour)
 
     messagebox.showinfo('Preferences Saved', 'The selected preferences have been saved')
 
@@ -190,11 +211,11 @@ def set_preferences(root, schematic_analysis):
         preferences_window_width = 800  # width for the Tk schematic_analysis
         preferences_window_height = 400  # height for the Tk schematic_analysis
         # Find the location of the main schematic analysis window
-        screen_width = root.winfo_x()  # width of the screen
-        screen_height = root.winfo_y()  # height of the screen
+        screen_width = schematic_analysis.winfo_x()  # width of the screen
+        screen_height = schematic_analysis.winfo_y()  # height of the screen
         # calculate x and y coordinates for the Tk schematic_analysis window
-        preferences_window_x = screen_width - (preferences_window_width / 2)
-        preferences_window_y = screen_height - (preferences_window_height / 2)
+        preferences_window_x = screen_width + 40
+        preferences_window_y = screen_height + 40
 
         # set the dimensions of schematic analysis window and its position
         preferences_window.geometry('%dx%d+%d+%d' % (preferences_window_width,
@@ -225,7 +246,8 @@ def set_preferences(root, schematic_analysis):
         border_label = ttk.Separator(all_preferences_frame, orient='vertical')
         border_label.pack(side=tk.RIGHT, expand=True, fill=tk.Y)
 
-        preferences_canvas = tk.Canvas(all_preferences_frame, width=preferences_window_width - 200)
+        preferences_canvas = tkmod.ResizingCanvas(all_preferences_frame, width=preferences_window_width - 200,
+                                                  resize_zoom=False)
         preferences_canvas.pack(expand=True, fill=tk.BOTH)
 
         # Window Children
@@ -298,7 +320,6 @@ def open_new_components(root):
     root.withdraw()
     open_new_component_window = customtkinter.CTkToplevel()
     open_new_component_window.title('Add a new component')
-
     # TODO: TRY USING SCREENINFO LIBRARY TO PLACE IN CENTRE OF SCREEN
     open_new_component_width = 810  # width for the Tk schematic_analysis
     open_new_component_height = 400  # height for the Tk schematic_analysis
@@ -318,7 +339,7 @@ def open_new_components(root):
     open_new_component_window.minsize(open_new_component_width, open_new_component_height)
     open_new_component_window.resizable(height=True, width=False)
 
-    new_components_canvas = tkmod.ResizingCanvas(open_new_component_window)
+    new_components_canvas = tkmod.ResizingCanvas(open_new_component_window, resize_zoom=True)
     button_frame = customtkinter.CTkFrame(open_new_component_window)
     new_comp_instance = new_comp.NewComponents(new_components_canvas, open_new_component_window)
 
@@ -378,9 +399,10 @@ def open_asc_file(root, schematic_analysis):
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for opening a .raw file --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def open_raw_file(graphs, data_table,
+def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
                   column_1_dropdown_list, column_2_dropdown_list,
-                  figure, ax, lines_array, toolbar, new_subplot, subplot_number, subplots):
+                  figure, ax, lines_array, toolbar, new_subplot, subplot_number, subplots,
+                  schematic_analysis_open=False):
     """
     Event Function used when the button to open a .raw file is clicked.
 
@@ -429,13 +451,32 @@ def open_raw_file(graphs, data_table,
                                                            figure, ax, lines_array, toolbar, new_subplot,
                                                            subplot_number, subplots))
             print(data.iloc[:, 2])
+            if schematic_analysis_open is False:
+                root.withdraw()
+                # TODO: TRY USING SCREENINFO LIBRARY TO PLACE IN CENTRE OF SCREEN
+                schematic_analysis_width = 1100  # width for the Tk schematic_analysis
+                schematic_analysis_height = 750  # height for the Tk schematic_analysis
+                # Find the location of the main schematic analysis window
+                screen_width = root.winfo_x()  # width of the screen
+                screen_height = root.winfo_y()  # height of the screen
+                # calculate x and y coordinates for the Tk schematic_analysis window
+                analysis_x = screen_width - (schematic_analysis_width / 2)
+                analysis_y = screen_height - (schematic_analysis_height / 2)
 
-            # open_new_window(components,
-            #                 schematic_analysis,
-            #                 component_parameters_frame,
-            #                 entering_parameters_window,
-            #                 component_value_array,
-            #                 canvas)
+                # set the dimensions of schematic analysis window and its position
+                schematic_analysis.geometry('%dx%d+%d+%d' % (schematic_analysis_width,
+                                                             schematic_analysis_height,
+                                                             analysis_x,
+                                                             analysis_y))
+
+                # Set minimum width and height of schematic_analysis window
+                # schematic_analysis.minsize(schematic_analysis_width, schematic_analysis_height)
+
+                # Removing the root window if schematic analysis window has been destroyed
+                schematic_analysis.protocol("WM_DELETE_WINDOW", root.destroy)
+                # make the entering parameters window on top of the main schematic analysis window and showing it
+                # schematic_analysis.wm_transient(root)
+                schematic_analysis.deiconify()
 
     except FileNotFoundError:
         pass
@@ -528,45 +569,6 @@ def exit_program(frame_to_close):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# ------------------------------------------- Component Filtering ------------------------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
-def filter_components(components, adjustment):
-    """Function used to extract coordinates of components from LTSpice file
-
-        Parameter `components` is a list of strings all components.
-        `adjustment` is an integer or a float
-
-
-        Parameters
-        -----------------------
-        components : list(str)
-            The component to extract coordinates from
-        adjustment : int
-            The addition to move the component coordinates, this is done because any coordinates in the
-            negative side are not shown at all by the canvas
-
-        Returns
-        -----------------------
-        modified_components
-            A list of coordinates of the given component
-
-    """
-    # Store all components coordinates in a list on the same line
-    components = components.split('\n')
-    # Split each element into its list of coordinates
-    components = [comp for component in components for comp in component.split(' ')]
-    # Remove anything containing R at the end
-    components = [x for x in components if "R" not in x]
-    # Remove last element which is empty
-    components.pop()
-    # convert all stored strings into integer values
-    components = [int(component) for component in components]
-    # add a small adjustment to all coordinates, so it appears on centre of screen
-    modified_components = [modification + adjustment for modification in components]
-    return modified_components
-
-
-# ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions when hovering over components -------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def on_enter(e, element_to_change, canvas):
@@ -593,6 +595,7 @@ def get_file_path(component_parameters_frame,
                   schematic_analysis,
                   enter_parameters_button,
                   entering_parameters_window,
+                  delete_constants_button,
                   root):
     """Obtains the file path selected from a dialog box, Event function for Open a schematic button.
 
@@ -632,6 +635,7 @@ def get_file_path(component_parameters_frame,
             file_name_no_extension = file_name.replace('.asc', '.txt')
             new_schematic_file = folder_location + file_name_no_extension
 
+            flag_error = 'file opening'
             with open(fpath, 'rb') as ltspiceascfile:
                 first_line = ltspiceascfile.read(4)
                 print(first_line.decode('utf-8', errors='replace'))
@@ -643,6 +647,7 @@ def get_file_path(component_parameters_frame,
                     encoding = 'utf-8'
 
                 else:
+                    flag_error = 'Unknown encoding.'
                     raise ValueError("Unknown encoding.")
             ltspiceascfile.close()
             # Open and store all file data
@@ -666,6 +671,7 @@ def get_file_path(component_parameters_frame,
                                  canvas,
                                  schematic_analysis,
                                  enter_parameters_button,
+                                 delete_constants_button,
                                  entering_parameters_window,
                                  root,
                                  encoding)
@@ -675,8 +681,8 @@ def get_file_path(component_parameters_frame,
 
         # Display an error in case no schematic has been selected from file dialog box
 
-    # except ValueError:
-    #     messagebox.showerror('Invalid File', 'Please select a schematic .asc file')
+    except ValueError:
+        messagebox.showerror('Error', flag_error)
     except PermissionError:
         messagebox.showerror('Access Denied', 'Permission is required to access this file')
     except FileNotFoundError:
@@ -693,6 +699,7 @@ def sketch_schematic_asc(schematic,
                          canvas,
                          schematic_analysis,
                          enter_parameters_button,
+                         delete_constants_button,
                          entering_parameters_window,
                          root,
                          encoding):
@@ -904,7 +911,6 @@ def sketch_schematic_asc(schematic,
                 component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
         print(component_details_dictionary)
 
-
         # Store all component names in a list after removing new lines
         components = components.split('\n')
         # Remove last element which is empty
@@ -921,13 +927,14 @@ def sketch_schematic_asc(schematic,
                                                                           component_parameters_frame,
                                                                           entering_parameters_window,
                                                                           component_value_array,
+                                                                          delete_constants_button,
                                                                           canvas))
 
         # Some components are drawn at negative values, which do not appear at all in the canvas, for this reason an
         # adjustment is made to all coordinates to move them into an area which can be displayed in.
         adjustment = 0
 # -------------------------------------------- Separating Wires --------------------------------------------------------
-        modified_coordinates = filter_components(wires, adjustment)
+        modified_coordinates = new_comp.NewComponents.filter_components(wires, adjustment)
 
 # ------------------------------------------- Separating Power Flags ---------------------------------------------------
         ground_flags = []
@@ -963,15 +970,15 @@ def sketch_schematic_asc(schematic,
         drawing_components = comp.ComponentSketcher(canvas)
 # -------------------------------------------- Drawing Grounds ---------------------------------------------------------
         circuit_comps = new_comp.NewComponents(canvas, root)
-        circuit_comps.set_line_width(LINE_WIDTH)
-        circuit_comps.set_outline_colour(OUTLINE_COLOUR)
-        circuit_comps.set_fill_colour(FILL_COLOUR)
+        circuit_comps.set_line_width(line_width)
+        circuit_comps.set_outline_colour(outline_colour)
+        circuit_comps.set_fill_colour(fill_colour)
         drawn_ground_flags = len(ground_flags) * [None]
         drawing_components.sketch_components(modified_ground_flags,
                                              drawn_ground_flags,
-                                             OUTLINE_COLOUR,
-                                             LINE_WIDTH,
-                                             FILL_COLOUR,
+                                             outline_colour,
+                                             line_width,
+                                             fill_colour,
                                              drawing_components.draw_ground_flags)
 
 # ---------------------------------------------- Drawing Wires ---------------------------------------------------------
@@ -981,8 +988,8 @@ def sketch_schematic_asc(schematic,
                                modified_coordinates[coordinate + 2],
                                modified_coordinates[coordinate + 3],
                                tags='wire',
-                               fill=OUTLINE_COLOUR,
-                               width=LINE_WIDTH)
+                               fill=outline_colour,
+                               width=line_width)
 
 # -------------------------------------------- Drawing Other Power Flags -------------------------------------------
         # TODO: Implement names in remaining power flags
@@ -997,7 +1004,6 @@ def sketch_schematic_asc(schematic,
         component_drawn = ''
         list_to_add = []
         components_dictionary = {}
-
 
         for symbol in range(0, len(full_list), 8):
             try:
@@ -1016,11 +1022,10 @@ def sketch_schematic_asc(schematic,
                                                  angle=full_list[symbol + 3],
                                                  window_x=int(full_list[symbol + 4]) + int(full_list[symbol + 6]),
                                                  window_y=int(full_list[symbol + 5]) + int(full_list[symbol + 7]))
-
             except ValueError:
                 pass
                 #print(ValueError)
-
+        # canvas.postscript(file='post script', x=0, y=0)
         not_found_symbols = circuit_comps.get_symbols_not_found()
         if not_found_symbols:
             yes_or_no = messagebox.askyesnocancel('Components not found', str(len(not_found_symbols))
@@ -1113,16 +1118,15 @@ def change_component_index(component_selected,
             component_param1_label_array[labels].grid(row=6, column=5, sticky='nsew')
             component_param2_label_array[labels].grid(row=7, column=5, sticky='nsew')
             component_param1_array[labels].grid(row=6, column=6, sticky='nsew')
-            param1_prefix_drop_down_list[labels].grid(row=6, column=7, sticky='n')
             component_param2_array[labels].grid(row=7, column=6, sticky='nsew')
-            param2_prefix_drop_down_list[labels].grid(row=7, column=7, sticky='n')
         else:
             component_param1_label_array[labels].grid_remove()
             component_param2_label_array[labels].grid_remove()
             component_param1_array[labels].grid_remove()
-            param1_prefix_drop_down_list[labels].grid_remove()
             component_param2_array[labels].grid_remove()
-            param2_prefix_drop_down_list[labels].grid_remove()
+
+    param1_prefix_drop_down_list.grid(row=6, column=7, sticky='n')
+    param2_prefix_drop_down_list.grid(row=7, column=7, sticky='n')
 
 
 # Function when the selected distribution for the component has been changed from dropdown list
@@ -1159,23 +1163,47 @@ def select_distribution_type(distribution_type,
             parameter1_label[labels].grid(row=6, column=5, sticky='nsew')
             parameter2_label[labels].grid(row=7, column=5, sticky='nsew')
             param1_array[labels].grid(row=6, column=6, sticky='nsew')
-            param1_prefix_drop_down_list[labels].grid(row=6, column=7, sticky='n')
             param2_array[labels].grid(row=7, column=6, sticky='nsew')
-            param2_prefix_drop_down_list[labels].grid(row=7, column=7, sticky='n')
         else:
             parameter1_label[labels].grid_remove()
             parameter2_label[labels].grid_remove()
             param1_array[labels].grid_remove()
-            param1_prefix_drop_down_list[labels].grid_remove()
             param2_array[labels].grid_remove()
-            param2_prefix_drop_down_list[labels].grid_remove()
+
+    param1_prefix_drop_down_list.grid(row=6, column=7, sticky='n')
+    param2_prefix_drop_down_list.grid(row=7, column=7, sticky='n')
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Check if entered parameters are numbers ---------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+# Previous function used for checking entered characters
+# def if_number(parameter_value, value_before):
+#     print(value_before)
+#     smaller_values_list = ['m', 'u', 'n', 'p', 'k', 'M', 'G', '         ']
+#     smaller_values_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.']
+#     decimal = '.'
+#     print(parameter_value)
+#     matches = [a for a in smaller_values_list if a in value_before]
+#     # matches = [a for a in smaller_values_list if a in value_before]
+#     # values = [b for b in value_before if b in smaller_values_list]
+#     # print(values)
+#
+#     # TODO: Remove characters entered when backspace is used
+#     if parameter_value.isdigit():
+#         return True
+#     if (parameter_value in smaller_values_list) and (parameter_value not in value_before) and len(matches) == 0:
+#     if parameter_value in smaller_values_list:
+#         return True
+#     # if parameter_value == decimal or decimal not in value_before:
+#     #     return True
+#     # elif (parameter_value in smaller_values_list) and (parameter_value not in value_before) and len(matches) == 0:
+#     #     return True
+#     else:
+#         return False
+
 def if_number(parameter_value, value_before):
-    print(value_before, parameter_value)
+    # print(value_before, parameter_value)
     number_list = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '-', '+']
     smaller_values_list = ['m', 'u', 'n', 'p', 'f', 'K', 'M', 'G', 'T']
 
@@ -1184,8 +1212,6 @@ def if_number(parameter_value, value_before):
         return True
     if parameter_value.isalpha():
         return True
-    else:
-        return False
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1306,6 +1332,7 @@ def open_new_window(components,
                     component_parameters_frame,
                     parameters_window,
                     component_value_array,
+                    delete_constants_button,
                     canvas):
 
     """Event function used to open enter parameter window when enter parameters button has been clicked
@@ -1336,18 +1363,6 @@ def open_new_window(components,
         else:
             entering_parameters_window = customtkinter.CTkToplevel(schematic_analysis)
 
-            label_background = ''
-            text_colour = ''
-            global Mode
-            if Mode == 'dark':
-                label_background = '#212325'
-                outline = '#212325'
-                text_colour = 'white'
-            elif Mode == 'light':
-                label_background = '#EBEBEB'
-                outline = '#EBEBEB'
-                text_colour = 'black'
-
             # sets the title of the new window created for entering parameters
             entering_parameters_window.title("Enter Component Parameters")
 
@@ -1359,15 +1374,12 @@ def open_new_window(components,
             # make entering parameters window on top of the main schematic analysis window
             entering_parameters_window.wm_transient(schematic_analysis)
 
-            component_name_array = [None] * len(components)
             component_distribution_array = [None] * len(components)
             component_param1_entry_box_array = [None] * len(components)
             component_param2_entry_box_array = [None] * len(components)
             component_param1_label_array = [None] * len(components)
             component_param2_label_array = [None] * len(components)
             name_label_array = [None] * len(components)
-            param1_prefix_drop_down_list_array = [None] * len(components)
-            param2_prefix_drop_down_list_array = [None] * len(components)
             parameters_frame = [None] * len(components)
             delete_button = [None] * len(components)
             # Example Structure
@@ -1385,19 +1397,13 @@ def open_new_window(components,
             component_name_array_label = customtkinter.CTkLabel(entering_parameters_window,
                                                                 height=1,
                                                                 width=20,
-                                                                text='Component Name:',
-                                                                background=label_background,
-                                                                foreground=text_colour,
-                                                                highlightbackground=label_background
+                                                                text='Component Name:'
                                                                 )
 
             component_distribution_label = customtkinter.CTkLabel(entering_parameters_window,
                                                                   height=1,
                                                                   width=20,
-                                                                  text='Distribution',
-                                                                  background=label_background,
-                                                                  foreground=text_colour,
-                                                                  highlightbackground=label_background
+                                                                  text='Distribution'
                                                                   )
 
             component_selected = tk.StringVar(entering_parameters_window)
@@ -1413,13 +1419,6 @@ def open_new_window(components,
             max_distribution_width = len(max(distributions, key=len))
 
             for circuit_component in range(len(components)):
-                component_name_array[circuit_component] = customtkinter.CTkLabel(entering_parameters_window,
-                                                                                 height=1,
-                                                                                 width=20,
-                                                                                 text=components[circuit_component],
-                                                                                 background=label_background,
-                                                                                 foreground=text_colour
-                                                                                 )
 
                 component_distribution_array[circuit_component] = tk.Text(entering_parameters_window,
                                                                           height=1,
@@ -1430,9 +1429,7 @@ def open_new_window(components,
                 component_param1_label_array[circuit_component] = customtkinter.CTkLabel(entering_parameters_window,
                                                                                          height=1,
                                                                                          width=20,
-                                                                                         text='',
-                                                                                         background=label_background,
-                                                                                         foreground=text_colour
+                                                                                         text=''
                                                                                          )
 
                 component_param1_entry_box_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
@@ -1463,26 +1460,10 @@ def open_new_window(components,
                 component_param2_label_array[circuit_component] = customtkinter.CTkLabel(entering_parameters_window,
                                                                                          height=1,
                                                                                          width=20,
-                                                                                         text='',
-                                                                                         background=label_background,
-                                                                                         foreground=text_colour
+                                                                                         text=''
                                                                                          )
-                # Drop down list for selecting prefixes
-                param1_prefix_drop_down_list_array[circuit_component] = \
-                    customtkinter.CTkOptionMenu(master=entering_parameters_window,
-                                                variable=param1_prefix_selected,
-                                                values=prefixes,
-                                                width=max_distribution_width)
-
-                # Drop down list for selecting prefixes
-                param2_prefix_drop_down_list_array[circuit_component] = \
-                    customtkinter.CTkOptionMenu(master=entering_parameters_window,
-                                                variable=param2_prefix_selected,
-                                                values=prefixes,
-                                                width=max_distribution_width)
 
                 parameters_frame[circuit_component] = tk.Frame(component_parameters_frame,
-                                                               background='white',
                                                                highlightbackground='black',
                                                                highlightthickness=1,
                                                                height=100
@@ -1526,12 +1507,28 @@ def open_new_window(components,
                 # Standard Deviation = 2
                 component_distribution_array[circuit_component].insert(tk.INSERT, 'Normal')
                 component_param1_label_array[circuit_component].configure(text='Mean (μ)')
-                component_param2_label_array[circuit_component].configure(text= 'Standard deviation (σ)')
+                component_param2_label_array[circuit_component].configure(text='Standard deviation (σ)')
                 # component_param1_entry_box_array[circuit_component].insert(0, '1')
                 # component_param2_entry_box_array[circuit_component].insert(0, '2')
 
             global component_index
             component_index = 0
+            delete_constants_button.configure(command=lambda: delete_all_constants(parameters_frame,
+                                                                                   name_label_array,
+                                                                                   component_value_array))
+            # Drop down list for selecting prefixes
+            param1_prefix_drop_down_list = \
+                customtkinter.CTkOptionMenu(master=entering_parameters_window,
+                                            variable=param1_prefix_selected,
+                                            values=prefixes,
+                                            width=max_distribution_width)
+
+            # Drop down list for selecting prefixes
+            param2_prefix_drop_down_list = \
+                customtkinter.CTkOptionMenu(master=entering_parameters_window,
+                                            variable=param2_prefix_selected,
+                                            values=prefixes,
+                                            width=max_distribution_width)
 
             # Drop down list for selecting which component to enter parameters for
             component_drop_down_list = \
@@ -1547,8 +1544,8 @@ def open_new_window(components,
                                                                                      component_param1_entry_box_array,
                                                                                      component_param2_entry_box_array,
                                                                                      components,
-                                                                                     param1_prefix_drop_down_list_array,
-                                                                                     param2_prefix_drop_down_list_array
+                                                                                     param1_prefix_drop_down_list,
+                                                                                     param2_prefix_drop_down_list
                                                                                      ))
             # Drop down list for selecting the type of distribution for random components
             distribution_drop_down_list = \
@@ -1564,8 +1561,8 @@ def open_new_window(components,
                                                                      component_param2_label_array,
                                                                      component_param1_entry_box_array,
                                                                      component_param2_entry_box_array,
-                                                                     param1_prefix_drop_down_list_array,
-                                                                     param2_prefix_drop_down_list_array
+                                                                     param1_prefix_drop_down_list,
+                                                                     param2_prefix_drop_down_list
                                                                      ))
 
             # Button for saving individual parameters
@@ -1587,8 +1584,8 @@ def open_new_window(components,
                                         component_value_array,
                                         components,
                                         component_parameters_frame,
-                                        param1_prefix_drop_down_list_array,
-                                        param2_prefix_drop_down_list_array,
+                                        param1_prefix_drop_down_list,
+                                        param2_prefix_drop_down_list,
                                         parameters_frame)
             )
 
@@ -1606,8 +1603,8 @@ def open_new_window(components,
                                                             component_value_array,
                                                             component_parameters_frame,
                                                             delete_button,
-                                                            param1_prefix_drop_down_list_array,
-                                                            param2_prefix_drop_down_list_array,
+                                                            param1_prefix_drop_down_list,
+                                                            param2_prefix_drop_down_list,
                                                             parameters_frame)
             )
 
@@ -1618,7 +1615,7 @@ def open_new_window(components,
             # Button for closing window
             cancel_button = customtkinter.CTkButton(entering_parameters_window,
                                                     text='Cancel',
-                                                    command=lambda: close_window(entering_parameters_window))
+                                                    command=entering_parameters_window.destroy)
 
             # Component drop down list and component name label
             component_name_array_label.grid(row=component_name_row, column=5, sticky='news')
@@ -1640,20 +1637,14 @@ def open_new_window(components,
             # Ensuring all widgets inside enter parameters window are resizable
             entering_parameters_window.grid_rowconfigure(tuple(range(button_row)), weight=1)
             entering_parameters_window.grid_columnconfigure(tuple(range(button_row)), weight=1)
-    else:
-        error_for_not_entering_schematic = \
-            canvas.create_window(400, 300,
-                                 window=tk.Label(canvas,
-                                                 text="Please select a schematic with components",
-                                                 width=40,
-                                                 font=("Times New Roman", 20),
-                                                 height=40),
-                                 tags='Error if schematic has no components')
+            delete_constants_button.pack(anchor=tk.SW, side=tk.TOP)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------- Function for deleting entered parameters ------------------------------------
+# ---------------------------------------- Functions for deleting parameters -------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+
+# Delete inserted label using x button
 def delete_label(label_to_remove, label_index,
                  delete_label_button, all_stored_components, components,
                  parameters_frame):
@@ -1692,6 +1683,16 @@ def delete_label(label_to_remove, label_index,
                 del all_stored_components[component_counter]
                 print(all_stored_components)
             component_counter += 1
+
+
+# Delete all labels which have constant values
+def delete_all_constants(parameters_frame, labels_to_remove, component_value_array):
+
+    for value in range(len(component_value_array)):
+        if component_value_array[value] == 'Constant':
+            parameters_frame[value].pack_forget()
+            labels_to_remove[value].configure(text='')
+            labels_to_remove[value].configure(borderwidth=0)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1734,57 +1735,127 @@ def save_entered_parameters(entering_parameters_window,
             component_param2_dictionary_input = 'beta'
 
         try:
-            first_prefix = prefix1[index].get()
-            second_prefix = prefix2[index].get()
-
+            first_prefix_dropdown = prefix1.get()
+            second_prefix_dropdown = prefix2.get()
+            if not component_param1:
+                component_param1 = '1'
+            if not component_param2:
+                component_param2 = '2'
             allowed_characters_list = ['m', 'u', 'n', 'p', 'f', 'K', 'M', 'G', 'T']
-            first_prefix_typed = "".join([character for character in allowed_characters_list if character in component_param1])
-            second_prefix_typed = "".join([character for character in allowed_characters_list if character in component_param2])
-            if (first_prefix_typed and first_prefix == 'None') or (first_prefix == first_prefix_typed):
-                for prefix in prefixes:
-                    if first_prefix_typed == prefix:
-                        component_param1 = float(component_param1.strip(prefix))
-                        component_param1 = component_param1 * prefixes[prefix]
-                    if second_prefix_typed == prefix:
-                        component_param2 = float(component_param2.strip(prefix))
-                        component_param2 = component_param2 * prefixes[prefix]
 
-            elif first_prefix_typed == '' and second_prefix_typed == '':
-                component_param1 = float(component_param1)
-                component_param2 = float(component_param2)
-                for prefix in prefixes:
-                    if first_prefix == prefix:
-                        component_param1 = component_param1 * prefixes[prefix]
-                    if second_prefix == prefix:
-                        component_param2 = component_param2 * prefixes[prefix]
+            # Check if dropdown list is empty
+            if (first_prefix_dropdown == 'None') and (second_prefix_dropdown == 'None'):
+                # If prefix dropdown list has nothing selected then check if prefix is typed in entry box
+                first_prefix_typed = "".join(
+                    [character for character in allowed_characters_list if character in component_param1])
+                second_prefix_typed = "".join(
+                    [character for character in allowed_characters_list if character in component_param2])
+                # If a single prefix is entered then preform the calculation on the entered value for that prefix
+                if (len(first_prefix_typed) == 1) or (len(second_prefix_typed) == 1):
 
-            print(component_param1, component_param2)
+                    for prefix in prefixes:
+                        if first_prefix_typed == prefix:
+                            component_param1 = float(remove_suffix(component_param1, first_prefix_typed)) \
+                                               * prefixes[prefix]
+                        if second_prefix_typed == prefix:
+                            component_param2 = float(remove_suffix(component_param2, second_prefix_typed)) \
+                                               * prefixes[prefix]
+                    # print('param1: ', component_param1, 'param2:  ', component_param2)
+
+                # If more than one prefix has been typed then display a message box with an error
+                elif (len(first_prefix_typed) > 1) or (len(second_prefix_typed) > 1):
+                    raise TypeError
+
+            elif (first_prefix_dropdown == 'None') and (second_prefix_dropdown != 'None'):
+                # If prefix dropdown list has nothing selected then check if prefix is typed in entry box
+                first_prefix_typed = "".join(
+                    [character for character in allowed_characters_list if character in component_param1])
+                # If a single prefix is entered then preform the calculation on the entered value for that prefix
+                if len(first_prefix_typed) == 1:
+                    for prefix in prefixes:
+                        if first_prefix_typed == prefix:
+                            component_param1 = float(remove_suffix(component_param1, first_prefix_typed)) \
+                                               * prefixes[prefix]
+                        if second_prefix_dropdown == prefix:
+                            component_param2 = float(remove_suffix(component_param2, second_prefix_dropdown)) \
+                                               * prefixes[prefix]
+                    # print('param1: ', component_param1, 'param2:  ', component_param2)
+
+                # If more than one prefix has been typed then display a message box with an error
+                elif len(first_prefix_typed) > 1:
+                    raise TypeError
+
+            elif (first_prefix_dropdown != 'None') and (second_prefix_dropdown == 'None'):
+                # If prefix dropdown list has nothing selected then check if prefix is typed in entry box
+                second_prefix_typed = "".join(
+                    [character for character in allowed_characters_list if character in component_param1])
+                # If a single prefix is entered then preform the calculation on the entered value for that prefix
+                if len(second_prefix_typed) == 1:
+                    for prefix in prefixes:
+                        if second_prefix_typed == prefix:
+                            component_param1 = float(remove_suffix(component_param1, second_prefix_typed)) \
+                                               * prefixes[prefix]
+                        if second_prefix_dropdown == prefix:
+                            component_param2 = float(remove_suffix(component_param2, second_prefix_dropdown)) \
+                                               * prefixes[prefix]
+                    # print('param1: ', component_param1, 'param2:  ', component_param2)
+
+                # If more than one prefix has been typed then display a message box with an error
+                elif len(second_prefix_typed) > 1:
+                    raise TypeError
+
+            # Check if dropdown list has a prefix selected
+            elif (first_prefix_dropdown != 'None') and (second_prefix_dropdown != 'None'):
+                # If yes then multiply the prefix with the entered value
+                for prefix in prefixes:
+                    if first_prefix_dropdown == prefix:
+                        component_param1 = float(remove_suffix(component_param1, first_prefix_dropdown)) \
+                                           * prefixes[prefix]
+
+                    if second_prefix_dropdown == prefix:
+                        component_param2 = float(remove_suffix(component_param2, second_prefix_dropdown)) \
+                                           * prefixes[prefix]
+
+            # Check if dropdown list has a prefix selected
+            elif (first_prefix_dropdown != 'None') and (second_prefix_dropdown == 'None'):
+                # If yes then multiply the prefix with the entered value
+                for prefix in prefixes:
+                    if first_prefix_dropdown == prefix:
+                        component_param1 = float(remove_suffix(component_param1, first_prefix_dropdown)) \
+                                           * prefixes[prefix]
+
+            # Check if dropdown list has a prefix selected
+            elif (first_prefix_dropdown == 'None') and (second_prefix_dropdown != 'None'):
+                # If yes then multiply the prefix with the entered value
+                for prefix in prefixes:
+                    if second_prefix_dropdown == prefix:
+                        component_param2 = float(remove_suffix(component_param2, second_prefix_dropdown)) \
+                                           * prefixes[prefix]
 
             if len(all_component_parameters) == 0:
                 all_component_parameters.append({component_name:
-                                                     {'distribution': component_distribution,
-                                                      'parameters': {
-                                                          component_param1_dictionary_input: component_param1,
-                                                          component_param2_dictionary_input: component_param2}
-                                                      }
+                                                {'distribution': component_distribution,
+                                                 'parameters': {
+                                                  component_param1_dictionary_input: component_param1,
+                                                  component_param2_dictionary_input: component_param2}
+                                                 }
                                                  }
                                                 )
-                # print(all_component_parameters)
-            # -------------------------- removing duplicates and storing in a list of dictionaries ---------------------
+
+        # -------------------------- removing duplicates and storing in a list of dictionaries -------------------------
             appending_flag = 0
             for parameters in range(len(all_component_parameters)):
                 if component_name == list(all_component_parameters[parameters].keys())[-1]:
                     # If the last entered component is similar to the previously entered one then,
                     # replace the old parameters with the new ones
                     all_component_parameters[parameters] = ({component_name:
-                                                                 {'distribution': component_distribution,
-                                                                  'parameters': {
-                                                                   component_param1_dictionary_input: component_param1,
-                                                                   component_param2_dictionary_input: component_param2}
-                                                                  }
+                                                            {'distribution': component_distribution,
+                                                             'parameters': {
+                                                              component_param1_dictionary_input: component_param1,
+                                                              component_param2_dictionary_input: component_param2}
                                                              }
-
-                    )
+                                                             }
+                                                            )
                     # Ensures no appending takes place
                     appending_flag = 0
                     break
@@ -1795,11 +1866,11 @@ def save_entered_parameters(entering_parameters_window,
 
             if appending_flag == 1:
                 all_component_parameters.append({component_name:
-                                                     {'distribution': component_distribution,
-                                                      'parameters': {
-                                                          component_param1_dictionary_input: component_param1,
-                                                          component_param2_dictionary_input: component_param2}
-                                                      }
+                                                {'distribution': component_distribution,
+                                                 'parameters': {
+                                                  component_param1_dictionary_input: component_param1,
+                                                  component_param2_dictionary_input: component_param2}
+                                                 }
                                                  }
                                                 )
                 appending_flag = 0
@@ -1817,22 +1888,13 @@ def save_entered_parameters(entering_parameters_window,
                                                    + '\n')
 
             full_name_labels[component_index].place(x=0, y=1, relwidth=1.0, relheight=0.95)
-            parameters_frame[component_index].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=2)
+            parameters_frame[component_index].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
         except ValueError:
-              messagebox.showerror(title='Illegal Value entered',
-                                   message='Please enter only numbers with prefixes such as n, p, m, etc.')
-
-    # # If value is constant just display the label only.
-    # elif component_value_array[index] == 'Constant':
-    #     full_name_labels[index].configure(text='')
-    #
-    #     full_name_labels[index].configure(text='\n' + component_name +
-    #                                       '\nDistribution: ' + component_distribution
-    #                                       + '\n' + component_param1_label + '=' + str(component_param1)
-    #                                       + '\n' + component_param2_label + '=' + str(component_param2)
-    #                                       + '\n')
-
-
+            messagebox.showerror(parent=entering_parameters_window, title='Illegal Value entered',
+                                 message='Please enter only numbers with prefixes such as n, p, m, etc.')
+        except TypeError:
+            messagebox.showerror(parent=entering_parameters_window, title='More than one prefix',
+                                 message='Please enter a single prefix only.')
 
     print(all_component_parameters)
 
@@ -1880,14 +1942,22 @@ def save_all_entered_parameters(component_name,
             # full_name_labels[circuit_component].configure(borderwidth=1)
             full_name_labels[circuit_component].configure(text='')
 
-            param1 = float(component_param1_array[circuit_component].get())
-            param2 = float(component_param2_array[circuit_component].get())
+            if not component_param1_array[circuit_component].get():
+                param1 = '1'
+                param1 = float(param1)
+            else:
+                param1 = float(component_param1_array[circuit_component].get())
+            if not component_param2_array[circuit_component].get():
+                param2 = '2'
+                param2 = float(param2)
+            else:
+                param2 = float(component_param2_array[circuit_component].get())
 
             prefixes = {'m': 1e-3, 'μ': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9,
                         'T': 1e12}
 
-            first_prefix = prefix1[circuit_component].get()
-            second_prefix = prefix2[circuit_component].get()
+            first_prefix = prefix1.get()
+            second_prefix= prefix2.get()
             for prefix in prefixes:
                 if first_prefix == prefix:
                     param1 = param1 * prefixes[prefix]
@@ -1910,7 +1980,7 @@ def save_all_entered_parameters(component_name,
             # Placing the name label of all parameters on the schematic_analysis window
             delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
             full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
-            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=2)
+            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
 
             # Storing all components with their parameters in a dictionary
             all_component_parameters.append(
@@ -1941,57 +2011,13 @@ def save_all_entered_parameters(component_name,
 
             delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
             full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
-            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=2)
+            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
 
     # print(all_component_parameters)
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# ----------------------------------- Function for closing parameters window -------------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
-def close_window(window_to_close):
-    window_to_close.destroy()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------- Function when no schematic selected ----------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def error_select_schematic(canvas):
-    canvas.delete("all")
-    canvas.create_window(400, 300,
-                         window=tk.Label(canvas,
-                                         text="Please select a schematic",
-                                         width=40,
-                                         font=("Times New Roman", 20),
-                                         height=40),
-                         tags='Error if schematic not entered')
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# ----------------------------------- Function for entering component parameters ---------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
-# # Entering Component Parameters for all elements
-# def component_parameters(components,
-#                          canvas,
-#                          schematic_analysis,
-#                          component_parameters_frame,
-#                          entering_parameters_window):
-#     global all_component_parameters
-#     component_value_array = ['Constant'] * len(components)
-#     if components:
-#         open_new_window(components,
-#                         root,
-#                         schematic_analysis,
-#                         component_parameters_frame,
-#                         entering_parameters_window,
-#                         component_value_array,
-#                         canvas)
-#     else:
-#         error_for_not_entering_schematic = \
-#             canvas.create_window(400, 300,
-#                                  window=tk.Label(canvas,
-#                                                  text="Please select a schematic with components",
-#                                                  width=40,
-#                                                  font=("Times New Roman", 20),
-#                                                  height=40),
-#                                  tags='Error if schematic has no components')
+    messagebox.showerror(parent=canvas, title='No schematic selected', message="Please select a schematic")
