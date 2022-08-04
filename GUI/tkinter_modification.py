@@ -152,7 +152,7 @@ class CustomToolbar(NavigationToolbar2Tk):
                           ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'),
                           ('Save', 'Save the figure', 'filesave', 'save_figure'),
                           (None, None, None, None),
-                          ('Delete subplots', 'Deletes all current subplots', 'trash_can', 'delete_all_subplots')
+                          # ('Delete subplots', 'Deletes all current subplots', 'trash_can', 'delete_all_subplots')
                           )
 
         self.axes = axes
