@@ -4,6 +4,7 @@ import json
 import customtkinter
 from tkinter import filedialog as fd, messagebox
 import ntpath
+import sys
 # import tkinterdnd2
 
 
@@ -27,54 +28,33 @@ def remove_suffix(input_string, suffix):
     return input_string
 
 
-def filter_components(components, adjustment):
-    # Store all components coordinates in a list on the same line
-    components = components.split('\n')
-    # Split each element into its list of coordinates
-    components = [comp for component in components for comp in component.split(' ')]
-    # Remove anything containing R at the end
-    components = [x for x in components if "R" not in x]
-    # Remove last element which is empty
-    components.pop()
-    # convert all stored strings into integer values
-    components = [int(component) for component in components]
-    # add a small adjustment to all coordinates, so it appears on centre of screen
-    modified_components = [modification + adjustment for modification in components]
-    return modified_components
-
-
-def motion(event):
-    x, y = event.x, event.y
-    print('{}, {}'.format(x, y))
-
-
 class NewComponents:
     """
     Class for adding new components of type file type .asy
 
-    Parameters
-        ----------------------------
-        canvas: the canvas to draw the components inside
-        master_window: the root window inside which everything is based
-        file_name: stores the file name which has been opened, which is later used as tags when drawing components
-        component_information: stores the shapes used to draw a certain component
-
     Functions:
-        ----------------------------
-        move_component: moves the component around in canvas by right-clicking according to cursor position
-        save_component: saves the component selected as a json file
-        load_component: sketches a component of .asy file type selected from file dialog box
-        clear_canvas: deletes all sketches on the canvas
-        sketch_component: sketches the component after it has been selected, is called by open_component method
-        open_component: opens a symbol of type .asy and then calls sketch_component for sketching
+        *move_component: moves the component around in canvas by right-clicking according to cursor position
+        *save_component: saves the component selected as a json file
+        *load_component: sketches a component of .asy file type selected from file dialog box
+        *clear_canvas: deletes all sketches on the canvas
+        *sketch_component: sketches the component after it has been selected, is called by open_component method
+        *open_component: opens a symbol of type .asy and then calls sketch_component for sketching
     """
     line_width = 1
     line_colour = 'black'
     fill_colour = ''
 
     def __init__(self, canvas_to_draw_component, master_window, *args, **kwargs):
+        """
+        Parameters:
+            ----------------------------
+            canvas: the canvas to draw the components inside
+            master_window: the root window inside which everything is based
+            file_name: stores the file name which has been opened, which is later used as tags when drawing components
+            component_information: stores the shapes used to draw a certain component
+        """
         self.canvas = canvas_to_draw_component
-        self.root = master_window
+        self.parent = master_window
         self.file_name = ''
         self.file_path = ''
         # self.canvas.drop_target_register(tkinterdnd2.DND_FILES)
@@ -85,61 +65,87 @@ class NewComponents:
         # self.line_colour = 'black'
         # self.fill_colour = ''
         # self.line_width = 1
+        self.SINGLE_SYMBOL = True
+        self.MULTIPLE_SYMBOL = False
         self.symbols_not_found_list = []
+        try:
+            if sys.platform == 'darwin':
+                self._ltspice = "/Applications/LTspice.app/Contents/MacOS/LTspice/lib/sym"
+
+            elif sys.platform == 'win32':
+                self._ltspice = r"C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
+
+            elif sys.platform == 'linux':
+                self._ltspice = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
+
+            else:
+                self._ltspice = None
+                raise NotImplementedError("Platforms other than Mac, Windows and Linux are not implemented yet")
+        except Exception as e:
+            raise e
 
     def move_component(self, event):
         component_coords = self.canvas.coords(self.file_name)
-        x = event.x - component_coords[0]
-        y = event.y - component_coords[1]
-        self.canvas.move(self.file_name, x, y)
+        # print(event.x, event.y)
+        # print(component_coords)
+        x1 = event.x - component_coords[0]
+        y1 = event.y - component_coords[1]
+        self.canvas.move(self.file_name, x1, y1)
 
-    def save_component(self, value=0):
-        if value == 0:
+    def save_component(self, file_name=None, multiple_or_single=True, found=True):
+        print(self.file_name)
+        if multiple_or_single is True:
             try:
-                path_to_symbol = os.path.expanduser('Symbols/' + remove_suffix(self.file_name, '.asy'))
+                path_to_symbol = os.path.expanduser('Symbols/' + remove_suffix(file_name, '.asy'))
                 file_exists = os.path.exists(path_to_symbol)
                 print(path_to_symbol)
-                if file_exists and self.file_name:
-                    overwrite_symbol_message = 'The file ' + self.file_name\
-                                                + ' already exists, do you wish to overwrite the saved file?'
+                if file_exists and file_name:
+                    overwrite_symbol_message = 'The file ' + file_name \
+                                               + ' already exists, do you wish to overwrite the saved file?'
 
-                    yes_or_no = messagebox.askyesnocancel('File Already Exists',
+                    yes_or_no = messagebox.askyesnocancel(parent=self.parent, title='File Already Exists',
                                                           message=overwrite_symbol_message, default=messagebox.YES)
                     if yes_or_no:
                         with open(path_to_symbol, 'w') as file:
                             json.dump(self.component_information, file, indent=4)
                         messagebox.showinfo('Component Saved',
-                                            self.file_name + ' has been saved to '
-                                            + remove_suffix(self.file_path, self.file_name) + 'Symbols')
+                                            file_name + ' has been saved to '
+                                            + remove_suffix(self.file_path, file_name) + 'Symbols',
+                                            parent=self.parent)
                     if yes_or_no == 'no' or yes_or_no == 'cancel':
                         pass
                 else:
                     with open(path_to_symbol, 'w') as file:
                         json.dump(self.component_information, file, indent=4)
-                    messagebox.showinfo('Component Saved',
-                                        self.file_name + ' has been saved to '
-                                        + remove_suffix(self.file_path, self.file_name) + 'Symbols')
+                    if found is True:
+                        messagebox.showinfo('Component Saved',
+                                            file_name + ' has been saved to '
+                                            + remove_suffix(self.file_path, file_name) + 'Symbols',
+                                            parent=self.parent)
+
             except FileNotFoundError:
-                if self.file_name == '':
-                    messagebox.showerror('Error', 'Please select a symbol first')
+                if file_name == '':
+                    messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
 
                 else:
                     messagebox.showerror('Error',
-                                         self.file_name + ' has not been found, please add the file to Symbols folder')
+                                         file_name + ' has not been found, please add the file to Symbols folder',
+                                         parent=self.parent)
             except PermissionError:
-                if self.file_name == '':
-                    messagebox.showerror('Error', 'Please select a symbol first')
+                if file_name == '':
+                    messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
 
                 else:
-                    messagebox.showerror('Access Denied', 'Permission is required to access this file')
-        elif value == 1:
+                    messagebox.showerror('Access Denied', 'Permission is required to access this file',
+                                         parent=self.parent)
+        elif multiple_or_single is False:
             try:
-                with open(os.path.expanduser('Symbols/' + remove_suffix(self.file_name, '.asy')), 'w') as file:
+                with open(os.path.expanduser('Symbols/' + remove_suffix(file_name, '.asy')), 'w') as file:
                     json.dump(self.component_information, file, indent=4)
 
             except FileNotFoundError:
-                if self.file_name == '':
-                    messagebox.showerror('Error', 'Please select a symbol first')
+                if file_name == '':
+                    messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
 
                 else:
                     if self.error_number >= 5:
@@ -147,14 +153,16 @@ class NewComponents:
                     else:
                         self.error_number += 1
                         messagebox.showerror('Error',
-                                             self.file_name
-                                             + ' has not been found, please add the file to Symbols folder')
+                                             file_name
+                                             + ' has not been found, please add the file to Symbols folder',
+                                             parent=self.parent)
             except PermissionError:
-                if self.file_name == '':
-                    messagebox.showerror('Error', 'Please select a symbol first')
+                if file_name == '':
+                    messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
 
                 else:
-                    messagebox.showerror('Access Denied', 'Permission is required to access this file')
+                    messagebox.showerror('Access Denied', 'Permission is required to access this file',
+                                         parent=self.parent)
 
     def clear_canvas(self):
         self.canvas.delete('all')
@@ -166,6 +174,7 @@ class NewComponents:
             file_name = remove_suffix(self.file_name, '.asy')
 
         try:
+            print('loading', file_name)
             with open(os.path.expanduser('Symbols/' + file_name), 'r', encoding='utf-8', errors='replace') as file:
                 items = json.load(file)
             for item in items.keys():
@@ -221,7 +230,7 @@ class NewComponents:
                                                tags=file_name + '.asy' + 'arc 2')
         except FileNotFoundError:
             if file_name == '':
-                messagebox.showerror('Error', 'Please select a symbol first')
+                messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
             else:
                 if self.error_number > 5:
                     self.error_number += 1
@@ -229,22 +238,29 @@ class NewComponents:
                 else:
                     self.error_number += 1
                     self._set_symbol_not_found(file_name)
-                    messagebox.showerror('Error',
-                                         file_name
-                                         + ' has not been found, please add the file to Symbols folder')
+                    try:
+                        symbol_path = os.path.expanduser(self._ltspice + file_name) + '.asy'
+                        self.open_component(symbol_path, sketch=False)
+                        self.file_name = file_name
+                        self.save_component(self.file_name, self.SINGLE_SYMBOL, found=False)
+                        self.load_component(self.file_name, x_coordinate=x_coordinate, y_coordinate=y_coordinate,
+                                            window_x=window_x, window_y=window_y, angle=angle)
+                        self.symbols_not_found_list.clear()
+                        print('file_name', self.file_name)
+                    except (FileNotFoundError, PermissionError):
+                        print('bye')
+
         except PermissionError:
             if self.file_name == '':
-                messagebox.showerror('Error', 'Please select a symbol first')
+                messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
 
             else:
-                messagebox.showerror('Access Denied', 'Permission is required to access this file')
+                messagebox.showerror('Access Denied', 'Permission is required to access this file', parent=self.parent)
 
     def rotate(self,
                coordinates, start_coordinate_x, start_coordinate_y, angle, window_x, window_y,
                tag, shape_to_draw):
-        # coordinates = self.canvas.coords(tag)
-        # print(coordinates)
-        #self.canvas.delete(tag)
+
         if angle == 'R0' or angle == 0:
             start_coordinate_x = 0
             start_coordinate_y = 0
@@ -321,8 +337,43 @@ class NewComponents:
                                          fill=self.fill_colour
                                          )
 
-    def sketch_component(self, component, file_name):
-        self.canvas.delete("all")
+    @staticmethod
+    def filter_components(components, adjustment):
+        """Function used to extract coordinates of components from LTSpice file
+
+            Parameter `components` is a list of strings all components.
+            `adjustment` is an integer or a float
+
+
+            Parameters
+            -----------------------
+            components : list(str)
+                The component to extract coordinates from
+            adjustment : int
+                The addition to move the component coordinates, this is done because any coordinates in the
+                negative side are not shown at all by the canvas
+
+            Returns
+            -----------------------
+            modified_components
+                A list of coordinates of the given component
+
+        """
+        # Store all components coordinates in a list on the same line
+        components = components.split('\n')
+        # Split each element into its list of coordinates
+        components = [comp for component in components for comp in component.split(' ')]
+        # Remove anything containing R at the end
+        components = [x for x in components if "R" not in x]
+        # Remove last element which is empty
+        components.pop()
+        # convert all stored strings into integer values
+        components = [int(component) for component in components]
+        # add a small adjustment to all coordinates, so it appears on centre of screen
+        modified_components = [modification + adjustment for modification in components]
+        return modified_components
+
+    def sketch_component(self, component, file_name, sketch=True):
         self.component_information.clear()
 
         wires = ''
@@ -369,60 +420,64 @@ class NewComponents:
         # self.canvas.create_arc(16, 4, -16, 12, start=270, style=tk.ARC)
         # self.canvas.create_arc(-16, 12, 16, 4, start=180, style=tk.ARC)
         # Remove Spaces and change coordinates to numbers
-        modified_lines = filter_components(wires, 0)
-        modified_circles = filter_components(circles, 0)
-        modified_rectangles = filter_components(rectangles, 0)
-        modified_arcs = filter_components(arcs, 0)
+        modified_lines = self.filter_components(wires, 0)
+        modified_circles = self.filter_components(circles, 0)
+        modified_rectangles = self.filter_components(rectangles, 0)
+        modified_arcs = self.filter_components(arcs, 0)
+        if sketch:
+            self.canvas.delete("all")
 
-        # Sketch Rectangles
-        for rectangle in range(0, len(modified_rectangles), 4):
-            rectangle_coordinates = (modified_rectangles[rectangle],
-                                     modified_rectangles[rectangle + 1],
-                                     modified_rectangles[rectangle + 2],
-                                     modified_rectangles[rectangle + 3])
+            # Sketch Rectangles
+            for rectangle in range(0, len(modified_rectangles), 4):
+                rectangle_coordinates = (modified_rectangles[rectangle],
+                                         modified_rectangles[rectangle + 1],
+                                         modified_rectangles[rectangle + 2],
+                                         modified_rectangles[rectangle + 3])
 
-            self.canvas.create_rectangle(rectangle_coordinates, tags=self.file_name)
+                self.canvas.create_rectangle(rectangle_coordinates, tags=self.file_name)
 
-        # Sketch Lines
-        for line in range(0, len(modified_lines), 4):
-            line_coordinates = (modified_lines[line],
-                                modified_lines[line + 1],
-                                modified_lines[line + 2],
-                                modified_lines[line + 3])
+            # Sketch Lines
+            for line in range(0, len(modified_lines), 4):
+                line_coordinates = (modified_lines[line],
+                                    modified_lines[line + 1],
+                                    modified_lines[line + 2],
+                                    modified_lines[line + 3])
 
-            self.canvas.create_line(line_coordinates,
-                                    tags=self.file_name)
+                self.canvas.create_line(line_coordinates,
+                                        tags=self.file_name)
 
-        # Sketch Circles
-        for circle in range(0, len(modified_circles), 4):
-            circle_coordinates = (modified_circles[circle],
-                                  modified_circles[circle + 1],
-                                  modified_circles[circle + 2],
-                                  modified_circles[circle + 3])
+            # Sketch Circles
+            for circle in range(0, len(modified_circles), 4):
+                circle_coordinates = (modified_circles[circle],
+                                      modified_circles[circle + 1],
+                                      modified_circles[circle + 2],
+                                      modified_circles[circle + 3])
 
-            self.canvas.create_oval(circle_coordinates,
-                                    tags=self.file_name)
-        # Sketch arcs
-        for arc in range(0, len(modified_arcs), 8):
-            arc_coordinates = (modified_arcs[arc],
-                               modified_arcs[arc + 1],
-                               modified_arcs[arc + 2],
-                               modified_arcs[arc + 3])
+                self.canvas.create_oval(circle_coordinates,
+                                        tags=self.file_name)
+            # Sketch arcs
+            for arc in range(0, len(modified_arcs), 8):
+                arc_coordinates = (modified_arcs[arc],
+                                   modified_arcs[arc + 1],
+                                   modified_arcs[arc + 2],
+                                   modified_arcs[arc + 3])
 
-            arc_coordinates_2 = (modified_arcs[arc + 2],
-                                 modified_arcs[arc + 3],
-                                 modified_arcs[arc + 6],
-                                 modified_arcs[arc + 7]/2)
+                arc_coordinates_2 = (modified_arcs[arc + 2],
+                                     modified_arcs[arc + 3],
+                                     modified_arcs[arc + 6],
+                                     modified_arcs[arc + 7] / 2)
 
-            self.canvas.create_arc(arc_coordinates,
-                                   style=tk.ARC,
-                                   tags=self.file_name,
-                                   start=270)
+                self.canvas.create_arc(arc_coordinates,
+                                       style=tk.ARC,
+                                       tags=self.file_name,
+                                       start=270)
 
-            self.canvas.create_arc(arc_coordinates_2,
-                                   style=tk.ARC,
-                                   start=180,
-                                   tags=self.file_name)
+                self.canvas.create_arc(arc_coordinates_2,
+                                       style=tk.ARC,
+                                       start=180,
+                                       tags=self.file_name)
+            self.parent.bind('<Button-3>', self.move_component)
+
         print(modified_arcs)
         # Store the drawn shape of component for export
         if modified_rectangles:
@@ -434,11 +489,9 @@ class NewComponents:
         if modified_arcs:
             self.component_information['arc'] = modified_arcs
         self.component_information['pins'] = pins_list
-        self.component_information['tags'] = self.canvas.itemconfig(self.file_name)
+        # self.component_information['tags'] = self.canvas.itemconfig(self.file_name)
 
-        self.root.bind('<Button-3>', self.move_component)
-
-    def open_component(self, fpath=0):
+    def open_component(self, fpath=0, sketch=True):
         # Open and return file path
         try:
             if fpath == 0:
@@ -468,14 +521,14 @@ class NewComponents:
             file_name = ntpath.basename(fpath)
             self.file_name = file_name
             print(self.file_name)
-            self.sketch_component(schematic, file_name)
+            self.sketch_component(schematic, file_name, sketch=sketch)
 
         except ValueError:
-            messagebox.showerror('Error', 'Please select a symbol .asy file')
+            messagebox.showerror('Error', 'Please select a symbol .asy file', parent=self.parent)
         except FileNotFoundError:
             pass
 
-    def open_folder(self, fpath=None):
+    def open_folder(self, fpath=None, sketch=False):
         # Open and return file path
         try:
             if fpath is None:
@@ -507,10 +560,10 @@ class NewComponents:
                 ltspiceascfile.close()
                 file_name = ntpath.basename(fpath[symbol])
                 self.file_name = file_name
-                self.sketch_component(schematic, file_name)
-                self.save_component(value=1)
+                self.sketch_component(schematic, file_name, sketch=sketch)
+                self.save_component(file_name=self.file_name, multiple_or_single=self.MULTIPLE_SYMBOL)
             messagebox.showinfo('Components Saved', str(len(fpath)) + ' Components have been saved in '
-                                + self.file_path + '/Symbols')
+                                + self.file_path + '/Symbols', parent=self.parent)
         except FileNotFoundError:
             pass
 
@@ -520,19 +573,31 @@ class NewComponents:
     def _set_symbol_not_found(self, symbol):
         self.symbols_not_found_list.append(symbol)
 
+    def get_symbols_not_found(self):
+        return list(dict.fromkeys(self.symbols_not_found_list))
+
     @staticmethod
     def set_line_width(line_width):
         NewComponents.line_width = line_width
 
     @staticmethod
+    def get_line_width():
+        return NewComponents.line_width
+
+    @staticmethod
     def set_outline_colour(outline_colour):
-        line_colour = outline_colour
         NewComponents.line_colour = outline_colour
 
     @staticmethod
+    def get_outline_colour():
+        return NewComponents.line_colour
+
+    @staticmethod
     def set_fill_colour(fill_colour):
-        fill_colour = fill_colour
         NewComponents.fill_colour = fill_colour
 
-    def get_symbols_not_found(self):
-        return list(dict.fromkeys(self.symbols_not_found_list))
+    @staticmethod
+    def get_fill_colour():
+        return NewComponents.fill_colour
+
+

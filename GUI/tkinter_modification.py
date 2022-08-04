@@ -1,7 +1,10 @@
 import os
+import pathlib
 import tkinter as tk
 from tkinter import filedialog as fd, ttk
 from tkinter.font import Font
+
+import customtkinter
 from customtkinter import ThemeManager
 from customtkinter import AppearanceModeTracker
 from customtkinter import CTkBaseClass
@@ -48,6 +51,9 @@ class CTkMenu(tk.Menu, CTkBaseClass):
 # ----------------------------------------------------------------------------------------------------------------------
 # a subclass of Canvas for dealing with resizing of windows
 class ResizingCanvas(tk.Canvas):
+    instances = []
+    print(ThemeManager.theme["color"]["frame_low"][customtkinter.AppearanceModeTracker.get_mode()])
+    background = ''
 
     def do_zoom(self, event):
         x = self.canvasx(event.x)
@@ -66,16 +72,19 @@ class ResizingCanvas(tk.Canvas):
             factor = 1.00001 ** event.delta*2
             self.scale(tk.ALL, x, y, factor, factor)
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, resize_zoom=True, **kwargs):
         tk.Canvas.__init__(self, parent, **kwargs)
-        self.height = self.winfo_reqheight()
-        self.width = self.winfo_reqwidth()
-        self.bind("<Configure>", self.on_resize)  # Resizing canvas when resizing schematic analysis window
-        self.bind("<MouseWheel>", self.do_zoom)  # zoom for Windows and Mac
-        self.bind('<ButtonPress-1>', lambda event: self.scan_mark(event.x, event.y))  # Pan over canvas
-        self.bind("<B1-Motion>", lambda event: self.scan_dragto(event.x, event.y, gain=1))
-        self.bind('<Button-5>', self.do_zoom)  # zoom for Linux, wheel scroll down
-        self.bind('<Button-4>', self.do_zoom)  # zoom for Linux, wheel scroll up
+        ResizingCanvas.instances.append(self)
+        # tk.Canvas.configure(self, background=ResizingCanvas.background)
+        if resize_zoom:
+            self.height = self.winfo_reqheight()
+            self.width = self.winfo_reqwidth()
+            # self.bind("<Configure>", self.on_resize)  # Resizing canvas when resizing schematic analysis window
+            self.bind("<MouseWheel>", self.do_zoom)  # zoom for Windows and Mac
+            self.bind('<ButtonPress-1>', lambda event: self.scan_mark(event.x, event.y))  # Pan over canvas
+            self.bind("<B1-Motion>", lambda event: self.scan_dragto(event.x, event.y, gain=1))
+            self.bind('<Button-5>', self.do_zoom)  # zoom for Linux, wheel scroll down
+            self.bind('<Button-4>', self.do_zoom)  # zoom for Linux, wheel scroll up
 
     def on_resize(self, event):
         # determine the ratio of old width/height to new width/height
@@ -87,6 +96,34 @@ class ResizingCanvas(tk.Canvas):
         self.config(width=self.width, height=self.height)
         # rescale all the objects tagged with the "all" tag
         self.scale("all", 0, 0, width_scale, height_scale)
+
+    @staticmethod
+    def set_background_colour(background_to_set):
+        ResizingCanvas.background = background_to_set
+
+    @staticmethod
+    def get_background_colour():
+        return ResizingCanvas.background
+
+    @classmethod
+    def get(cls):
+        return [inst for inst in cls.instances]
+
+
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class NewWindow(customtkinter.CTkToplevel, metaclass=Singleton):
+    def __init__(self, parent, title, width, height, x=0, y=0, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.title(title)
+        self.geometry("%dx%d+%d+%d" % (width, height, x, y))
 
 
 class CustomToolbar(NavigationToolbar2Tk):
@@ -102,16 +139,9 @@ class CustomToolbar(NavigationToolbar2Tk):
         subplot_number.pack_forget()
 
     def __init__(self, canvas_, parent_, axes, figure):
-        # delete_icon = fd.askopenfilename(
-        #     title="Select a Schematic",
-        #
-        #     filetypes=(
-        #         ("Waveforms", "*.png"),
-        #         ("All files", "*.*")
-        #     )
-        # )
-        # print(delete_icon.removesuffix('.png'))
-        delete_icon = os.path.dirname(os.path.abspath('trash_can.png'))
+        delete_icon = pathlib.Path(r'toolbar images\trash_can')
+        # print(type(delete_icon.name))
+        delete_icon = f'C:\\Users\\moaik\\OneDrive - The University of Nottingham\\NSERP\\UQSpice_0.02\\GUI\\trash_can'
         self.toolitems = (
                           ('Home', 'Reset original view', 'home', 'home'),
                           # ('Back', 'Back to  previous view', 'back', 'back'),
@@ -122,8 +152,9 @@ class CustomToolbar(NavigationToolbar2Tk):
                           ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'),
                           ('Save', 'Save the figure', 'filesave', 'save_figure'),
                           (None, None, None, None),
-                          # ('Delete subplots', 'Deletes all current subplots', 'trash_can', 'delete_all_subplots')
+                          ('Delete subplots', 'Deletes all current subplots', 'trash_can', 'delete_all_subplots')
                           )
+
         self.axes = axes
         self.figure = figure
         NavigationToolbar2Tk.__init__(self, canvas_, parent_)
@@ -142,12 +173,22 @@ class CustomToolbar(NavigationToolbar2Tk):
 
 
 class ScrollableFrame(tk.Frame):
+    # @staticmethod
+    # def handle_resize(event):
+    #     canvas = event.widget
+    #     canvas_frame = canvas.nametowidget(canvas.itemcget("canvas_frame", "window"))
+    #     min_width = canvas_frame.winfo_reqwidth()
+    #     min_height = canvas_frame.winfo_reqheight()
+    #     if min_width < event.width:
+    #         canvas.itemconfigure("canvas_frame", width=event.width)
+    #     if min_height < event.height:
+    #         canvas.itemconfigure("canvas_frame", height=event.height)
+
     def __init__(self, container, *args, **kwargs):
         super().__init__(master=container, *args, **kwargs)
         canvas = tk.Canvas(self)
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
         self.scrollable_frame = tk.Frame(canvas)
-
         self.scrollable_frame.bind(
             "<Configure>",
             lambda e: canvas.configure(
@@ -155,28 +196,13 @@ class ScrollableFrame(tk.Frame):
             )
         )
 
-        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw", width=460)
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor=tk.NW, tags="canvas_frame", width=460)
+
+        # If the container which has the frame resizes,
+        # make the canvas resize to fit it
+        # canvas.bind('<Configure>', self.handle_resize)
 
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-# class ResizingFrame(tk.Frame):
-#
-#     def __init__(self, parent, **kwargs):
-#         tk.Frame.__init__(self, parent, **kwargs)
-#         self.bind("<Configure>", self.on_resize)
-#         self.height = self.winfo_reqheight()
-#         self.width = self.winfo_reqwidth()
-#
-#     def on_resize(self, event):
-#         # determine the ratio of old width/height to new width/height
-#         width_scale = float(event.width) / self.width
-#         height_scale = float(event.height) / self.height
-#         self.width = event.width
-#         self.height = event.height
-#         # resize the canvas
-#         self.configure(width=self.width, height=self.height)
-#         # rescale all the objects tagged with the "all" tag
-#         # self.scale("all", 0, 0, width_scale, height_scale)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
