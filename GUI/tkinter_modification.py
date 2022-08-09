@@ -52,7 +52,7 @@ class CTkMenu(tk.Menu, CTkBaseClass):
 # a subclass of Canvas for dealing with resizing of windows
 class ResizingCanvas(tk.Canvas):
     instances = []
-    print(ThemeManager.theme["color"]["frame_low"][customtkinter.AppearanceModeTracker.get_mode()])
+    # print(ThemeManager.theme["color"]["frame_low"][customtkinter.AppearanceModeTracker.get_mode()])
     background = ''
 
     def do_zoom(self, event):
@@ -120,10 +120,13 @@ class Singleton(type):
 
 
 class NewWindow(customtkinter.CTkToplevel, metaclass=Singleton):
-    def __init__(self, parent, title, width, height, x=0, y=0, *args, **kwargs):
+    def __init__(self, parent, title='CTK Toplevel', width=100, height=100, x=0, y=0, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.title(title)
         self.geometry("%dx%d+%d+%d" % (width, height, x, y))
+
+    def __del__(self):
+        print('deleted', self)
 
 
 class CustomToolbar(NavigationToolbar2Tk):

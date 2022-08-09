@@ -1,3 +1,4 @@
+import os.path
 from tkinter import messagebox, ttk
 import mplcursors
 import tkinter as tk
@@ -183,16 +184,109 @@ def change_colour(canvas, fill=True, outline=False):
         fill_colour = colour_to_change
 
 
-def save_preferences():
+def default_settings(canvas, slider, slider_label):
+    global fill_colour
+    global outline_colour
+
+    sample_elements_outline = canvas.find_withtag('triangle') + canvas.find_withtag('rectangle') \
+                             + canvas.find_withtag('circle') + canvas.find_withtag('ground_flag')
+
+    lines = canvas.find_withtag('line')
+
+    canvas.itemconfig(canvas.find_withtag('arrow'), fill='black', width=1.0)
+
+    for sample_element in sample_elements_outline:
+        canvas.itemconfig(sample_element, outline='black', width=1.0)
+
+    for line in lines:
+        canvas.itemconfig(line, fill='black', width=1.0)
+
+    for sample_element in sample_elements_outline:
+        canvas.itemconfig(sample_element, fill='', width=1.0)
+
+    slider.set(1.0)
+    slider_label.configure(text='Line Width = 1.0')
+    save_preferences(True)
+
+
+def save_preferences(default=True):
     global line_width
     global fill_colour
     global outline_colour
+
+    if default is True:
+        line_width = 1.0
+        outline_colour = 'black'
+        fill_colour = ''
+    if default is False:
+        messagebox.showinfo('Preferences Saved', 'The selected preferences have been saved')
 
     new_comp.NewComponents.set_line_width(line_width)
     new_comp.NewComponents.set_outline_colour(outline_colour)
     new_comp.NewComponents.set_fill_colour(fill_colour)
 
-    messagebox.showinfo('Preferences Saved', 'The selected preferences have been saved')
+
+def change_default_path(default_path_box):
+    # Open and return file path
+    new_default_file_path = fd.askdirectory(
+        title="Select a path for symbols"
+    )
+    default_path_box.delete(0, tk.END)
+    default_path_box.insert(0, new_default_file_path)
+
+
+def add_file_path(listbox):
+    # Open and return file path
+    new_file_path = fd.askdirectory(
+        title="Select a path for symbols"
+    )
+    file_paths = listbox.get(0, tk.END)
+    number_of_file_paths = len(file_paths)
+    if new_file_path:
+        if new_file_path in file_paths:
+            messagebox.showerror('File path exists', 'The added file path already exists.', parent=preferences_window)
+        else:
+            listbox.insert(number_of_file_paths + 1, new_file_path)
+            new_comp.NewComponents.add_new_path(new_file_path)
+            print(new_comp.NewComponents.get_added_file_paths())
+    else:
+        pass
+
+
+def if_path_exists(path_value):
+    if os.path.isdir(path_value) is True:
+        return True
+    else:
+        return False
+
+
+def save_file_paths(default_file_path, file_paths):
+    if os.path.isdir(default_file_path.get()) is True:
+        new_comp.NewComponents.set_default_path(default_file_path.get())
+    else:
+        messagebox.showinfo(parent=preferences_window, title='Path does not exist',
+                            message='The entered default path does not exist please enter a new path')
+
+
+def reset_to_default_path(listbox, default_file_path_box):
+    file_paths = listbox.get(0, tk.END)
+    number_of_file_paths = len(file_paths)
+
+    default_file_path_box.delete(0, tk.END)
+    default_file_path_box.insert(0, new_comp.NewComponents.get_fixed_default_path())
+    new_comp.NewComponents.clear_file_paths(all_file_paths=True)
+    while number_of_file_paths != -1:
+        listbox.delete(number_of_file_paths)
+        number_of_file_paths -= 1
+
+
+def delete_selected_path(listbox):
+    selected_path = listbox.curselection()
+    if selected_path:
+        listbox.delete(selected_path)
+        new_comp.NewComponents.clear_file_paths(all_file_paths=False, index=int(selected_path[0]) - 1)
+    else:
+        pass
 
 
 def set_preferences(root, schematic_analysis):
@@ -223,28 +317,100 @@ def set_preferences(root, schematic_analysis):
                                                      preferences_window_x,
                                                      preferences_window_y))
 
-        preferences_window.title("Customise Components")
+        preferences_window.title("Preferences")
         # Set minimum width and height of schematic_analysis window
+        preferences_tabs = ttk.Notebook(preferences_window)
 
-        exit_preferences_button = customtkinter.CTkButton(preferences_window,
+        file_path_preferences = customtkinter.CTkFrame(preferences_tabs, corner_radius=0)
+        all_preferences_frame = customtkinter.CTkFrame(preferences_tabs, corner_radius=0)
+
+        preferences_tabs.add(file_path_preferences, text='Symbol File Paths')
+        preferences_tabs.add(all_preferences_frame, text='Customise Components')
+        preferences_tabs.pack(expand=True, fill=tk.BOTH)
+
+        # ---------------------------------------------- file path preferences -----------------------------------------
+        # Default file path written with a label and an entry box
+        default_file_path_label = customtkinter.CTkLabel(file_path_preferences,
+                                                         text='Default LTSpice Symbols path: ')
+
+        default_file_path_label.grid(row=0, column=2, columnspan=4, padx=30)
+
+        default_file_path_box = customtkinter.CTkEntry(file_path_preferences, width=640, validate='key')
+        default_file_path_box.insert(0, new_comp.NewComponents.get_default_path())
+        default_file_path_box.grid(row=1, column=2, columnspan=4, padx=15, pady=10)
+
+        # Create a list containing all extra file paths to check if symbols are not found
+        file_paths = customtkinter.CTkLabel(file_path_preferences, text='Additional file paths to look into:')
+        file_paths.grid(row=2, column=2, columnspan=4, padx=30)
+
+        # Create a list containing all extra file paths to check if symbols are not found
+        file_paths = tk.Listbox(file_path_preferences, width=120)
+        file_paths.grid(row=3, column=2, columnspan=4, padx=30, pady=10)
+
+        all_file_paths = new_comp.NewComponents.get_added_file_paths()
+        if all_file_paths:
+            for paths in range(len(all_file_paths)):
+                file_paths.insert(paths, all_file_paths[paths])
+
+        save_path_button = customtkinter.CTkButton(file_path_preferences, text='Save file paths',
+                                                   command=lambda: save_file_paths(default_file_path_box, file_paths))
+        save_path_button.grid(row=4, column=5, pady=5)
+        add_new_file_path_button = customtkinter.CTkButton(file_path_preferences,
+                                                           text='Add new file path',
+                                                           command=lambda: add_file_path(file_paths))
+
+        add_new_file_path_button.grid(row=4, column=2, pady=5)
+
+        delete_file_path_button = customtkinter.CTkButton(file_path_preferences,
+                                                          text='Delete file path',
+                                                          command=lambda:
+                                                          delete_selected_path(file_paths))
+
+        delete_file_path_button.grid(row=4, column=3, pady=5)
+
+        reset_to_default_path_button = customtkinter.CTkButton(file_path_preferences,
+                                                               text='Reset to default',
+                                                               command=lambda:
+                                                               reset_to_default_path(file_paths,
+                                                                                     default_file_path_box))
+
+        reset_to_default_path_button.grid(row=4, column=4, pady=5)
+
+        browse_icon = tk.PhotoImage(file=r"images\folder_icon_test.png")
+        change_default_path_button = customtkinter.CTkButton(file_path_preferences,
+                                                             image=browse_icon,
+                                                             text='',
+                                                             compound=tk.RIGHT,
+                                                             bg_color='#343638',
+                                                             fg_color='#343638',
+                                                             hover_color='#343638',
+                                                             borderwidth=0,
+                                                             height=3,
+                                                             width=5,
+                                                             command=lambda: change_default_path(default_file_path_box))
+        change_default_path_button.grid(row=1, column=5)
+        file_path_preferences.grid_rowconfigure(tuple(range(100)), weight=1)
+        file_path_preferences.grid_columnconfigure(tuple(range(100)), weight=1)
+        # ---------------------------------------------- Component Drawing Preferences ---------------------------------
+        exit_preferences_button = customtkinter.CTkButton(all_preferences_frame,
                                                           text='Cancel',
                                                           command=preferences_window.destroy)
         exit_preferences_button.pack(side=tk.BOTTOM, pady=2)
 
-        save_preferences_button = customtkinter.CTkButton(preferences_window,
+        save_preferences_button = customtkinter.CTkButton(all_preferences_frame,
                                                           text='Save Preferences',
-                                                          command=save_preferences)
+                                                          command=lambda: save_preferences(False))
 
         save_preferences_button.pack(side=tk.BOTTOM, pady=10)
 
-        all_preferences_frame = tk.Frame(preferences_window)
-        all_preferences_frame.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH)
+        buttons_separator = ttk.Separator(all_preferences_frame, orient='horizontal')
+        buttons_separator.pack(side=tk.BOTTOM, fill=tk.X)
 
         preferences_frame = tk.Frame(all_preferences_frame, borderwidth=2)
         preferences_frame.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH)
 
         border_label = ttk.Separator(all_preferences_frame, orient='vertical')
-        border_label.pack(side=tk.RIGHT, expand=True, fill=tk.Y)
+        border_label.pack(side=tk.RIGHT, fill=tk.Y)
 
         preferences_canvas = tkmod.ResizingCanvas(all_preferences_frame, width=preferences_window_width - 200,
                                                   resize_zoom=False)
@@ -252,9 +418,9 @@ def set_preferences(root, schematic_analysis):
 
         # Window Children
         preferences_window.minsize(preferences_window_width, preferences_window_height)
-        preferences_window.resizable(height=False, width=False)
+        # preferences_window.resizable(height=False, width=False)
 
-        slider_label = customtkinter.CTkLabel(master=preferences_frame, width=20, text='Line Width = 3',
+        slider_label = customtkinter.CTkLabel(master=preferences_frame, width=20, text='Line Width = 1.0',
                                               text_color='black')
         slider = customtkinter.CTkSlider(master=preferences_frame, from_=1, to=5, number_of_steps=40)
 
@@ -262,6 +428,8 @@ def set_preferences(root, schematic_analysis):
         slider.pack(side=tk.TOP, pady=5)
 
         slider.configure(command=lambda value: slider_event(slider_label, slider, preferences_canvas))
+        slider.set(1.0)
+
         outline_colour_button = customtkinter.CTkButton(preferences_frame,
                                                         text='Components Outline Colour',
                                                         command=lambda: change_colour(preferences_canvas,
@@ -275,6 +443,13 @@ def set_preferences(root, schematic_analysis):
                                                                                    fill=True, outline=False))
 
         fill_colour_button.pack(side=tk.TOP, pady=5)
+
+        default_setting_button = customtkinter.CTkButton(preferences_frame,
+                                                         text='Default Settings',
+                                                         command=lambda: default_settings(preferences_canvas, slider,
+                                                                                          slider_label))
+
+        default_setting_button.pack(side=tk.TOP, pady=5)
 
         sample_components = comp.ComponentSketcher(preferences_canvas)
         sample_components.draw_ground_flags(400, 60, 'black', 1.0, '')
@@ -347,7 +522,7 @@ def open_new_components(root):
                                                  command=lambda: new_comp_instance.save_component())
     open_symbol_button = customtkinter.CTkButton(button_frame, text='Open Symbol',
                                                  command=lambda: new_comp_instance.open_component())
-    open_folder_button = customtkinter.CTkButton(button_frame, text='Open Folder',
+    open_folder_button = customtkinter.CTkButton(button_frame, text='Add Symbols',
                                                  command=lambda: new_comp_instance.open_folder())
     load_symbol_button = customtkinter.CTkButton(button_frame, text='Load Symbol',
                                                  command=lambda: new_comp_instance.load_component())
@@ -394,6 +569,16 @@ def open_asc_file(root, schematic_analysis):
     # make the entering parameters window on top of the main schematic analysis window and showing it
     # schematic_analysis.wm_transient(root)
     schematic_analysis.deiconify()
+
+
+def clear_table(table):
+    table.set_sheet_data(data=[[]])
+    table.headers('A')
+    for rows in range(100):
+        table.insert_row()
+
+    for columns in range(26):
+        table.insert_column()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -596,7 +781,8 @@ def get_file_path(component_parameters_frame,
                   enter_parameters_button,
                   entering_parameters_window,
                   delete_constants_button,
-                  root):
+                  root,
+                  tabs):
     """Obtains the file path selected from a dialog box, Event function for Open a schematic button.
 
         Parameters:
@@ -664,7 +850,7 @@ def get_file_path(component_parameters_frame,
             with open(new_schematic_file, mode='r', encoding=encoding) as ltspiceascfile:
                 schematic = ltspiceascfile.readlines()
             ltspiceascfile.close()
-
+            tabs.select(0)
             sketch_schematic_asc(schematic,
                                  component_parameters_frame,
                                  all_component_parameters,
@@ -969,7 +1155,7 @@ def sketch_schematic_asc(schematic,
 
         drawing_components = comp.ComponentSketcher(canvas)
 # -------------------------------------------- Drawing Grounds ---------------------------------------------------------
-        circuit_comps = new_comp.NewComponents(canvas, root)
+        circuit_comps = new_comp.NewComponents(canvas, root, symbols_path='file')
         circuit_comps.set_line_width(line_width)
         circuit_comps.set_outline_colour(outline_colour)
         circuit_comps.set_fill_colour(fill_colour)
@@ -1743,94 +1929,55 @@ def save_entered_parameters(entering_parameters_window,
                 component_param2 = '2'
             allowed_characters_list = ['m', 'u', 'n', 'p', 'f', 'K', 'M', 'G', 'T']
 
-            # Check if dropdown list is empty
-            if (first_prefix_dropdown == 'None') and (second_prefix_dropdown == 'None'):
-                # If prefix dropdown list has nothing selected then check if prefix is typed in entry box
-                first_prefix_typed = "".join(
-                    [character for character in allowed_characters_list if character in component_param1])
-                second_prefix_typed = "".join(
-                    [character for character in allowed_characters_list if character in component_param2])
-                # If a single prefix is entered then preform the calculation on the entered value for that prefix
-                if (len(first_prefix_typed) == 1) or (len(second_prefix_typed) == 1):
+            # If prefix dropdown list has nothing selected then check if prefix is typed in entry box
+            first_prefix_typed = "".join(
+                [character for character in allowed_characters_list if character in component_param1])
+            second_prefix_typed = "".join(
+                [character for character in allowed_characters_list if character in component_param2])
 
-                    for prefix in prefixes:
-                        if first_prefix_typed == prefix:
-                            component_param1 = float(remove_suffix(component_param1, first_prefix_typed)) \
-                                               * prefixes[prefix]
-                        if second_prefix_typed == prefix:
-                            component_param2 = float(remove_suffix(component_param2, second_prefix_typed)) \
-                                               * prefixes[prefix]
-                    # print('param1: ', component_param1, 'param2:  ', component_param2)
-
-                # If more than one prefix has been typed then display a message box with an error
-                elif (len(first_prefix_typed) > 1) or (len(second_prefix_typed) > 1):
-                    raise TypeError
-
-            elif (first_prefix_dropdown == 'None') and (second_prefix_dropdown != 'None'):
-                # If prefix dropdown list has nothing selected then check if prefix is typed in entry box
-                first_prefix_typed = "".join(
-                    [character for character in allowed_characters_list if character in component_param1])
-                # If a single prefix is entered then preform the calculation on the entered value for that prefix
-                if len(first_prefix_typed) == 1:
-                    for prefix in prefixes:
-                        if first_prefix_typed == prefix:
-                            component_param1 = float(remove_suffix(component_param1, first_prefix_typed)) \
-                                               * prefixes[prefix]
-                        if second_prefix_dropdown == prefix:
-                            component_param2 = float(remove_suffix(component_param2, second_prefix_dropdown)) \
-                                               * prefixes[prefix]
-                    # print('param1: ', component_param1, 'param2:  ', component_param2)
-
-                # If more than one prefix has been typed then display a message box with an error
-                elif len(first_prefix_typed) > 1:
-                    raise TypeError
-
-            elif (first_prefix_dropdown != 'None') and (second_prefix_dropdown == 'None'):
-                # If prefix dropdown list has nothing selected then check if prefix is typed in entry box
-                second_prefix_typed = "".join(
-                    [character for character in allowed_characters_list if character in component_param1])
-                # If a single prefix is entered then preform the calculation on the entered value for that prefix
-                if len(second_prefix_typed) == 1:
-                    for prefix in prefixes:
-                        if second_prefix_typed == prefix:
-                            component_param1 = float(remove_suffix(component_param1, second_prefix_typed)) \
-                                               * prefixes[prefix]
-                        if second_prefix_dropdown == prefix:
-                            component_param2 = float(remove_suffix(component_param2, second_prefix_dropdown)) \
-                                               * prefixes[prefix]
-                    # print('param1: ', component_param1, 'param2:  ', component_param2)
-
-                # If more than one prefix has been typed then display a message box with an error
-                elif len(second_prefix_typed) > 1:
-                    raise TypeError
-
-            # Check if dropdown list has a prefix selected
-            elif (first_prefix_dropdown != 'None') and (second_prefix_dropdown != 'None'):
-                # If yes then multiply the prefix with the entered value
+            # Error checking for first parameter
+            # If prefix has been typed in
+            if (first_prefix_dropdown == 'None') and (len(first_prefix_typed) == 1):
+                print('No prefix selected from dropdown')
+                for prefix in prefixes:
+                    if first_prefix_typed == prefix:
+                        component_param1 = float(remove_suffix(component_param1, first_prefix_typed)) \
+                                                 * prefixes[prefix]
+            # If prefix has been selected from drop down list
+            elif (first_prefix_dropdown != 'None') and (len(first_prefix_typed) == 0):
+                print('No prefix typed')
                 for prefix in prefixes:
                     if first_prefix_dropdown == prefix:
-                        component_param1 = float(remove_suffix(component_param1, first_prefix_dropdown)) \
-                                           * prefixes[prefix]
+                        component_param1 = float(component_param1) * prefixes[prefix]
 
-                    if second_prefix_dropdown == prefix:
-                        component_param2 = float(remove_suffix(component_param2, second_prefix_dropdown)) \
-                                           * prefixes[prefix]
+            # When no prefixes are selected either from drop down list or typed
+            elif (first_prefix_dropdown == 'None') and (len(first_prefix_typed) == 0):
+                print('No prefix typed and no prefix from dropdown list')
+                component_param1 = float(component_param1)
+            else:
+                raise TypeError
 
-            # Check if dropdown list has a prefix selected
-            elif (first_prefix_dropdown != 'None') and (second_prefix_dropdown == 'None'):
-                # If yes then multiply the prefix with the entered value
+            # Error checking for second parameter
+            # If prefix has been typed in
+            if (second_prefix_dropdown == 'None') and (len(second_prefix_typed) == 1):
+                print('No prefix selected from dropdown')
                 for prefix in prefixes:
-                    if first_prefix_dropdown == prefix:
-                        component_param1 = float(remove_suffix(component_param1, first_prefix_dropdown)) \
-                                           * prefixes[prefix]
-
-            # Check if dropdown list has a prefix selected
-            elif (first_prefix_dropdown == 'None') and (second_prefix_dropdown != 'None'):
-                # If yes then multiply the prefix with the entered value
+                    if second_prefix_typed == prefix:
+                        component_param2 = float(remove_suffix(component_param2, second_prefix_typed)) \
+                                                 * prefixes[prefix]
+            # If prefix has been selected from drop down list
+            elif (second_prefix_dropdown != 'None') and (len(second_prefix_typed) == 0):
+                print('No prefix typed')
                 for prefix in prefixes:
                     if second_prefix_dropdown == prefix:
-                        component_param2 = float(remove_suffix(component_param2, second_prefix_dropdown)) \
-                                           * prefixes[prefix]
+                        component_param2 = float(component_param2) * prefixes[prefix]
+
+            # When no prefixes are selected either from drop down list or typed
+            elif (second_prefix_dropdown == 'None') and (len(second_prefix_typed) == 0):
+                print('No prefix typed and no prefix from dropdown list')
+                component_param2 = float(component_param2)
+            else:
+                raise TypeError
 
             if len(all_component_parameters) == 0:
                 all_component_parameters.append({component_name:
@@ -1942,60 +2089,114 @@ def save_all_entered_parameters(component_name,
             # full_name_labels[circuit_component].configure(borderwidth=1)
             full_name_labels[circuit_component].configure(text='')
 
-            if not component_param1_array[circuit_component].get():
-                param1 = '1'
-                param1 = float(param1)
-            else:
-                param1 = float(component_param1_array[circuit_component].get())
-            if not component_param2_array[circuit_component].get():
-                param2 = '2'
-                param2 = float(param2)
-            else:
-                param2 = float(component_param2_array[circuit_component].get())
+            try:
+                component_param1 = component_param1_array[circuit_component].get()
+                component_param2 = component_param2_array[circuit_component].get()
+                if len(component_param1) == 0:
+                    component_param1 = '1'
+                if len(component_param2) == 0:
+                    component_param2 = '2'
+                prefixes = {'m': 1e-3, 'μ': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9,
+                            'T': 1e12}
 
-            prefixes = {'m': 1e-3, 'μ': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9,
-                        'T': 1e12}
+                print(component_param1, component_param2)
+                first_prefix_dropdown = prefix1.get()
+                second_prefix_dropdown = prefix2.get()
+                allowed_characters_list = ['m', 'u', 'n', 'p', 'f', 'K', 'M', 'G', 'T']
+                print(component_param1, component_param2, first_prefix_dropdown, second_prefix_dropdown)
+                # If prefix dropdown list has nothing selected then check if prefix is typed in entry box
+                first_prefix_typed = "".join(
+                    [character for character in allowed_characters_list if
+                     character in component_param1])
+                second_prefix_typed = "".join(
+                    [character for character in allowed_characters_list if
+                     character in component_param2])
 
-            first_prefix = prefix1.get()
-            second_prefix= prefix2.get()
-            for prefix in prefixes:
-                if first_prefix == prefix:
-                    param1 = param1 * prefixes[prefix]
-                if second_prefix == prefix:
-                    param2 = param2 * prefixes[prefix]
+                # Error checking for first parameter
+                # If prefix has been typed in
+                # TODO: Fix when a prefix is selected for a single component it changes all others
+                if (first_prefix_dropdown == 'None') and (len(first_prefix_typed) == 1):
+                    print('No prefix selected from dropdown')
+                    for prefix in prefixes:
+                        if first_prefix_typed == prefix:
+                            component_param1 = float(remove_suffix(component_param1, first_prefix_typed)) \
+                                               * prefixes[prefix]
+                # If prefix has been selected from drop down list
+                elif (first_prefix_dropdown != 'None') and (len(first_prefix_typed) == 0):
+                    print('No prefix typed')
+                    for prefix in prefixes:
+                        if first_prefix_dropdown == prefix:
+                            component_param1 = float(component_param1) * prefixes[prefix]
 
-            # Storing the name label of all parameters
-            full_name_labels[circuit_component].configure(
-                                       text='\n' + component_name[circuit_component]
-                                       + '\nDistribution: ' +
-                                       component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n')
-                                       + '\n' +
-                                       component_param1_label_array[circuit_component].__getattribute__('text') + '='
-                                       + str(param1)
-                                       + '\n' + component_param2_label_array[circuit_component].__getattribute__('text')
-                                       + '=' + str(param2)
-                                       + '\n'
-                                       )
+                # When no prefixes are selected either from drop down list or typed
+                elif (first_prefix_dropdown == 'None') and (len(first_prefix_typed) == 0):
+                    print('No prefix typed and no prefix from dropdown list')
+                    component_param1 = float(component_param1)
+                else:
+                    raise TypeError
 
-            # Placing the name label of all parameters on the schematic_analysis window
-            delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
-            full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
-            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
+                # Error checking for second parameter
+                # If prefix has been typed in
+                if (second_prefix_dropdown == 'None') and (len(second_prefix_typed) == 1):
+                    print('No prefix selected from dropdown')
+                    for prefix in prefixes:
+                        if second_prefix_typed == prefix:
+                            component_param2 = float(remove_suffix(component_param2, second_prefix_typed)) \
+                                               * prefixes[prefix]
+                # If prefix has been selected from drop down list
+                elif (second_prefix_dropdown != 'None') and (len(second_prefix_typed) == 0):
+                    print('No prefix typed')
+                    for prefix in prefixes:
+                        if second_prefix_dropdown == prefix:
+                            component_param2 = float(component_param2) * prefixes[prefix]
 
-            # Storing all components with their parameters in a dictionary
-            all_component_parameters.append(
-                {component_name[circuit_component]:
-                 {'distribution': component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n'),
-                  'parameters': {
-                   # Parameter 1 name and user entered number
-                   component_param1_dictionary_input[circuit_component]:
-                   param1,
-                   # Parameter 2 name and user entered number
-                   component_param2_dictionary_input[circuit_component]:
-                   param2}
-                  }
-                 }
-            )
+                # When no prefixes are selected either from drop down list or typed
+                elif (second_prefix_dropdown == 'None') and (len(second_prefix_typed) == 0):
+                    print('No prefix typed and no prefix from dropdown list')
+                    component_param2 = float(component_param2)
+                else:
+                    raise TypeError
+
+                # Storing the name label of all parameters
+                full_name_labels[circuit_component].configure(
+                    text='\n' + component_name[circuit_component]
+                         + '\nDistribution: ' +
+                         component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n')
+                         + '\n' +
+                         component_param1_label_array[circuit_component].__getattribute__('text') + '='
+                         + str(component_param1)
+                         + '\n' + component_param2_label_array[circuit_component].__getattribute__('text')
+                         + '=' + str(component_param2)
+                         + '\n'
+                )
+
+                # Placing the name label of all parameters on the schematic_analysis window
+                delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
+                full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
+                parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
+
+                # Storing all components with their parameters in a dictionary
+                all_component_parameters.append(
+                    {component_name[circuit_component]:
+                         {'distribution': component_distribution_array[circuit_component].get('1.0', tk.END).strip(
+                             '\n'),
+                          'parameters': {
+                              # Parameter 1 name and user entered number
+                              component_param1_dictionary_input[circuit_component]:
+                                  component_param1,
+                              # Parameter 2 name and user entered number
+                              component_param2_dictionary_input[circuit_component]:
+                                  component_param2}
+                          }
+                     }
+                )
+
+            except ValueError:
+                messagebox.showerror(parent=entering_parameters_window, title='Illegal Value entered',
+                                     message='Please enter only numbers with prefixes such as n, p, m, etc.')
+            except TypeError:
+                messagebox.showerror(parent=entering_parameters_window, title='More than one prefix',
+                                     message='Please enter a single prefix only.')
 
         # If value is Constant, display label only. DO NOT store in dictionary
         elif component_value_array[circuit_component] == 'Constant':

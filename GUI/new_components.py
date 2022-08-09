@@ -43,12 +43,35 @@ class NewComponents:
     line_width = 1
     line_colour = 'black'
     fill_colour = ''
+    default_path = None
+    fixed_default_path = None
+    list_of_added_file_paths = []
+    try:
+        if sys.platform == 'darwin':
+            default_path = "/Applications/LTspice.app/Contents/MacOS/LTspice/lib/sym"
+            fixed_default_path = "/Applications/LTspice.app/Contents/MacOS/LTspice/lib/sym"
+
+        elif sys.platform == 'win32':
+            default_path = r"C:/Program Files/LTC/LTspiceXVII/lib/sym/"
+            fixed_default_path = r"C:/Program Files/LTC/LTspiceXVII/lib/sym/"
+
+        elif sys.platform == 'linux':
+            default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
+            fixed_default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
+
+        else:
+            default_path = None
+            fixed_default_path = None
+            raise NotImplementedError("Platforms other than Mac, Windows and Linux are not implemented yet")
+    except Exception as e:
+        messagebox.showerror(title="Not yet implemented",
+                             message="Platforms other than Mac, Windows and Linux are not implemented yet")
 
     def __init__(self, canvas_to_draw_component, master_window, *args, **kwargs):
         """
         Parameters:
             ----------------------------
-            canvas: the canvas to draw the components inside
+            canvas_to_draw_component: the canvas to draw the components inside
             master_window: the root window inside which everything is based
             file_name: stores the file name which has been opened, which is later used as tags when drawing components
             component_information: stores the shapes used to draw a certain component
@@ -62,45 +85,29 @@ class NewComponents:
         self.component_information = {}
         self.encoding = None
         self.error_number = 0
-        # self.line_colour = 'black'
-        # self.fill_colour = ''
-        # self.line_width = 1
         self.SINGLE_SYMBOL = True
         self.MULTIPLE_SYMBOL = False
         self.symbols_not_found_list = []
-        try:
-            if sys.platform == 'darwin':
-                self._ltspice = "/Applications/LTspice.app/Contents/MacOS/LTspice/lib/sym"
-
-            elif sys.platform == 'win32':
-                self._ltspice = r"C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
-
-            elif sys.platform == 'linux':
-                self._ltspice = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
-
-            else:
-                self._ltspice = None
-                raise NotImplementedError("Platforms other than Mac, Windows and Linux are not implemented yet")
-        except Exception as e:
-            raise e
+        print('symbols_path', kwargs.get('ltspice_path'))
+        self._ltspice = NewComponents.default_path
 
     def move_component(self, event):
-        component_coords = self.canvas.coords(self.file_name)
-        # print(event.x, event.y)
-        # print(component_coords)
-        x1 = event.x - component_coords[0]
-        y1 = event.y - component_coords[1]
-        self.canvas.move(self.file_name, x1, y1)
+        component_coordinates = self.canvas.coords(self.file_name)
+        canvas = event.widget
+        x = canvas.canvasx(event.x) - component_coordinates[0]
+        y = canvas.canvasy(event.y) - component_coordinates[1]
+        self.canvas.move(self.file_name, x, y)
 
     def save_component(self, file_name=None, multiple_or_single=True, found=True):
-        print(self.file_name)
+        print(self.file_name, file_name)
+        # True for multiple_or_single indicates that a SINGLE symbol is selected.
         if multiple_or_single is True:
             try:
-                path_to_symbol = os.path.expanduser('Symbols/' + remove_suffix(file_name, '.asy'))
+                path_to_symbol = os.path.expanduser('Symbols/' + remove_suffix(self.file_name, '.asy'))
                 file_exists = os.path.exists(path_to_symbol)
                 print(path_to_symbol)
-                if file_exists and file_name:
-                    overwrite_symbol_message = 'The file ' + file_name \
+                if file_exists and self.file_name:
+                    overwrite_symbol_message = 'The file ' + self.file_name \
                                                + ' already exists, do you wish to overwrite the saved file?'
 
                     yes_or_no = messagebox.askyesnocancel(parent=self.parent, title='File Already Exists',
@@ -109,8 +116,8 @@ class NewComponents:
                         with open(path_to_symbol, 'w') as file:
                             json.dump(self.component_information, file, indent=4)
                         messagebox.showinfo('Component Saved',
-                                            file_name + ' has been saved to '
-                                            + remove_suffix(self.file_path, file_name) + 'Symbols',
+                                            self.file_name + ' has been saved to '
+                                            + remove_suffix(self.file_path, self.file_name) + 'Symbols',
                                             parent=self.parent)
                     if yes_or_no == 'no' or yes_or_no == 'cancel':
                         pass
@@ -119,43 +126,44 @@ class NewComponents:
                         json.dump(self.component_information, file, indent=4)
                     if found is True:
                         messagebox.showinfo('Component Saved',
-                                            file_name + ' has been saved to '
-                                            + remove_suffix(self.file_path, file_name) + 'Symbols',
+                                            self.file_name + ' has been saved to '
+                                            + remove_suffix(self.file_path, self.file_name) + 'Symbols',
                                             parent=self.parent)
 
             except FileNotFoundError:
-                if file_name == '':
+                if self.file_name == '':
                     messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
 
                 else:
                     messagebox.showerror('Error',
-                                         file_name + ' has not been found, please add the file to Symbols folder',
+                                         self.file_name + ' has not been found, please add the file to Symbols folder',
                                          parent=self.parent)
             except PermissionError:
-                if file_name == '':
+                if self.file_name == '':
                     messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
 
                 else:
                     messagebox.showerror('Access Denied', 'Permission is required to access this file',
                                          parent=self.parent)
+        # False for multiple_or_single indicates that MULTIPLE symbols are selected.
         elif multiple_or_single is False:
             try:
                 with open(os.path.expanduser('Symbols/' + remove_suffix(file_name, '.asy')), 'w') as file:
                     json.dump(self.component_information, file, indent=4)
 
-            except FileNotFoundError:
-                if file_name == '':
-                    messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
-
-                else:
-                    if self.error_number >= 5:
-                        pass
-                    else:
-                        self.error_number += 1
-                        messagebox.showerror('Error',
-                                             file_name
-                                             + ' has not been found, please add the file to Symbols folder',
-                                             parent=self.parent)
+            # except FileNotFoundError:
+            #     if file_name == '':
+            #         messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
+            #
+            #     else:
+            #         if self.error_number >= 5:
+            #             pass
+            #         else:
+            #             self.error_number += 1
+            #             messagebox.showerror('Error',
+            #                                  file_name
+            #                                  + ' has not been found, please add the file to Symbols folder',
+            #                                  parent=self.parent)
             except PermissionError:
                 if file_name == '':
                     messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
@@ -167,15 +175,15 @@ class NewComponents:
     def clear_canvas(self):
         self.canvas.delete('all')
 
-    def load_component(self, file_name=None, encoding=None,
+    def load_component(self, file_name=None, encoding='utf-8',
                        x_coordinate=0, y_coordinate=0,
                        angle=0, window_x=0, window_y=0):
         if file_name is None:
             file_name = remove_suffix(self.file_name, '.asy')
 
         try:
-            print('loading', file_name)
-            with open(os.path.expanduser('Symbols/' + file_name), 'r', encoding='utf-8', errors='replace') as file:
+            # print('loading', file_name)
+            with open(os.path.expanduser('Symbols/' + file_name), 'r', encoding=encoding, errors='replace') as file:
                 items = json.load(file)
             for item in items.keys():
                 #     x_ = int(items['pins'][0]) + int(items['pins'][2])
@@ -239,14 +247,40 @@ class NewComponents:
                     self.error_number += 1
                     self._set_symbol_not_found(file_name)
                     try:
-                        symbol_path = os.path.expanduser(self._ltspice + file_name) + '.asy'
-                        self.open_component(symbol_path, sketch=False)
-                        self.file_name = file_name
-                        self.save_component(self.file_name, self.SINGLE_SYMBOL, found=False)
-                        self.load_component(self.file_name, x_coordinate=x_coordinate, y_coordinate=y_coordinate,
-                                            window_x=window_x, window_y=window_y, angle=angle)
-                        self.symbols_not_found_list.clear()
-                        print('file_name', self.file_name)
+                        self._ltspice = NewComponents.default_path
+                        symbol_in_default_path = os.path.exists(os.path.join(self._ltspice, file_name) + ".asy")
+                        if symbol_in_default_path is True:
+                            symbol_path = os.path.expanduser(self._ltspice + file_name) + '.asy'
+                            self.open_component(symbol_path, sketch=False)
+                            self.file_name = file_name
+                            self.save_component(self.file_name, self.SINGLE_SYMBOL, found=False)
+                            self.load_component(self.file_name, x_coordinate=x_coordinate,
+                                                y_coordinate=y_coordinate,
+                                                window_x=window_x, window_y=window_y, angle=angle)
+                            self.symbols_not_found_list.clear()
+                            print('file_name', self.file_name)
+                        elif NewComponents.list_of_added_file_paths:
+                            path_to_symbol = False
+                            for paths in NewComponents.list_of_added_file_paths:
+                                symbol_exists_in_path = os.path.exists(os.path.join(paths, file_name) + ".asy")
+                                print("path_to_symbol", symbol_exists_in_path)
+                                if symbol_exists_in_path:
+                                    path_to_symbol = os.path.join(paths, file_name) + ".asy"
+                                    break
+                            if path_to_symbol is not False:
+                                symbol_path = path_to_symbol
+                                self.open_component(symbol_path, sketch=False)
+                                self.file_name = file_name
+                                self.save_component(self.file_name, self.SINGLE_SYMBOL, found=False)
+                                self.load_component(self.file_name, x_coordinate=x_coordinate,
+                                                    y_coordinate=y_coordinate,
+                                                    window_x=window_x, window_y=window_y, angle=angle)
+                                self.symbols_not_found_list.clear()
+                            if path_to_symbol is False:
+                                raise FileNotFoundError
+                        else:
+                            raise FileNotFoundError
+
                     except (FileNotFoundError, PermissionError):
                         print('bye')
 
@@ -356,7 +390,7 @@ class NewComponents:
             Returns
             -----------------------
             modified_components
-                A list of coordinates of the given component
+                A list(int) of coordinates of the given component after they have been filtered
 
         """
         # Store all components coordinates in a list on the same line
@@ -528,6 +562,7 @@ class NewComponents:
         except FileNotFoundError:
             pass
 
+    # Save multiple symbol files at once
     def open_folder(self, fpath=None, sketch=False):
         # Open and return file path
         try:
@@ -576,6 +611,38 @@ class NewComponents:
     def get_symbols_not_found(self):
         return list(dict.fromkeys(self.symbols_not_found_list))
 
+    # This is a fixed a variable and should not be changed once assigned the first time at the beginning of the class
+    # it is used to change the default_path variable back to its original path if it has been changed before by the
+    # set default path method outside the class
+    @staticmethod
+    def get_fixed_default_path():
+        return NewComponents.fixed_default_path
+
+    @staticmethod
+    def add_new_path(path_to_add):
+        NewComponents.list_of_added_file_paths.append(path_to_add)
+
+    @staticmethod
+    def clear_file_paths(all_file_paths=True, index=0):
+        if all_file_paths is True:
+            NewComponents.list_of_added_file_paths.clear()
+        if all_file_paths is False:
+            NewComponents.list_of_added_file_paths.pop(index)
+
+    @staticmethod
+    def get_added_file_paths():
+        return NewComponents.list_of_added_file_paths
+
+    # Default Symbols Path which should be default LTSpice installation location
+    @staticmethod
+    def get_default_path():
+        return NewComponents.default_path
+
+    @staticmethod
+    def set_default_path(new_path):
+        NewComponents.default_path = new_path
+
+    # Components Properties when drawn
     @staticmethod
     def set_line_width(line_width):
         NewComponents.line_width = line_width

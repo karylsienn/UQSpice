@@ -5,7 +5,6 @@ import customtkinter
 import tksheet
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
 import tkinter_modification as tkmod
 import gui_events as guievents
 
@@ -62,13 +61,28 @@ root.title('Welcome to EMC Statistical Analysis Tool')
 
 # style = ttk.Style()
 # style.theme_create("dark_theme", parent="alt", settings={
-#         "TNotebook": {"configure": {"tabmargins": [2, 5, 2, 0] } },
+#         "TNotebook": {"configure": {"tabmargins": [2, 5, 2, 0], 'background': '' } },
 #         "TNotebook.Tab": {
 #             "configure": {"padding": [5, 1], "background": DARK_THEME_COLOUR, "foreground": 'white'},
 #             "map":       {"background": [("selected", 'blue')],
 #                           "expand": [("selected", [1, 1, 1, 0])] } } } )
 #
 # style.theme_use("dark_theme")
+BACKGROUND = '#212325'
+TAB_HIGHLIGHT_COLOUR = '#595959'
+TEXT_COLOUR = 'white'
+
+style = ttk.Style(root)
+style.theme_create("dark_theme", parent='alt', settings={
+    "TNotebook": {"configure": {"tabmargins": [2, 5, 2, 0], "background": BACKGROUND}},
+    "TNotebook.Tab": {
+        "configure": {"padding": [5, 1], "background": BACKGROUND, "foreground": TEXT_COLOUR},
+        "map": {"background": [("selected", TAB_HIGHLIGHT_COLOUR)],
+                "expand": [("selected", [1, 1, 1, 0])]}},
+    # 'TFrame': {'configure': {'background': BACKGROUND}}
+})
+
+style.theme_use("dark_theme")
 tabControl = ttk.Notebook(schematic_analysis)
 
 # Creating a tab for drawing schematics and another tab for graphs
@@ -87,7 +101,7 @@ component_parameters_frame_scroll = tkmod.ScrollableFrame(component_parameters_f
 schematic_canvas_frame = tk.Frame(schematic_params,
                                   width=700,
                                   height=500,
-                                  #background='gray86'
+                                  # background='gray86'
                                   )
 
 canvas = tkmod.ResizingCanvas(schematic_canvas_frame,
@@ -95,7 +109,7 @@ canvas = tkmod.ResizingCanvas(schematic_canvas_frame,
                               height=600,
                               highlightthickness=0,
                               resize_zoom=True
-                              #background=DARK_THEME_COLOUR
+                              # background=DARK_THEME_COLOUR
                               )
 
 all_component_parameters = []
@@ -141,7 +155,7 @@ editMenu = tkmod.CTkMenu(menu)
 editMenu.add_command(label="Undo", font=FONT_SIZE)
 editMenu.add_command(label="Redo", font=FONT_SIZE)
 Preferences_submenu = tkmod.CTkMenu(editMenu)
-Preferences_submenu.add_command(label='Component Drawings Preferences',
+Preferences_submenu.add_command(label='Paths and drawing',
                                 font=FONT_SIZE, command=lambda: guievents.set_preferences(root, schematic_analysis))
 Preferences_submenu.add_command(label="Dark Theme",
                                 font=FONT_SIZE, command=lambda: guievents.dark_theme_set(root, canvas))
@@ -191,7 +205,8 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
                                                                   enter_parameters_button,
                                                                   entering_parameters_window,
                                                                   delete_all_constants_button,
-                                                                  root)
+                                                                  root,
+                                                                  tabControl)
                                           )
 
 clear_canvas_button = customtkinter.CTkButton(canvas,
@@ -221,7 +236,14 @@ raw_file_button_table = customtkinter.CTkButton(spice_data,
                                                                                         subplots,
                                                                                         schematic_analysis_open=True))
 
-raw_file_button_table.pack(pady=6, padx=6, side=tk.BOTTOM)
+raw_file_button_table.pack(padx=240, pady=10, ipadx=20, side=tk.RIGHT)
+
+
+clear_table_button = customtkinter.CTkButton(spice_data,
+                                             text='Clear Table',
+                                             command=lambda: guievents.clear_table(data_table))
+
+clear_table_button.pack(padx=0, pady=10, ipadx=20, side=tk.RIGHT)
 
 # ------------------------------------------------- Graph Tab ----------------------------------------------------------
 figure = plt.Figure(figsize=(8, 6), dpi=100)
@@ -315,8 +337,6 @@ add_new_component_button.pack(pady=6, padx=30, anchor=tk.NE)
 exit_app_button.pack(pady=6, padx=30, anchor=tk.NE)
 root_frame.pack(expand=True, fill=tk.BOTH)
 # open file button and tab control in schematic_analysis window
-enter_parameters_button.pack(padx=0, pady=10, side=tk.BOTTOM)
-openfile_button.pack(padx=0, pady=2, side=tk.BOTTOM)
 tabControl.pack(expand=True, fill=tk.BOTH)
 chart_type.get_tk_widget().pack(side='top', fill='both')
 # schematic params frame children
@@ -330,6 +350,12 @@ separator = ttk.Separator(schematic_params, orient='vertical')
 separator.pack(side=tk.RIGHT, fill=tk.Y)
 schematic_canvas_frame.pack(side='left', fill=tk.BOTH, expand=True)
 schematic_canvas_frame.pack_propagate(False)
+# TODO: CHANGE BUTTONS TO BE ON SAME ROW
+buttons_separator = ttk.Separator(schematic_analysis, orient='horizontal')
+buttons_separator.pack(fill=tk.X)
+enter_parameters_button.pack(padx=240, pady=10, ipadx=20, side=tk.RIGHT)
+openfile_button.pack(padx=0, pady=10, ipadx=20, side=tk.RIGHT)
+
 # Prevents Component parameters Frame From Resizing
 # component_parameters_frame_scroll.pack_propagate(False)
 
