@@ -376,7 +376,7 @@ def set_preferences(root, schematic_analysis):
 
         reset_to_default_path_button.grid(row=4, column=4, pady=5)
 
-        browse_icon = tk.PhotoImage(file=r"images\folder_icon_test.png")
+        browse_icon = tk.PhotoImage(file=os.path.join("images", "folder_icon_test.png"))
         change_default_path_button = customtkinter.CTkButton(file_path_preferences,
                                                              image=browse_icon,
                                                              text='',
