@@ -3,9 +3,65 @@ import re, mmap, warnings, os
 from datetime import datetime
 import argparse
 import pandas as pd
+from typing import List
 
 ENC_UTF16LE = 'utf-16 le'
 ENC_UTF8 = 'utf8'
+
+
+class NetlistReader:
+    """Reads the netlist file and returns its content as a list of strings"""
+    def read(netlist_path: str) -> List[str]:
+        # Assert the file exists.
+        if os.path.exists(netlist_path):
+            # Parse the file and return a list of strings
+            with open(netlist_path, 'rb') as netlist:
+                # Guess the encoding
+                bytes = netlist.read(2)
+                if bytes.decode(ENC_UTF16LE) == '*':
+                    encoding = ENC_UTF16LE
+                elif bytes.decode(ENC_UTF8)[0] == '*':
+                    encoding = ENC_UTF8
+                else:
+                    raise UnicodeEncodeError(f"Unknown encoding. Make sure the files are either in {ENC_UTF16LE} or {ENC_UTF8}")
+            netlist.close()
+
+            with open(netlist_path, 'r', encoding=encoding) as netlist:
+                netlist_lines = netlist.readlines()
+                netlist_lines = [line.strip("\r\n") for line in netlist_lines]
+            netlist.close()
+            return netlist_lines
+
+        else:
+            raise FileNotFoundError("There was a problem reading your file.")
+
+
+
+class CircuitReader:
+    """Reads the circuit file and returns its content as a list of strings"""
+    def read(circuit_path: str) -> List[str]:
+        # Assert the file exists.
+        if os.path.exists(circuit_path):
+            # Parse the file and return a list of strings
+            with open(circuit_path, 'rb') as netlist:
+                # Guess the encoding
+                bytes = netlist.read(6)
+                if bytes.decode(ENC_UTF16LE) == 'Ver':
+                    encoding = ENC_UTF16LE
+                elif bytes.decode(ENC_UTF8) == 'Versio':
+                    encoding = ENC_UTF8
+                else:
+                    raise UnicodeEncodeError(f"Unknown encoding. Make sure the files are either in {ENC_UTF16LE} or {ENC_UTF8}")
+            netlist.close()
+
+            with open(circuit_path, 'r', encoding=encoding) as netlist:
+                netlist_lines = netlist.readlines()
+                netlist_lines = [line.strip("\r\n") for line in netlist_lines]
+            netlist.close()
+            return netlist_lines
+
+        else:
+            raise FileNotFoundError("There was a problem reading your file.")
 
 
 class LTSpiceReader:

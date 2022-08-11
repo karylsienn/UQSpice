@@ -3,6 +3,36 @@ import sys
 import os
 import subprocess
 
+class PathFinder:
+    """Finds and returns LTSpice path if not provided by the user."""
+    @staticmethod
+    def find_ltspice_path(ltspice_path=None):
+        if ltspice_path and os.path.exists(ltspice_path)\
+            and os.access(ltspice_path, os.X_OK): # Check if it is an executable.
+            ltpath = ltspice_path
+            if sys.platform == 'darwin':
+                cmd_sep = '; '
+            elif sys.platform == 'win32':
+                cmd_sep = ' && '
+            else:
+                raise NotImplementedError("Platforms other than Mac and Windows are not implemented yet")
+        else:
+            try: 
+                if sys.platform == 'darwin':
+                    ltpath = "/Applications/LTspice.app/Contents/MacOS/LTspice"
+                    cmd_sep = "; "
+                elif sys.platform == 'win32':
+                    ltpath = '"C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"'
+                    cmd_sep = " && "
+                else:
+                    ltpath = None
+                    raise NotImplementedError("Platforms other than Mac and Windows are not implemented yet")
+            except Exception as e:
+                raise e
+        
+        return ltpath, cmd_sep
+
+
 class LTSpiceRunner:
     """
     LTSpiceRunner is an interface to the executable of LTSpice.
@@ -13,33 +43,8 @@ class LTSpiceRunner:
 
     """
     def __init__(self, ltspice_path=None) -> None:
-        if ltspice_path and os.path.exists(ltspice_path)\
-            and os.access(ltspice_path, os.X_OK):
-            self._ltspice = ltspice_path
-            if sys.platform == 'darwin':
-                self._cmd_separator = '; '
-            elif sys.platform == 'win32':
-                self._cmd_separator = ' && '
-            else:
-                raise NotImplementedError("Platforms other than Mac and Windows are not implemented yet")
-        else:
-            try: 
-                if sys.platform == 'darwin':
-                    self._ltspice = "/Applications/LTspice.app/Contents/MacOS/LTspice"
-                    self._cmd_separator = "; "
-                elif sys.platform == 'win32':
-                    self._ltspice = '"C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"'
-                    self._cmd_separator = " && "
-                else:
-                    self._ltspice = None
-                    raise NotImplementedError("Platforms other than Mac and Windows are not implemented yet")
-            except Exception as e:
-                raise e
+        self._ltspice_path, self._cmd_separator = PathFinder.find_ltspice_path(ltspice_path)
 
-    def create_netlist(self):
-        # TODO: Create a Netlist from a schematic file. Asc file cannot be run from command line on macOS.
-        
-        pass
 
     def run(self, file_to_run, ascii=False, timeout=20):
         dirname, basename = os.path.dirname(file_to_run), os.path.basename(file_to_run)
