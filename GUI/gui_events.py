@@ -1,4 +1,5 @@
 import os.path
+import threading
 from tkinter import messagebox, ttk
 import mplcursors
 import tkinter as tk
@@ -11,6 +12,8 @@ import new_components as new_comp
 from tkinter.colorchooser import askcolor
 import re
 import customtkinter
+import threading
+
 
 BACKGROUND_COLOUR = '#F0F0F0'
 Mode = 'dark'
@@ -1238,15 +1241,17 @@ def sketch_schematic_asc(schematic,
         # -------------- Pass symbols_and_name_dictionary for allowing capability to change values -------------------
         # ---------------------------------- when clicking on a component --------------------------------------------
 
-        enter_parameters_button.configure(command=lambda: open_new_window(components,
-                                                                          root,
-                                                                          schematic_analysis,
-                                                                          component_parameters_frame,
-                                                                          entering_parameters_window,
-                                                                          component_value_array,
-                                                                          delete_constants_button,
-                                                                          canvas, component_details_dictionary,
-                                                                          symbols_and_name_dictionary))
+        enter_parameters_button.configure(command=lambda: [threading.Thread(target=open_new_window,
+                                                                            args=(components,
+                                                                                  root,
+                                                                                  schematic_analysis,
+                                                                                  component_parameters_frame,
+                                                                                  entering_parameters_window,
+                                                                                  component_value_array,
+                                                                                  delete_constants_button,
+                                                                                  canvas, component_details_dictionary,
+                                                                                  symbols_and_name_dictionary)).start(),
+                                                                            ])
         # Store all component names in a list after removing new lines
         components = components.split('\n')
         # Remove last element which is empty
@@ -1878,7 +1883,9 @@ def open_new_window(components,
                                                                              height=25,
                                                                              relief='solid',
                                                                              justify='left',
-                                                                             text_color='black'
+                                                                             text_color='black',
+                                                                             # anchor=tk.W, # Make Text left aligned
+
                                                                              )
 
                 delete_button[circuit_component] = customtkinter.CTkButton(parameters_frame[circuit_component],
@@ -2426,14 +2433,12 @@ def save_all_entered_parameters(component_name,
             # Storing the name label of all parameters
             full_name_labels[circuit_component].configure(text='\n' + component_name[circuit_component]
                                                           + '\nValue: '
-                                                          + list(values_dictionary.values())[circuit_component]
-                                                          + '                         '
-                                                          + '\n           '
-                                                          + '\n')
+                                                          + str(list(values_dictionary.values())[circuit_component])
+                                                          )
 
             delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
             full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
-            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
+            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1, padx=(20, 0))
 
     # print(all_component_parameters)
 

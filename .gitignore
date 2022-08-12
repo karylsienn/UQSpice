@@ -6,3 +6,5 @@ __pycache__
 notebooks/
 *.png
 *.log
+GUI/runners.py
+GUI/sweepers.py
