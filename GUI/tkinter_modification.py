@@ -142,9 +142,14 @@ class CustomToolbar(NavigationToolbar2Tk):
         subplot_number.pack_forget()
 
     def __init__(self, canvas_, parent_, axes, figure):
-        delete_icon = pathlib.Path(r'toolbar images\trash_can')
+        # delete_icon = pathlib.Path(r'toolbar images\trash_can')
         # print(type(delete_icon.name))
-        delete_icon = f'C:\\Users\\moaik\\OneDrive - The University of Nottingham\\NSERP\\UQSpice_0.02\\GUI\\trash_can'
+        # delete_icon_path =
+        # r'C:\\Users\\moaik\\OneDrive - The University of Nottingham\\NSERP\\UQSpice_0.02\\GUI\\images\\trash_can'
+        delete_icon = tk.PhotoImage(file=os.path.join("images", "trash_can.png"))
+        delete_icon = os.path.realpath(os.path.join("images", "trash_can.png"))
+        delete_icon = open(delete_icon, mode='rb')
+        delete_icon.close()
         self.toolitems = (
                           ('Home', 'Reset original view', 'home', 'home'),
                           # ('Back', 'Back to  previous view', 'back', 'back'),
@@ -157,7 +162,6 @@ class CustomToolbar(NavigationToolbar2Tk):
                           (None, None, None, None),
                           # ('Delete subplots', 'Deletes all current subplots', 'trash_can', 'delete_all_subplots')
                           )
-
         self.axes = axes
         self.figure = figure
         NavigationToolbar2Tk.__init__(self, canvas_, parent_)

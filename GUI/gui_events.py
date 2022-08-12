@@ -226,13 +226,15 @@ def save_preferences(default=True):
     new_comp.NewComponents.set_fill_colour(fill_colour)
 
 
-def change_default_path(default_path_box):
+def change_default_path(default_path_box, open_file_dialog=True, new_default_file_path=''):
     # Open and return file path
-    new_default_file_path = fd.askdirectory(
-        title="Select a path for symbols"
-    )
-    default_path_box.delete(0, tk.END)
-    default_path_box.insert(0, new_default_file_path)
+    if open_file_dialog:
+        new_default_file_path = fd.askdirectory(
+            title="Select a path for symbols"
+        )
+    if new_default_file_path:
+        default_path_box.delete(0, tk.END)
+        default_path_box.insert(0, new_default_file_path)
 
 
 def add_file_path(listbox):
@@ -253,27 +255,45 @@ def add_file_path(listbox):
         pass
 
 
-def if_path_exists(path_value):
-    if os.path.isdir(path_value) is True:
-        return True
-    else:
-        return False
-
-
-def save_file_paths(default_file_path, file_paths):
-    if os.path.isdir(default_file_path.get()) is True:
-        new_comp.NewComponents.set_default_path(default_file_path.get())
-    else:
+def save_file_paths(default_symbol_path, default_exe_path, file_paths):
+    symbols_path = False
+    exe_path = False
+    if os.path.isdir(default_symbol_path.get()) is True:
+        new_comp.NewComponents.set_default_path(default_symbol_path.get())
+        print('here')
+        symbols_path = True
+    if os.path.isdir(default_exe_path.get()) is True:
+        print('default exe path')
+        new_comp.NewComponents.set_default_exe_path(default_exe_path.get())
+        exe_path = True
+    if (symbols_path is False) or (exe_path is False):
         messagebox.showinfo(parent=preferences_window, title='Path does not exist',
                             message='The entered default path does not exist please enter a new path')
+        print('False')
+        if symbols_path is False:
+            print(symbols_path)
+            change_default_path(default_symbol_path,
+                                open_file_dialog=False,
+                                new_default_file_path=new_comp.NewComponents.get_default_path())
+
+        if exe_path is False:
+            change_default_path(default_exe_path,
+                                open_file_dialog=False,
+                                new_default_file_path=new_comp.NewComponents.get_default_exe_path())
 
 
-def reset_to_default_path(listbox, default_file_path_box):
+def reset_to_default_path(listbox, default_symbols_path, default_exe_path):
     file_paths = listbox.get(0, tk.END)
     number_of_file_paths = len(file_paths)
 
-    default_file_path_box.delete(0, tk.END)
-    default_file_path_box.insert(0, new_comp.NewComponents.get_fixed_default_path())
+    default_symbols_path.delete(0, tk.END)
+    default_symbols_path.insert(0, new_comp.NewComponents.get_fixed_default_path())
+    new_comp.NewComponents.set_default_path(new_comp.NewComponents.get_fixed_default_path())
+
+    default_exe_path.delete(0, tk.END)
+    default_exe_path.insert(0, new_comp.NewComponents.get_fixed_default_exe_path())
+    new_comp.NewComponents.set_default_exe_path(new_comp.NewComponents.get_fixed_default_exe_path())
+
     new_comp.NewComponents.clear_file_paths(all_file_paths=True)
     while number_of_file_paths != -1:
         listbox.delete(number_of_file_paths)
@@ -302,12 +322,12 @@ def set_preferences(root, schematic_analysis):
         preferences_window = customtkinter.CTkToplevel(schematic_analysis)
 
         # Setting up window size and position
-        preferences_window_width = 800  # width for the Tk schematic_analysis
-        preferences_window_height = 400  # height for the Tk schematic_analysis
+        preferences_window_width = 800
+        preferences_window_height = 400
         # Find the location of the main schematic analysis window
         screen_width = schematic_analysis.winfo_x()  # width of the screen
         screen_height = schematic_analysis.winfo_y()  # height of the screen
-        # calculate x and y coordinates for the Tk schematic_analysis window
+        # calculate x and y coordinates for the preferences window
         preferences_window_x = screen_width + 40
         preferences_window_y = screen_height + 40
 
@@ -329,23 +349,33 @@ def set_preferences(root, schematic_analysis):
         preferences_tabs.pack(expand=True, fill=tk.BOTH)
 
         # ---------------------------------------------- file path preferences -----------------------------------------
-        # Default file path written with a label and an entry box
+        # Default exe file path written with a label and an entry box
+        default_exe_file_path_label = customtkinter.CTkLabel(file_path_preferences,
+                                                             text='Default LTSpice executable path: ')
+
+        default_exe_file_path_label.grid(row=0, column=2, columnspan=4, padx=30)
+
+        default_exe_file_path_box = customtkinter.CTkEntry(file_path_preferences, width=640)
+        default_exe_file_path_box.insert(0, new_comp.NewComponents.get_default_exe_path())
+        default_exe_file_path_box.grid(row=1, column=2, columnspan=4, padx=15, pady=0)
+
+        # Default symbol file path written with a label and an entry box
         default_file_path_label = customtkinter.CTkLabel(file_path_preferences,
                                                          text='Default LTSpice Symbols path: ')
 
-        default_file_path_label.grid(row=0, column=2, columnspan=4, padx=30)
+        default_file_path_label.grid(row=3, column=2, columnspan=4, padx=30)
 
-        default_file_path_box = customtkinter.CTkEntry(file_path_preferences, width=640, validate='key')
+        default_file_path_box = customtkinter.CTkEntry(file_path_preferences, width=640)
         default_file_path_box.insert(0, new_comp.NewComponents.get_default_path())
-        default_file_path_box.grid(row=1, column=2, columnspan=4, padx=15, pady=10)
+        default_file_path_box.grid(row=4, column=2, columnspan=4, padx=15)
 
         # Create a list containing all extra file paths to check if symbols are not found
-        file_paths = customtkinter.CTkLabel(file_path_preferences, text='Additional file paths to look into:')
-        file_paths.grid(row=2, column=2, columnspan=4, padx=30)
+        file_paths = customtkinter.CTkLabel(file_path_preferences, text='Additional symbol file paths:')
+        file_paths.grid(row=5, column=2, columnspan=4, padx=30)
 
         # Create a list containing all extra file paths to check if symbols are not found
         file_paths = tk.Listbox(file_path_preferences, width=120)
-        file_paths.grid(row=3, column=2, columnspan=4, padx=30, pady=10)
+        file_paths.grid(row=6, column=2, columnspan=4, padx=30)
 
         all_file_paths = new_comp.NewComponents.get_added_file_paths()
         if all_file_paths:
@@ -353,28 +383,31 @@ def set_preferences(root, schematic_analysis):
                 file_paths.insert(paths, all_file_paths[paths])
 
         save_path_button = customtkinter.CTkButton(file_path_preferences, text='Save file paths',
-                                                   command=lambda: save_file_paths(default_file_path_box, file_paths))
-        save_path_button.grid(row=4, column=5, pady=5)
+                                                   command=lambda: save_file_paths(default_file_path_box,
+                                                                                   default_exe_file_path_box,
+                                                                                   file_paths))
+        save_path_button.grid(row=7, column=5, pady=10)
         add_new_file_path_button = customtkinter.CTkButton(file_path_preferences,
                                                            text='Add new file path',
                                                            command=lambda: add_file_path(file_paths))
 
-        add_new_file_path_button.grid(row=4, column=2, pady=5)
+        add_new_file_path_button.grid(row=7, column=2, pady=10)
 
         delete_file_path_button = customtkinter.CTkButton(file_path_preferences,
                                                           text='Delete file path',
                                                           command=lambda:
                                                           delete_selected_path(file_paths))
 
-        delete_file_path_button.grid(row=4, column=3, pady=5)
+        delete_file_path_button.grid(row=7, column=3, pady=10)
 
         reset_to_default_path_button = customtkinter.CTkButton(file_path_preferences,
                                                                text='Reset to default',
                                                                command=lambda:
                                                                reset_to_default_path(file_paths,
-                                                                                     default_file_path_box))
+                                                                                     default_file_path_box,
+                                                                                     default_exe_file_path_box))
 
-        reset_to_default_path_button.grid(row=4, column=4, pady=5)
+        reset_to_default_path_button.grid(row=7, column=4, pady=10)
 
         browse_icon = tk.PhotoImage(file=os.path.join("images", "folder_icon_test.png"))
         change_default_path_button = customtkinter.CTkButton(file_path_preferences,
@@ -388,7 +421,22 @@ def set_preferences(root, schematic_analysis):
                                                              height=3,
                                                              width=5,
                                                              command=lambda: change_default_path(default_file_path_box))
-        change_default_path_button.grid(row=1, column=5)
+        change_default_path_button.grid(row=4, column=5)
+
+        change_default_exe_path_button = customtkinter.CTkButton(file_path_preferences,
+                                                                 image=browse_icon,
+                                                                 text='',
+                                                                 compound=tk.RIGHT,
+                                                                 bg_color='#343638',
+                                                                 fg_color='#343638',
+                                                                 hover_color='#343638',
+                                                                 borderwidth=0,
+                                                                 height=3,
+                                                                 width=5,
+                                                                 command=lambda:
+                                                                 change_default_path(default_exe_file_path_box))
+        change_default_exe_path_button.grid(row=1, column=5)
+
         file_path_preferences.grid_rowconfigure(tuple(range(100)), weight=1)
         file_path_preferences.grid_columnconfigure(tuple(range(100)), weight=1)
         # ---------------------------------------------- Component Drawing Preferences ---------------------------------
@@ -418,9 +466,10 @@ def set_preferences(root, schematic_analysis):
 
         # Window Children
         preferences_window.minsize(preferences_window_width, preferences_window_height)
-        # preferences_window.resizable(height=False, width=False)
+        preferences_window.resizable(height=False, width=False)
 
-        slider_label = customtkinter.CTkLabel(master=preferences_frame, width=20, text='Line Width = 1.0',
+        slider_label = customtkinter.CTkLabel(master=preferences_frame, width=20,
+                                              text='Line Width = ' + str(line_width),
                                               text_color='black')
         slider = customtkinter.CTkSlider(master=preferences_frame, from_=1, to=5, number_of_steps=40)
 
@@ -428,7 +477,7 @@ def set_preferences(root, schematic_analysis):
         slider.pack(side=tk.TOP, pady=5)
 
         slider.configure(command=lambda value: slider_event(slider_label, slider, preferences_canvas))
-        slider.set(1.0)
+        slider.set(float(line_width))
 
         outline_colour_button = customtkinter.CTkButton(preferences_frame,
                                                         text='Components Outline Colour',
@@ -452,11 +501,11 @@ def set_preferences(root, schematic_analysis):
         default_setting_button.pack(side=tk.TOP, pady=5)
 
         sample_components = comp.ComponentSketcher(preferences_canvas)
-        sample_components.draw_ground_flags(400, 60, 'black', 1.0, '')
-        sample_components.draw_diode(50, 50)
-        sample_components.draw_npn_transistor(200, 60)
-        sample_components.draw_capacitor(500, 60)
-        preferences_canvas.create_line(50, 200, 400, 200, tags='line')
+        sample_components.draw_ground_flags(400, 60, outline_colour, line_width, fill_colour)
+        sample_components.draw_diode(50, 50, outline_colour, line_width, fill_colour)
+        sample_components.draw_npn_transistor(200, 60, outline_colour, line_width, fill_colour)
+        sample_components.draw_capacitor(500, 60, outline_colour, line_width, fill_colour)
+        preferences_canvas.create_line(50, 200, 400, 200, tags='line', fill=outline_colour, width=line_width)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -917,6 +966,7 @@ def sketch_schematic_asc(schematic,
         labels.destroy()
     # Clear all previous component parameters
     all_component_parameters.clear()
+    flag_error = ''
 
     # Clear all previous drawn wires, components, power flags, voltage sources, etc.
     wires = ''
@@ -929,6 +979,8 @@ def sketch_schematic_asc(schematic,
     circuit_symbols = ''
     full_list = ''
     trial = ''
+    symbols_and_name = ''
+    component_have_no_values = False
 
     for lines in schematic:
 
@@ -946,6 +998,7 @@ def sketch_schematic_asc(schematic,
                                                            .replace('Digital\\', '')\
                                                            .replace('Digital\\\\', '')
             full_list += ntpath.basename(lines).replace("SYMBOL ", '')
+            symbols_and_name += ntpath.basename(lines).replace("SYMBOL", '')
 
         # Store all power flags used in the circuit
         if "FLAG" in lines:
@@ -959,42 +1012,89 @@ def sketch_schematic_asc(schematic,
             components += lines.replace("SYMATTR InstName ", '')
             component_name_and_values += lines.replace("SYMATTR InstName ", '')
             component_name_and_windows += lines.replace("SYMATTR InstName ", '')
+            symbols_and_name += lines.replace("SYMATTR InstName ", '')
             comp_index = comp_index + 1
         if "SYMATTR Value" in lines:
             component_name_and_values += lines.replace("SYMATTR Value ", '')
 
     # ------------------------------------------Cleaning and filtering of elements--------------------------------------
     try:
+        flag_error = 'Error when finding which components have values'
+        components_with_values = []
+        # Checking if a circuit has any values
+        for values in range(len(schematic)):
+
+            if 'SYMATTR Value' in schematic[values]:
+
+                components_with_values += schematic[values - 1].replace("SYMATTR InstName ", '')
+                component_have_no_values = False
+            # If the circuit does not contain values predefined in LTSpice,
+            # then later on in the code just assign zeros to those components
+            else:
+                component_have_no_values = True
+        components_with_values = "".join(components_with_values).split('\n')
+        components_with_values.pop()
+        value_while_loop = 0
+        while value_while_loop < len(components_with_values) - 2:
+            if 'WINDOW' in components_with_values[value_while_loop]:
+                del components_with_values[value_while_loop]
+
+            value_while_loop += 1
+
         circuit_symbols_list = circuit_symbols.split(' ')
         circuit_symbols_list.pop()
+
+        symbols_and_name = symbols_and_name.split('\n')
+        symbols_and_name.pop()
+        # Removing Rotation R from components
+        for symbols in range(len(symbols_and_name)):
+            symbols_and_name[symbols] = re.sub(r' R\d.*', ' ', symbols_and_name[symbols])
+        # symbols_and_name = ''.join(symbols_and_name)
+        print('symbols and name', symbols_and_name)
+        symbols_and_name = ''.join(symbols_and_name).split(' ')
+
+        while '' in symbols_and_name:
+            symbols_and_name.remove('')
+
+        for symbol in range(0, len(symbols_and_name)):
+            if symbols_and_name[symbol].lstrip("-").isdigit():
+                symbols_and_name[symbol] = ''
+
+        while '' in symbols_and_name:
+            symbols_and_name.remove('')
+
+        symbols_and_name_dictionary = {}
+        for sym in range(0, len(symbols_and_name), 2):
+            symbols_and_name_dictionary[symbols_and_name[sym + 1]] = symbols_and_name[sym]
+        print('symbols and name', symbols_and_name_dictionary)
+
         full_list = full_list.split('\n')
-        flag_error = 'Window Filtering 1'
+        flag_error = 'Error when filtering the window parameter - stage 1'
         component_name_and_windows_list = component_name_and_windows.split('\n')
         for window in range(0, len(component_name_and_windows_list)):
             if 'Left' in component_name_and_windows_list[window] \
                     or 'Right' in component_name_and_windows_list[window] \
                     or 'VBottom' in component_name_and_windows_list[window] \
                     or 'VTop' in component_name_and_windows_list[window]:
-                component_name_and_windows_list[window] = re.sub(r"^\s+|\s+$", '',
-                                                                 re.sub(r'[0-9].*? ', '', re.sub(r'[A-Z]', '',
-                                                                                                 re.sub(
-                                                                                                     r'[A-Z][a-z]*.' + '\d',
-                                                                                                     '',
-                                                                                                     component_name_and_windows_list[
-                                                                                                         window])), 1))
+                component_name_and_windows_list[window] = \
+                    re.sub(r"^\s+|\s+$", '',
+                           re.sub(r'[0-9].*? ', '',
+                                  re.sub(r'[A-Z]', '',
+                                         re.sub(r'[A-Z][a-z]*.' + '\d', '',
+                                                component_name_and_windows_list[window])), 1))
 
         for window in range(0, len(full_list)):
             if 'Left' in full_list[window] \
                     or 'Right' in full_list[window] \
                     or 'VBottom' in full_list[window] \
                     or 'VTop' in full_list[window]:
-                full_list[window] = re.sub(r'VBottom.' + '\d', '', re.sub(r'VTop.' + '\d', '', \
+                full_list[window] = re.sub(r'VBottom.' + '\d', '', re.sub(r'VTop.' + '\d', '',
                                                                           re.sub(r'Right.' + '\d', '',
                                                                                  re.sub(r'Left.' + '\d', '',
                                                                                         full_list[window]))))
         old_list = full_list
         full_list = ' '.join(full_list).split(' ')
-        flag_error = 'Window Filtering 2'
+        flag_error = 'Error when filtering the window parameter - stage 2'
         # Removing \\ from component names
         for window in range(0, len(full_list)):
             if '\\' or '\\\\' in full_list[window]:
@@ -1020,14 +1120,14 @@ def sketch_schematic_asc(schematic,
 
         print(full_list)
         while_window_counter = 0
-        flag_error = 'Window Filtering 3'
+        flag_error = 'Error when filtering the window parameter - stage 3'
         # Adding 0 for components which have no rotations
         while while_window_counter < len(full_list):
             if (while_window_counter + 1) < len(full_list):
                 if (('R0' in full_list[while_window_counter]
                      or 'R90' in full_list[while_window_counter]
                      or 'R180' in full_list[while_window_counter]
-                     or 'R270' in full_list[while_window_counter]) \
+                     or 'R270' in full_list[while_window_counter])
                         and re.search('[a-zA-Z]', full_list[while_window_counter + 1])):
                     # print(full_list[while_window_counter + 1])
                     full_list.insert(while_window_counter + 1, str(0))
@@ -1063,13 +1163,13 @@ def sketch_schematic_asc(schematic,
             full_list.append(str(0))
             full_list.append(str(0))
             full_list.append(str(0))
-        print('full filtered list ', end='')
-        print(len(full_list), end='')
-        print(' ', full_list)
+
+        print('full filtered list ', len(full_list), full_list)
+
         component_name_and_windows_list.pop()
         filtered_component_name_and_window = ' '.join(component_name_and_windows_list).split(' ')
 
-        flag_error = 'Symbols integers'
+        flag_error = 'Error when converting values of components to integers'
         for element in range(0, len(circuit_symbols_list), 4):
             circuit_symbols_list[element + 1] = int(circuit_symbols_list[element + 1])
             circuit_symbols_list[element + 2] = int(circuit_symbols_list[element + 2])
@@ -1078,23 +1178,52 @@ def sketch_schematic_asc(schematic,
         component_name_and_values = component_name_and_values.split('\n')
         component_name_and_values.pop()
         value = 0
-        flag_error = 'Dictionary Values and Names'
+        flag_error = 'Error when storing component names and values in dictionary'
         print(component_name_and_values)
-        while value <= len(component_name_and_values) - 2:
-            if (not component_name_and_values[value].isdigit()) and (not component_name_and_values[value + 1].isdigit()):
+        component_already_has_value_flag = False
+        stopping_condition = len(component_name_and_values)
+        while value < stopping_condition:
+            # Find if a component has more than one value stored and then skipping those values
+            if 'Value' in component_name_and_values[value]:
+                elements_to_skip = component_name_and_values[value].replace('SYMATTR ', '')
+                elements_to_skip = elements_to_skip[0:6].replace('Value', '')
+                elements_to_skip = int(elements_to_skip) + 1
+                value += elements_to_skip
+            # If a component already has a value from LTSpice then skip those values
+            if components_with_values:
+                for elements in components_with_values:
+                    if component_name_and_values[value] == elements:
+                        # print('true:', component_name_and_values[value], value)
+                        value += 2
+                        component_already_has_value_flag = True
+            # Place a zero for components which have no values at all
+            if component_already_has_value_flag is False:
                 component_name_and_values.insert(value + 1, '0')
-            value += 1
-        if not component_name_and_values[-1].isdigit():
-            component_name_and_values.insert(len(component_name_and_values), '0')
+                stopping_condition += 1
+                value += 2
+
+            component_already_has_value_flag = False
+
         print(component_name_and_values)
-        component_details_dictionary = {'Component Name': 1}
+        component_details_dictionary = {}
+        comps = 0
+
         # Creating a dictionary to store component names and values
-        for comps in range(0, len(component_name_and_values) + 1, 2):
-            if (comps + 1) >= len(component_name_and_values):
-                component_details_dictionary[component_name_and_values[comps - 2]] = component_name_and_values[comps - 1]
-                break
+        while comps <= len(component_name_and_values) - 2:
+            # If a component has two attributes like (VALUE2, component name, VALUE)
+            # Then store as {component: {VALUE, VALUE2}}
+            if 'Value2' in component_name_and_values[comps]:
+                component_details_dictionary[component_name_and_values[comps + 1]] = \
+                    {component_name_and_values[comps].replace('SYMATTR Value2 ', ''),
+                     component_name_and_values[comps + 2]}
+
+                comps += 3
+            # For components which just have a single value like component_name, VALUE
+            # then store as {component_name: VALUE}
             else:
                 component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
+                comps += 2
+
         print(component_details_dictionary)
 
         # Store all component names in a list after removing new lines
@@ -1116,8 +1245,8 @@ def sketch_schematic_asc(schematic,
                                                                           delete_constants_button,
                                                                           canvas))
 
-        # Some components are drawn at negative values, which do not appear at all in the canvas, for this reason an
-        # adjustment is made to all coordinates to move them into an area which can be displayed in.
+        # Used for moving the objects to a new location in the canvas
+        # This was originally used when the canvas was not scrollable as components did not appear at negative values
         adjustment = 0
 # -------------------------------------------- Separating Wires --------------------------------------------------------
         modified_coordinates = new_comp.NewComponents.filter_components(wires, adjustment)
@@ -1177,15 +1306,17 @@ def sketch_schematic_asc(schematic,
                                fill=outline_colour,
                                width=line_width)
 
-# -------------------------------------------- Drawing Other Power Flags -------------------------------------------
+# -------------------------------------------- Drawing Other Power Flags -----------------------------------------------
         # TODO: Implement names in remaining power flags
-
+        drawn_power_flags = len(other_power_flags) * [None]
         for power_flag in range(0, len(other_power_flags), 3):
-            drawing_components.draw_other_power_flags(start_coordinate_x=other_power_flags[power_flag],
+            drawing_components.draw_other_power_flags(power_flags=drawn_power_flags,
+                                                      element=power_flag,
+                                                      start_coordinate_x=other_power_flags[power_flag],
                                                       start_coordinate_y=other_power_flags[power_flag + 1],
-                                                      power_flag=other_power_flags[power_flag + 2])
+                                                      power_flag_name=other_power_flags[power_flag + 2])
 
-        flag_error = 'Drawing Symbols'
+        flag_error = 'Error when drawing symbols'
         print(circuit_symbols_list)
         component_drawn = ''
         list_to_add = []
@@ -1194,6 +1325,7 @@ def sketch_schematic_asc(schematic,
         for symbol in range(0, len(full_list), 8):
             try:
                 if full_list[symbol + 3] == 'R0' or full_list[symbol + 3] == 0:
+                    # TODO: issue here if it does not work with mac, encoding should be default to UTF-8
                     circuit_comps.load_component(file_name=full_list[symbol], encoding=encoding,
                                                  x_coordinate=int(full_list[symbol + 1]) + adjustment,
                                                  y_coordinate=int(full_list[symbol + 2]) + adjustment,
@@ -1252,9 +1384,79 @@ def sketch_schematic_asc(schematic,
     #     canvas.tag_bind(resistor_elements, '<ButtonPress-1>',
     #                     lambda event,
     #                     elem=resistor_elements: on_resistor_press(event, elem, components, canvas))
+    #     overlapping_power_coordinates = drawn_power_flags
+    #     while None in drawn_power_flags:
+    #         drawn_power_flags.remove(None)
+    #     flag_error = 'Overlapping Error'
+    #     print(drawn_power_flags)
+    #     if drawn_power_flags:
+    #         for elements in drawn_power_flags:
+    #             power_flag_to_check = canvas.coords(elements)
+    #             print(canvas.coords(elements))
+    #
+    #             print('overlap', canvas.find_overlapping(power_flag_to_check[0],
+    #                                                      power_flag_to_check[1],
+    #                                                      power_flag_to_check[2],
+    #                                                      power_flag_to_check[3]))
+    #
+    #             overlap = canvas.find_overlapping(power_flag_to_check[0],
+    #                                               power_flag_to_check[1],
+    #                                               power_flag_to_check[2],
+    #                                               power_flag_to_check[3])
+    #
+    #             drawing_components.rotate(power_flag_to_check, power_flag_to_check[0],
+    #                                       power_flag_to_check[1], 'R0', 'power_flag_0', 'polygon'),
+    #             drawing_components.rotate(power_flag_to_check, power_flag_to_check[0],
+    #                                       power_flag_to_check[1], 'R90', 'power_flag_90', 'polygon'),
+    #             drawing_components.rotate(power_flag_to_check, power_flag_to_check[0],
+    #                                       power_flag_to_check[1], 'R180', 'power_flag_180', 'polygon'),
+    #             drawing_components.rotate(power_flag_to_check, power_flag_to_check[0],
+    #                                       power_flag_to_check[1], 'R270', 'power_flag_270', 'polygon')
+    #
+    #             check_all_rotations_overlap = [canvas.coords('power_flag_0_rotated'),
+    #                                            canvas.coords('power_flag_90_rotated'),
+    #                                            canvas.coords('power_flag_180_rotated'),
+    #                                            canvas.coords('power_flag_270_rotated')]
+    #
+    #             rotation_overlap = [len(canvas.find_overlapping(check_all_rotations_overlap[0][0],
+    #                                                             check_all_rotations_overlap[0][1],
+    #                                                             check_all_rotations_overlap[0][2],
+    #                                                             check_all_rotations_overlap[0][3])),
+    #
+    #                                 len(canvas.find_overlapping(check_all_rotations_overlap[1][0],
+    #                                                             check_all_rotations_overlap[1][1],
+    #                                                             check_all_rotations_overlap[1][2],
+    #                                                             check_all_rotations_overlap[1][3])),
+    #
+    #                                 len(canvas.find_overlapping(check_all_rotations_overlap[2][0],
+    #                                                             check_all_rotations_overlap[2][1],
+    #                                                             check_all_rotations_overlap[2][2],
+    #                                                             check_all_rotations_overlap[2][3])),
+    #
+    #                                 len(canvas.find_overlapping(check_all_rotations_overlap[3][0],
+    #                                                             check_all_rotations_overlap[3][1],
+    #                                                             check_all_rotations_overlap[3][2],
+    #                                                             check_all_rotations_overlap[3][3]))
+    #                                 ]
+    #             print('rotation overlap', rotation_overlap.index(min(rotation_overlap)))
+    #             print(check_all_rotations_overlap)
+    #             canvas.delete(elements)
+    #             canvas.delete('power_flag_0_rotated')
+    #             canvas.delete('power_flag_90_rotated')
+    #             canvas.delete('power_flag_180_rotated')
+    #             canvas.delete('power_flag_270_rotated')
+    #             if len(overlap) == 2:
+    #                 drawing_components.rotate(power_flag_to_check, power_flag_to_check[0],
+    #                                           power_flag_to_check[1], 'R0', 'power_flag', 'polygon')
+    #             if len(overlap) == 3:
+    #                 drawing_components.rotate(power_flag_to_check, power_flag_to_check[0],
+    #                                           power_flag_to_check[1], 'R90', 'power_flag', 'polygon')
+    #             if len(overlap) > 3:
+    #                 drawing_components.rotate(power_flag_to_check, power_flag_to_check[0],
+    #                                           power_flag_to_check[1], 'R270', 'power_flag', 'polygon')
 
     except IndexError:
-        messagebox.showerror('No Components', 'Please select a schematic with components')
+        messagebox.showerror('Error', message=flag_error, parent=schematic_analysis)
         print(flag_error)
 
 
