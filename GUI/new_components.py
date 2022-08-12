@@ -40,28 +40,43 @@ class NewComponents:
         *sketch_component: sketches the component after it has been selected, is called by open_component method
         *open_component: opens a symbol of type .asy and then calls sketch_component for sketching
     """
+    # Customising Components when drawing
     line_width = 1
     line_colour = 'black'
     fill_colour = ''
+
+    # Default symbols path for LTSpice, the fixed default path will remain unchanged at all once it has been set
     default_path = None
+    fixed_default_exe_path = None
+    # Default executable path for LTSpice, the fixed default path will remain unchanged at all once it has been set
+    default_exe_path = None
     fixed_default_path = None
+    # Additional Symbol File paths to look into if added by the user
     list_of_added_file_paths = []
     try:
         if sys.platform == 'darwin':
             default_path = "/Applications/LTspice.app/Contents/MacOS/LTspice/lib/sym"
             fixed_default_path = "/Applications/LTspice.app/Contents/MacOS/LTspice/lib/sym"
+            default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
+            fixed_default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
 
         elif sys.platform == 'win32':
             default_path = r"C:/Program Files/LTC/LTspiceXVII/lib/sym/"
             fixed_default_path = r"C:/Program Files/LTC/LTspiceXVII/lib/sym/"
+            default_exe_path = r"C:/Program Files/LTC/LTspiceXVII"
+            fixed_default_exe_path = r"C:/Program Files/LTC/LTspiceXVII"
 
         elif sys.platform == 'linux':
             default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
             fixed_default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
+            default_exe_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII')
+            fixed_default_exe_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII')
 
         else:
             default_path = None
             fixed_default_path = None
+            default_exe_path = None
+            fixed_default_exe_path = None
             raise NotImplementedError("Platforms other than Mac, Windows and Linux are not implemented yet")
     except Exception as e:
         messagebox.showerror(title="Not yet implemented",
@@ -257,7 +272,7 @@ class NewComponents:
                             self.load_component(self.file_name, x_coordinate=x_coordinate,
                                                 y_coordinate=y_coordinate,
                                                 window_x=window_x, window_y=window_y, angle=angle)
-                            self.symbols_not_found_list.clear()
+                            self.symbols_not_found_list.remove(self.file_name)
                             print('file_name', self.file_name)
                         elif NewComponents.list_of_added_file_paths:
                             path_to_symbol = False
@@ -275,7 +290,7 @@ class NewComponents:
                                 self.load_component(self.file_name, x_coordinate=x_coordinate,
                                                     y_coordinate=y_coordinate,
                                                     window_x=window_x, window_y=window_y, angle=angle)
-                                self.symbols_not_found_list.clear()
+                                self.symbols_not_found_list.remove(file_name)
                             if path_to_symbol is False:
                                 raise FileNotFoundError
                         else:
@@ -332,8 +347,11 @@ class NewComponents:
                 coordinates[coords] = coordinates[coords] - coordinates[coords + 1]
                 coordinates[coords] = - coordinates[coords]
             for coordinate in range(0, len(coordinates), 2):
-                coordinates[coordinate] = coordinates[coordinate] + start_coordinate_y + start_coordinate_x + 2*window_y
-                coordinates[coordinate + 1] = coordinates[coordinate + 1] - start_coordinate_x + start_coordinate_y - 2*window_x
+                coordinates[coordinate] = \
+                    coordinates[coordinate] + start_coordinate_y + start_coordinate_x + 2 * window_y
+
+                coordinates[coordinate + 1] =\
+                    coordinates[coordinate + 1] - start_coordinate_x + start_coordinate_y - 2 * window_x
 
         # print(tag, angle, window_x, window_y, start_coordinate_x, start_coordinate_y)
 
@@ -615,6 +633,13 @@ class NewComponents:
     # it is used to change the default_path variable back to its original path if it has been changed before by the
     # set default path method outside the class
     @staticmethod
+    def get_fixed_default_exe_path():
+        return NewComponents.fixed_default_exe_path
+
+    # This is a fixed a variable and should not be changed once assigned the first time at the beginning of the class
+    # it is used to change the default_path variable back to its original path if it has been changed before by the
+    # set default path method outside the class
+    @staticmethod
     def get_fixed_default_path():
         return NewComponents.fixed_default_path
 
@@ -633,7 +658,7 @@ class NewComponents:
     def get_added_file_paths():
         return NewComponents.list_of_added_file_paths
 
-    # Default Symbols Path which should be default LTSpice installation location
+    # Default Symbols Path which should be default LTSpice symbols installation location
     @staticmethod
     def get_default_path():
         return NewComponents.default_path
@@ -641,6 +666,15 @@ class NewComponents:
     @staticmethod
     def set_default_path(new_path):
         NewComponents.default_path = new_path
+
+    # Default executable path which should be default LTSpice exe installation location
+    @staticmethod
+    def get_default_exe_path():
+        return NewComponents.default_exe_path
+
+    @staticmethod
+    def set_default_exe_path(new_path):
+        NewComponents.default_exe_path = new_path
 
     # Components Properties when drawn
     @staticmethod

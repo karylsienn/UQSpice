@@ -94,7 +94,6 @@ tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(spice_data, text='LTSpice data')
 tabControl.add(graphs, text='Graphs')
 
-# component_parameters_frame = tk.Frame(schematic_params, width=340, height=100)
 component_parameters_frame = tk.Frame(schematic_params, width=340, height=100)
 component_parameters_frame_scroll = tkmod.ScrollableFrame(component_parameters_frame, width=340, height=100)
 
