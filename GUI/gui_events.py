@@ -1017,7 +1017,7 @@ def sketch_schematic_asc(schematic,
         if "SYMATTR Value" in lines:
             component_name_and_values += lines.replace("SYMATTR Value ", '')
 
-    # ------------------------------------------Cleaning and filtering of elements--------------------------------------
+    # ----------------------------------------- Cleaning and filtering of elements -------------------------------------
     try:
         flag_error = 'Error when finding which components have values'
         components_with_values = []
@@ -1046,6 +1046,7 @@ def sketch_schematic_asc(schematic,
 
         symbols_and_name = symbols_and_name.split('\n')
         symbols_and_name.pop()
+        flag_error = 'Error when removing rotation from components'
         # Removing Rotation R from components
         for symbols in range(len(symbols_and_name)):
             symbols_and_name[symbols] = re.sub(r' R\d.*', ' ', symbols_and_name[symbols])
@@ -1064,8 +1065,12 @@ def sketch_schematic_asc(schematic,
             symbols_and_name.remove('')
 
         symbols_and_name_dictionary = {}
-        for sym in range(0, len(symbols_and_name), 2):
+        sym = 0
+
+        flag_error = 'Error when separating symbols and name'
+        while sym < len(symbols_and_name) - 2:
             symbols_and_name_dictionary[symbols_and_name[sym + 1]] = symbols_and_name[sym]
+            sym += 2
         print('symbols and name', symbols_and_name_dictionary)
 
         full_list = full_list.split('\n')
@@ -1226,6 +1231,22 @@ def sketch_schematic_asc(schematic,
 
         print(component_details_dictionary)
 
+        # ------------------------------------------------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------------------------------
+        # -------------------- Pass Component details dictionary to display constant values --------------------------
+        # ------------------------------------------------------------------------------------------------------------
+        # -------------- Pass symbols_and_name_dictionary for allowing capability to change values -------------------
+        # ---------------------------------- when clicking on a component --------------------------------------------
+
+        enter_parameters_button.configure(command=lambda: open_new_window(components,
+                                                                          root,
+                                                                          schematic_analysis,
+                                                                          component_parameters_frame,
+                                                                          entering_parameters_window,
+                                                                          component_value_array,
+                                                                          delete_constants_button,
+                                                                          canvas, component_details_dictionary,
+                                                                          symbols_and_name_dictionary))
         # Store all component names in a list after removing new lines
         components = components.split('\n')
         # Remove last element which is empty
@@ -1236,14 +1257,6 @@ def sketch_schematic_asc(schematic,
         # Random: Adjusted by the user in enter parameters window, which automatically changes Constant to Random
         # when the user clicks the save parameters button
         component_value_array = ['Constant'] * len(components)
-        enter_parameters_button.configure(command=lambda: open_new_window(components,
-                                                                          root,
-                                                                          schematic_analysis,
-                                                                          component_parameters_frame,
-                                                                          entering_parameters_window,
-                                                                          component_value_array,
-                                                                          delete_constants_button,
-                                                                          canvas))
 
         # Used for moving the objects to a new location in the canvas
         # This was originally used when the canvas was not scrollable as components did not appear at negative values
@@ -1342,7 +1355,8 @@ def sketch_schematic_asc(schematic,
                                                  window_y=int(full_list[symbol + 5]) + int(full_list[symbol + 7]))
             except ValueError:
                 pass
-                #print(ValueError)
+
+                # print(ValueError)
         # canvas.postscript(file='post script', x=0, y=0)
         not_found_symbols = circuit_comps.get_symbols_not_found()
         if not_found_symbols:
@@ -1721,7 +1735,9 @@ def open_new_window(components,
                     parameters_window,
                     component_value_array,
                     delete_constants_button,
-                    canvas):
+                    canvas,
+                    values_dictionary,
+                    symbol_type_dictionary):
 
     """Event function used to open enter parameter window when enter parameters button has been clicked
 
@@ -1993,7 +2009,8 @@ def open_new_window(components,
                                                             delete_button,
                                                             param1_prefix_drop_down_list,
                                                             param2_prefix_drop_down_list,
-                                                            parameters_frame)
+                                                            parameters_frame,
+                                                            values_dictionary)
             )
 
             component_name_row = 3
@@ -2263,7 +2280,8 @@ def save_all_entered_parameters(component_name,
                                 delete_button,
                                 prefix1,
                                 prefix2,
-                                parameters_frame
+                                parameters_frame,
+                                values_dictionary
                                 ):
     global all_component_parameters
     all_component_parameters.clear()
@@ -2407,7 +2425,8 @@ def save_all_entered_parameters(component_name,
 
             # Storing the name label of all parameters
             full_name_labels[circuit_component].configure(text='\n' + component_name[circuit_component]
-                                                          + '\nValue: ' + '5'
+                                                          + '\nValue: '
+                                                          + list(values_dictionary.values())[circuit_component]
                                                           + '                         '
                                                           + '\n           '
                                                           + '\n')
