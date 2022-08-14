@@ -146,10 +146,10 @@ class CustomToolbar(NavigationToolbar2Tk):
         # print(type(delete_icon.name))
         # delete_icon_path =
         # r'C:\\Users\\moaik\\OneDrive - The University of Nottingham\\NSERP\\UQSpice_0.02\\GUI\\images\\trash_can'
-        delete_icon = tk.PhotoImage(file=os.path.join("images", "trash_can.png"))
-        delete_icon = os.path.realpath(os.path.join("images", "trash_can.png"))
-        delete_icon = open(delete_icon, mode='rb')
-        delete_icon.close()
+        # delete_icon = tk.PhotoImage(file=os.path.join("images", "trash_can.png"))
+        # delete_icon = os.path.realpath(os.path.join("images", "trash_can.png"))
+        # delete_icon = open(delete_icon, mode='rb')
+        # delete_icon.close()
         self.toolitems = (
                           ('Home', 'Reset original view', 'home', 'home'),
                           # ('Back', 'Back to  previous view', 'back', 'back'),
