@@ -55,8 +55,8 @@ class NewComponents:
     list_of_added_file_paths = []
     try:
         if sys.platform == 'darwin':
-            default_path = "/Applications/LTspice.app/Contents/MacOS/LTspice/lib/sym"
-            fixed_default_path = "/Applications/LTspice.app/Contents/MacOS/LTspice/lib/sym"
+            default_path = os.path.join(os.path.expanduser('~'), r"Library/Application\ Support/LTspice/lib/sym")
+            fixed_default_path =  os.path.join(os.path.expanduser('~'), r"Library/Application\ Support/LTspice/lib/sym")
             default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
             fixed_default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
 
@@ -103,7 +103,7 @@ class NewComponents:
         self.SINGLE_SYMBOL = True
         self.MULTIPLE_SYMBOL = False
         self.symbols_not_found_list = []
-        print('symbols_path', kwargs.get('ltspice_path'))
+        # print('symbols_path', kwargs.get('ltspice_path'))
         self._ltspice = NewComponents.default_path
 
     def move_component(self, event):
@@ -198,7 +198,7 @@ class NewComponents:
 
         try:
             # print('loading', file_name)
-            with open(os.path.expanduser('Symbols/' + file_name), 'r', encoding=encoding, errors='replace') as file:
+            with open(os.path.expanduser('GUI/Symbols/' + file_name), 'r', encoding=encoding, errors='replace') as file:
                 items = json.load(file)
             for item in items.keys():
                 #     x_ = int(items['pins'][0]) + int(items['pins'][2])
@@ -264,7 +264,7 @@ class NewComponents:
                     try:
                         self._ltspice = NewComponents.default_path
                         symbol_in_default_path = os.path.exists(os.path.join(self._ltspice, file_name) + ".asy")
-                        if symbol_in_default_path is True:
+                        if symbol_in_default_path:
                             symbol_path = os.path.expanduser(self._ltspice + file_name) + '.asy'
                             self.open_component(symbol_path, sketch=False)
                             self.file_name = file_name
@@ -296,8 +296,11 @@ class NewComponents:
                         else:
                             raise FileNotFoundError
 
-                    except (FileNotFoundError, PermissionError):
-                        print('bye')
+                    except FileNotFoundError:
+                        print(f"File not found: {file_name}")
+                    
+                    except PermissionError:
+                        print(f"Permision error for file: {file_name}")
 
         except PermissionError:
             if self.file_name == '':

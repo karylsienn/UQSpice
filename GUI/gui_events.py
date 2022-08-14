@@ -265,7 +265,7 @@ def save_file_paths(default_symbol_path, default_exe_path, file_paths):
         new_comp.NewComponents.set_default_path(default_symbol_path.get())
         print('here')
         symbols_path = True
-    if os.path.isdir(default_exe_path.get()) is True:
+    if os.path.exists(default_exe_path.get()) and os.access(default_exe_path.get(), os.X_OK):
         print('default exe path')
         new_comp.NewComponents.set_default_exe_path(default_exe_path.get())
         exe_path = True
