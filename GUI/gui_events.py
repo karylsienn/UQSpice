@@ -158,7 +158,7 @@ def change_colour(canvas, fill=True, outline=False):
         title = 'Select Outline Colour'
     if fill:
         title = 'Select Fill Colour'
-    colour = askcolor(title=title)
+    colour = askcolor(parent=preferences_window, title=title)
     colour_to_change = colour[1]
     global fill_colour
     global outline_colour
@@ -230,10 +230,11 @@ def save_preferences(default=True):
     new_comp.NewComponents.set_fill_colour(fill_colour)
 
 
-def change_default_path(default_path_box, open_file_dialog=True, new_default_file_path=''):
+def change_default_path(default_path_box, parent_window,  open_file_dialog=True, new_default_file_path='', ):
     # Open and return file path
     if open_file_dialog:
         new_default_file_path = fd.askdirectory(
+            parent=parent_window,
             title="Select a path for symbols"
         )
     if new_default_file_path:
@@ -244,6 +245,7 @@ def change_default_path(default_path_box, open_file_dialog=True, new_default_fil
 def add_file_path(listbox):
     # Open and return file path
     new_file_path = fd.askdirectory(
+        parent=preferences_window,
         title="Select a path for symbols"
     )
     file_paths = listbox.get(0, tk.END)
@@ -277,11 +279,13 @@ def save_file_paths(default_symbol_path, default_exe_path, file_paths):
         if symbols_path is False:
             print(symbols_path)
             change_default_path(default_symbol_path,
+                                preferences_window,
                                 open_file_dialog=False,
                                 new_default_file_path=new_comp.NewComponents.get_default_path())
 
         if exe_path is False:
             change_default_path(default_exe_path,
+                                preferences_window,
                                 open_file_dialog=False,
                                 new_default_file_path=new_comp.NewComponents.get_default_exe_path())
 
@@ -424,7 +428,8 @@ def set_preferences(root, schematic_analysis):
                                                              borderwidth=0,
                                                              height=3,
                                                              width=5,
-                                                             command=lambda: change_default_path(default_file_path_box))
+                                                             command=lambda: change_default_path(default_file_path_box,
+                                                                                                 preferences_window))
         change_default_path_button.grid(row=4, column=5)
 
         change_default_exe_path_button = customtkinter.CTkButton(file_path_preferences,
@@ -438,7 +443,8 @@ def set_preferences(root, schematic_analysis):
                                                                  height=3,
                                                                  width=5,
                                                                  command=lambda:
-                                                                 change_default_path(default_exe_file_path_box))
+                                                                 change_default_path(default_exe_file_path_box,
+                                                                                     preferences_window))
         change_default_exe_path_button.grid(row=1, column=5)
 
         file_path_preferences.grid_rowconfigure(tuple(range(100)), weight=1)
@@ -647,10 +653,18 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
     Allows user to select the file, the .raw file is converted to a .csv file and stored with same name
     or new name if a file name is given
     """
+    schematic_analysis_state = schematic_analysis.state()
+    root_state = root.state()
+
+    if schematic_analysis_state == 'normal':
+        parent = schematic_analysis
+    if root_state == 'normal':
+        parent = root
     try:
         # Open and return file path
         raw_file_path = fd.askopenfilename(
-            title="Select a Schematic",
+            parent=parent,
+            title="Select a Waveform",
 
             filetypes=(
                 ("Waveforms", "*.raw"),
@@ -856,7 +870,8 @@ def get_file_path(component_parameters_frame,
     """
     try:
         # Open and return file path
-        file_path = fd.askopenfilenames(
+        file_path = fd.askopenfilename(
+            parent=schematic_analysis,
             title="Select a Schematic",
 
             filetypes=(
@@ -868,7 +883,7 @@ def get_file_path(component_parameters_frame,
 
         # Perform actions if a file has been selected
         if file_path:
-            fpath = file_path[0]
+            fpath = file_path
             file_name = ntpath.basename(fpath)
             folder_location = remove_suffix(fpath, file_name)
             file_name_no_extension = file_name.replace('.asc', '.txt')

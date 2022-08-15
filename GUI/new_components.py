@@ -1,3 +1,4 @@
+import math
 import os.path
 import tkinter as tk
 import json
@@ -63,7 +64,7 @@ class NewComponents:
         elif sys.platform == 'win32':
             default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
             fixed_default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
-            default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII XVIIx64.exe"
+            default_exe_path = "C:/Program Files/LTC/LTspiceXVII XVIIx64.exe"
             fixed_default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"
 
         elif sys.platform == 'linux':
@@ -118,7 +119,7 @@ class NewComponents:
         # True for multiple_or_single indicates that a SINGLE symbol is selected.
         if multiple_or_single is True:
             try:
-                path_to_symbol = os.path.expanduser('Symbols/' + remove_suffix(self.file_name, '.asy'))
+                path_to_symbol = os.path.expanduser(os.getcwd() + '\\Symbols\\' + remove_suffix(self.file_name, '.asy'))
                 file_exists = os.path.exists(path_to_symbol)
                 print(path_to_symbol)
                 if file_exists and self.file_name:
@@ -163,7 +164,7 @@ class NewComponents:
         # False for multiple_or_single indicates that MULTIPLE symbols are selected.
         elif multiple_or_single is False:
             try:
-                with open(os.path.expanduser('Symbols/' + remove_suffix(file_name, '.asy')), 'w') as file:
+                with open(os.path.expanduser(os.getcwd() + '\\Symbols\\' + remove_suffix(file_name, '.asy')), 'w') as file:
                     json.dump(self.component_information, file, indent=4)
 
             # except FileNotFoundError:
@@ -198,13 +199,14 @@ class NewComponents:
 
         try:
             # print('loading', file_name)
-            with open(os.path.expanduser('GUI/Symbols/' + file_name), 'r', encoding=encoding, errors='replace') as file:
+            with open(os.path.expanduser(os.getcwd() + '\\Symbols\\' + file_name), 'r', encoding=encoding, errors='replace') as file:
                 items = json.load(file)
             for item in items.keys():
                 #     x_ = int(items['pins'][0]) + int(items['pins'][2])
                 #     y_ = int(items['pins'][1]) + int(items['pins'][3])
                 #     print(file_name, x_, y_)
                 #     print(file_name, window_x, window_y)
+
                 if item == 'line':
                     for line in range(0, len(items['line']), 4):
                         line_coordinates = [items['line'][line] + x_coordinate,
@@ -235,22 +237,34 @@ class NewComponents:
                         self.rotate(rectangle_coordinates, x_coordinate, y_coordinate, angle, window_x, window_y,
                                     file_name + '.asy' + 'rectangles', 'rectangle')
                 if item == 'arc':
+                    print(len(items['arc'])/8)
                     for arc in range(0, len(items['arc']), 8):
-                        self.canvas.create_arc(items['arc'][arc] + x_coordinate,
-                                               items['arc'][arc + 1] + y_coordinate,
-                                               items['arc'][arc + 2] + x_coordinate,
-                                               items['arc'][arc + 3] + y_coordinate,
-                                               style=tk.ARC,
-                                               start=270,
-                                               tags=file_name + '.asy' + 'arc 1')
+                        arc_coordinates = (items['arc'][arc],
+                                           items['arc'][arc + 1],
+                                           items['arc'][arc + 2],
+                                           items['arc'][arc + 3],
+                                           items['arc'][arc + 4],
+                                           items['arc'][arc + 5],
+                                           items['arc'][arc + 6],
+                                           items['arc'][arc + 7])
 
-                        self.canvas.create_arc(items['arc'][arc + 2] + x_coordinate,
-                                               items['arc'][arc + 3] + y_coordinate,
-                                               items['arc'][arc + 6] + x_coordinate,
-                                               (items['arc'][arc + 7] / 2) + y_coordinate,
-                                               style=tk.ARC,
-                                               start=180,
-                                               tags=file_name + '.asy' + 'arc 2')
+                        first_four_arc_coordinates = [arc_coordinates[0], arc_coordinates[1], arc_coordinates[2],
+                                                      arc_coordinates[3]]
+                        start = [arc_coordinates[4], arc_coordinates[5]]
+                        extent = [arc_coordinates[6], arc_coordinates[7]]
+                        # 48 0 80 32 80 16
+                        centre_of_circle = [(first_four_arc_coordinates[0] + first_four_arc_coordinates[2]) / 2,
+                                            (first_four_arc_coordinates[1] + first_four_arc_coordinates[3]) / 2]
+                        radius = centre_of_circle[0] - first_four_arc_coordinates[0]
+
+                        reference_angle = [centre_of_circle[0] + radius, centre_of_circle[1]]
+
+                        start_angle = self.angle(start, centre_of_circle, reference_angle) * (180 / math.pi)
+                        extent_angle = self.angle(extent, centre_of_circle, start) * (180 / math.pi)
+                        self.rotate(first_four_arc_coordinates, x_coordinate, y_coordinate, angle, window_x, window_y,
+                                    file_name + '.asy' + 'arcs', 'arc',
+                                    arc_start_angle=start_angle, arc_extent_angle=extent_angle)
+
         except FileNotFoundError:
             if file_name == '':
                 messagebox.showerror('Error', 'Please select a symbol first', parent=self.parent)
@@ -311,11 +325,11 @@ class NewComponents:
 
     def rotate(self,
                coordinates, start_coordinate_x, start_coordinate_y, angle, window_x, window_y,
-               tag, shape_to_draw):
+               tag, shape_to_draw, arc_start_angle=0.0, arc_extent_angle=0.0):
 
-        if angle == 'R0' or angle == 0:
-            start_coordinate_x = 0
-            start_coordinate_y = 0
+        # if angle == 'R0' or angle == 0:
+        #     start_coordinate_x = 0
+        #     start_coordinate_y = 0
         if angle == 'R90' or angle == 90:
             for coords in range(0, len(coordinates), 2):
                 # Swapping x and y
@@ -391,6 +405,19 @@ class NewComponents:
                                          outline=self.line_colour,
                                          fill=self.fill_colour
                                          )
+        if shape_to_draw == 'arc':
+            self.canvas.create_arc(coordinates[0] - window_y + start_coordinate_x,
+                                   coordinates[1] + window_x + start_coordinate_y,
+                                   coordinates[2] - window_y + start_coordinate_x,
+                                   coordinates[3] + window_x + start_coordinate_y,
+                                   start=arc_start_angle,
+                                   extent=arc_extent_angle,
+                                   style=tk.ARC,
+                                   tags=tag + 'rotated',
+                                   width=self.line_width,
+                                   outline=self.line_colour,
+                                   fill=self.fill_colour
+                                   )
 
     @staticmethod
     def filter_components(components, adjustment):
@@ -427,6 +454,15 @@ class NewComponents:
         # add a small adjustment to all coordinates, so it appears on centre of screen
         modified_components = [modification + adjustment for modification in components]
         return modified_components
+
+    def angle(self, A, B, C, /):
+        Ax, Ay = A[0] - B[0], A[1] - B[1]
+        Cx, Cy = C[0] - B[0], C[1] - B[1]
+        a = math.atan2(Ay, Ax)
+        c = math.atan2(Cy, Cx)
+        if a < 0: a += math.pi * 2
+        if c < 0: c += math.pi * 2
+        return (math.pi * 2 + c - a) if a > c else (c - a)
 
     def sketch_component(self, component, file_name, sketch=True):
         self.component_information.clear()
@@ -479,6 +515,9 @@ class NewComponents:
         modified_circles = self.filter_components(circles, 0)
         modified_rectangles = self.filter_components(rectangles, 0)
         modified_arcs = self.filter_components(arcs, 0)
+        start_angles = []
+        extent_angles = []
+
         if sketch:
             self.canvas.delete("all")
 
@@ -515,22 +554,33 @@ class NewComponents:
                 arc_coordinates = (modified_arcs[arc],
                                    modified_arcs[arc + 1],
                                    modified_arcs[arc + 2],
-                                   modified_arcs[arc + 3])
+                                   modified_arcs[arc + 3],
+                                   modified_arcs[arc + 4],
+                                   modified_arcs[arc + 5],
+                                   modified_arcs[arc + 6],
+                                   modified_arcs[arc + 7])
 
-                arc_coordinates_2 = (modified_arcs[arc + 2],
-                                     modified_arcs[arc + 3],
-                                     modified_arcs[arc + 6],
-                                     modified_arcs[arc + 7] / 2)
+                first_four_arc_coordinates = [arc_coordinates[0], arc_coordinates[1], arc_coordinates[2],
+                                              arc_coordinates[3]]
+                start = [arc_coordinates[4], arc_coordinates[5]]
+                extent = [arc_coordinates[6], arc_coordinates[7]]
+                # 48 0 80 32 80 16
+                centre_of_circle = [(first_four_arc_coordinates[0] + first_four_arc_coordinates[2]) / 2,
+                                    (first_four_arc_coordinates[1] + first_four_arc_coordinates[3]) / 2]
+                radius = centre_of_circle[0] - first_four_arc_coordinates[0]
 
-                self.canvas.create_arc(arc_coordinates,
+                reference_angle = [centre_of_circle[0] + radius, centre_of_circle[1]]
+
+                start_angle = self.angle(start, centre_of_circle, reference_angle) * (180 / math.pi)
+                extent_angle = self.angle(extent, centre_of_circle, start) * (180 / math.pi)
+                start_angles.append(start_angle)
+                extent_angles.append(extent_angle)
+                self.canvas.create_arc(first_four_arc_coordinates,
+                                       start=start_angle,
+                                       extent=extent_angle,
                                        style=tk.ARC,
-                                       tags=self.file_name,
-                                       start=270)
+                                       tags='arc')
 
-                self.canvas.create_arc(arc_coordinates_2,
-                                       style=tk.ARC,
-                                       start=180,
-                                       tags=self.file_name)
             self.parent.bind('<Button-3>', self.move_component)
 
         print(modified_arcs)
@@ -543,14 +593,19 @@ class NewComponents:
             self.component_information['line'] = modified_lines
         if modified_arcs:
             self.component_information['arc'] = modified_arcs
+            self.component_information['start'] = start_angles
+            self.component_information['extent'] = extent_angles
+
         self.component_information['pins'] = pins_list
-        # self.component_information['tags'] = self.canvas.itemconfig(self.file_name)
+        self.component_information['tags'] = self.canvas.itemconfig('arc')
+        print(self.canvas.itemconfig('arc'))
 
     def open_component(self, fpath=0, sketch=True):
         # Open and return file path
         try:
             if fpath == 0:
                 fpath = fd.askopenfilename(
+                    parent=self.parent,
                     title="Select a Symbol",
 
                     filetypes=(
@@ -589,12 +644,16 @@ class NewComponents:
         try:
             if fpath is None:
                 fpath = fd.askopenfilenames(
+                    parent=self.parent,
                     title="Select a Symbol",
 
                     filetypes=(
                         ("Symbols", "*.asy"),
                         ("All files", "*.*")
-                    )
+
+                    ),
+
+                    initialdir=self.default_path
                 )
             if len(fpath) == 0:
                 raise FileNotFoundError
