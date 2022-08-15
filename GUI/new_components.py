@@ -64,7 +64,7 @@ class NewComponents:
         elif sys.platform == 'win32':
             default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
             fixed_default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
-            default_exe_path = "C:/Program Files/LTC/LTspiceXVII XVIIx64.exe"
+            default_exe_path = "C:/Program Files/LTC/LTspiceXVII/XVIIx64.exe"
             fixed_default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"
 
         elif sys.platform == 'linux':
