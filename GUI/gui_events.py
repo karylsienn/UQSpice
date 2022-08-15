@@ -13,6 +13,7 @@ from tkinter.colorchooser import askcolor
 import re
 import customtkinter
 import threading
+import sweepers
 
 
 BACKGROUND_COLOUR = '#F0F0F0'
@@ -903,26 +904,30 @@ def get_file_path(component_parameters_frame,
                 schematic = ltspiceascfile.readlines()
             ltspiceascfile.close()
             tabs.select(0)
-            sketch_schematic_asc(schematic,
-                                 component_parameters_frame,
-                                 all_component_parameters,
-                                 canvas,
-                                 schematic_analysis,
-                                 enter_parameters_button,
-                                 delete_constants_button,
-                                 entering_parameters_window,
-                                 root,
-                                 encoding)
 
-            # Display file path at the bottom of the window
-            # l1 = Label(schematic_analysis, text="File path: " + file_path).pack()
+            # Generate Netlist and sketch schematic at the same time
+            functions = [threading.Thread(target=sketch_schematic_asc,
+                                          args=(schematic,
+                                                component_parameters_frame,
+                                                all_component_parameters,
+                                                canvas,
+                                                schematic_analysis,
+                                                enter_parameters_button,
+                                                delete_constants_button,
+                                                entering_parameters_window,
+                                                root,
+                                                encoding)).start(),
+
+                         threading.Thread(target=sweepers.NetlistCreator.create,
+                                          args=(fpath,
+                                                new_comp.NewComponents.get_default_exe_path())).start()]
 
         # Display an error in case no schematic has been selected from file dialog box
-
     except ValueError:
         messagebox.showerror('Error', flag_error)
     except PermissionError:
         messagebox.showerror('Access Denied', 'Permission is required to access this file')
+        # When no file is selected do nothing
     except FileNotFoundError:
         pass
 
@@ -1250,8 +1255,7 @@ def sketch_schematic_asc(schematic,
                                                                                   component_value_array,
                                                                                   delete_constants_button,
                                                                                   canvas, component_details_dictionary,
-                                                                                  symbols_and_name_dictionary)).start(),
-                                                                            ])
+                                                                                  symbols_and_name_dictionary)).start()])
         # Store all component names in a list after removing new lines
         components = components.split('\n')
         # Remove last element which is empty

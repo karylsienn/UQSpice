@@ -136,7 +136,9 @@ fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
                                                              schematic_analysis,
                                                              enter_parameters_button,
                                                              entering_parameters_window,
-                                                             root))
+                                                             delete_all_constants_button,
+                                                             root,
+                                                             tabControl))
 
 fileMenu.add_command(label="Add a new component", font=FONT_SIZE,
                      command=lambda: guievents.open_new_components(root))

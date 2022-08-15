@@ -61,10 +61,10 @@ class NewComponents:
             fixed_default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
 
         elif sys.platform == 'win32':
-            default_path = r"C:/Program Files/LTC/LTspiceXVII/lib/sym/"
-            fixed_default_path = r"C:/Program Files/LTC/LTspiceXVII/lib/sym/"
-            default_exe_path = r"C:/Program Files/LTC/LTspiceXVII"
-            fixed_default_exe_path = r"C:/Program Files/LTC/LTspiceXVII"
+            default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
+            fixed_default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
+            default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII XVIIx64.exe"
+            fixed_default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"
 
         elif sys.platform == 'linux':
             default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
