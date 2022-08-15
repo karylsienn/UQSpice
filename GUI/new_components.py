@@ -1,3 +1,4 @@
+from email.policy import default
 import math
 import os.path
 import tkinter as tk
@@ -6,6 +7,7 @@ import customtkinter
 from tkinter import filedialog as fd, messagebox
 import ntpath
 import sys
+from ltspicer.pathfinder import LTPathFinder
 # import tkinterdnd2
 
 
@@ -55,27 +57,32 @@ class NewComponents:
     # Additional Symbol File paths to look into if added by the user
     list_of_added_file_paths = []
     try:
-        if sys.platform == 'darwin':
-            default_path = os.path.join(os.path.expanduser('~'), r"Library/Application\ Support/LTspice/lib/sym")
-            fixed_default_path =  os.path.join(os.path.expanduser('~'), r"Library/Application\ Support/LTspice/lib/sym")
-            default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
-            fixed_default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
 
-        elif sys.platform == 'win32':
-            default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
-            fixed_default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym\\"
-            default_exe_path = "C:/Program Files/LTC/LTspiceXVII XVIIx64.exe"
-            fixed_default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"
+        if sys.platform in ('darwin', 'win32', 'linux'):
+            default_path = fixed_default_path = LTPathFinder.find_sym_folder()
+            default_exe_path = fixed_default_exe_path = LTPathFinder.find_exe_ltspice_path()
 
-        elif sys.platform == 'linux':
-            default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
-            fixed_default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
+        # if sys.platform == 'darwin':
+        #     default_path = LTPathFinder.find_exe_ltspice_path
+        #     fixed_default_path =  os.path.join(os.path.expanduser('~'), r"Library/Application\ Support/LTspice/lib/sym")
+        #     default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
+        #     fixed_default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
 
-            # /home/USER/.wine/drive_c/Program Files/LTC/LTspiceXVII
-            default_exe_path = os.path.join(os.path.expanduser('~'), '.wine', 'drive_c', 'Program Files', 'LTC',
-                                            'LTspiceXVII', 'XVIIx64.exe')
-            fixed_default_exe_path = os.path.join(os.path.expanduser('~'), '.wine', 'drive_c', 'Program Files', 'LTC',
-                                                  'LTspiceXVII', 'XVIIx64.exe')
+        # elif sys.platform == 'win32':
+        #     default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym"
+        #     fixed_default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym"
+        #     default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"
+        #     fixed_default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"
+
+        # elif sys.platform == 'linux':
+        #     default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
+        #     fixed_default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
+
+        #     # /home/USER/.wine/drive_c/Program Files/LTC/LTspiceXVII
+        #     default_exe_path = os.path.join(os.path.expanduser('~'), '.wine', 'drive_c', 'Program Files', 'LTC',
+        #                                     'LTspiceXVII', 'XVIIx64.exe')
+        #     fixed_default_exe_path = os.path.join(os.path.expanduser('~'), '.wine', 'drive_c', 'Program Files', 'LTC',
+        #                                           'LTspiceXVII', 'XVIIx64.exe')
 
         else:
             default_path = None
@@ -119,15 +126,19 @@ class NewComponents:
         self.canvas.move(self.file_name, x, y)
 
     def save_component(self, file_name=None, multiple_or_single=True, found=True):
-        print(self.file_name, file_name)
+        print(f"Inside save_component: {self.file_name}, {file_name}")
+        print(f"Current working directory:", os.getcwd())
         # True for multiple_or_single indicates that a SINGLE symbol is selected.
-        if multiple_or_single is True:
+        if self.file_name == "res" or file_name == "res":
+            print(f"Component information: {self.component_information}")
+
+        if multiple_or_single:
             try:
                 path_to_symbol = os.path.expanduser(os.path.join(os.getcwd(),
-                                                                 'Symbols',
+                                                                 'GUI/Symbols',
                                                                  remove_suffix(self.file_name, '.asy')))
                 file_exists = os.path.exists(path_to_symbol)
-                print(path_to_symbol)
+                print(f"Inside save_component: {path_to_symbol}")
                 if file_exists and self.file_name:
                     overwrite_symbol_message = 'The file ' + self.file_name \
                                                + ' already exists, do you wish to overwrite the saved file?'
@@ -170,7 +181,7 @@ class NewComponents:
         # False for multiple_or_single indicates that MULTIPLE symbols are selected.
         elif multiple_or_single is False:
             try:
-                with open(os.path.expanduser(os.path.join(os.getcwd(), 'Symbols', remove_suffix(file_name, '.asy'))),
+                with open(os.path.expanduser(os.path.join(os.getcwd(), 'GUI/Symbols', remove_suffix(file_name, '.asy'))),
                           'w') as file:
                     json.dump(self.component_information, file, indent=4)
 
@@ -206,7 +217,7 @@ class NewComponents:
 
         try:
             # print('loading', file_name)
-            with open(os.path.expanduser(os.path.join(os.getcwd(), 'Symbols', file_name)), 'r',
+            with open(os.path.expanduser(os.path.join(os.getcwd(), 'GUI/Symbols', file_name)), 'r',
                       encoding=encoding, errors='replace') as file:
                 items = json.load(file)
             for item in items.keys():

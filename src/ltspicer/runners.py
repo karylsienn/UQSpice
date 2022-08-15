@@ -2,36 +2,7 @@ from posixpath import basename
 import sys
 import os
 import subprocess
-
-class PathFinder:
-    """Finds and returns LTSpice path if not provided by the user."""
-    @staticmethod
-    def find_ltspice_path(ltspice_path=None):
-        if ltspice_path and os.path.exists(ltspice_path)\
-            and os.access(ltspice_path, os.X_OK): # Check if it is an executable.
-            ltpath = ltspice_path
-            if sys.platform == 'darwin':
-                cmd_sep = '; '
-            elif sys.platform == 'win32':
-                cmd_sep = ' && '
-            else:
-                raise NotImplementedError("Platforms other than Mac and Windows are not implemented yet")
-        else:
-            try: 
-                if sys.platform == 'darwin':
-                    ltpath = "/Applications/LTspice.app/Contents/MacOS/LTspice"
-                    cmd_sep = "; "
-                elif sys.platform == 'win32':
-                    ltpath = '"C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"'
-                    cmd_sep = " && "
-                else:
-                    ltpath = None
-                    raise NotImplementedError("Platforms other than Mac and Windows are not implemented yet")
-            except Exception as e:
-                raise e
-        
-        return ltpath, cmd_sep
-
+from pathfinder import LTPathFinder
 
 class LTSpiceRunner:
     """
@@ -43,7 +14,8 @@ class LTSpiceRunner:
 
     """
     def __init__(self, ltspice_path=None) -> None:
-        self._ltspice_path, self._cmd_separator = PathFinder.find_ltspice_path(ltspice_path)
+        self._ltspice_path  = LTPathFinder.find_exe_ltspice_path(ltspice_path)
+        self._cmd_separator = LTPathFinder.find_cmd_sep()
 
 
     def run(self, file_to_run, ascii=False, timeout=20):

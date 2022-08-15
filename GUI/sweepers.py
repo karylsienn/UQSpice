@@ -20,7 +20,7 @@ class NetlistCreator:
                 ltpath, _ = PathFinder.find_ltspice_path(ltspice_path)
                 pre, ext = os.path.splitext(asc_file)
                 asc_file = '"' + asc_file + '"'
-                cmd = f"{ltpath} -b -netlist {asc_file}"
+                cmd = f'"{ltpath}" -netlist {asc_file}'
                 A = subprocess.run(cmd, 
                                    shell=True, check=True,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
