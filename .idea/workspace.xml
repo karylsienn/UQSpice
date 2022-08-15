@@ -1,52 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="c595454b-06b9-45c7-a6a9-fe72ec7d86b8" name="Changes" comment="Added default ltspice exe path&#10;Changed preferences canvas to display selected drawing settings after reopening&#10;Extracted Values from LTSpice">
+    <list default="true" id="c595454b-06b9-45c7-a6a9-fe72ec7d86b8" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/FerriteBead" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/FerriteBead" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/FerriteBead2" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/FerriteBead2" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/TVSdiode" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/TVSdiode" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/bi" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/bi" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/bi2" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/bi2" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/bv" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/bv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/cap" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/cap" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/csw" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/csw" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/current" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/current" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/diode" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/diode" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/e" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/e" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/e2" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/e2" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/f" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/f" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/g" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/g" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/g2" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/g2" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/h" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/load" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/load" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/load2" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/load2" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/lpnp" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/lpnp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/ltline" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/ltline" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/mesfet" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/mesfet" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/njf" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/njf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/nmos" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/nmos" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/nmos4" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/nmos4" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/npn" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/npn" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/npn2" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/npn2" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/npn3" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/npn3" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/npn4" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/npn4" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/pjf" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/pjf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/pmos" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/pmos" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/pmos4" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/pmos4" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/pnp" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/pnp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/pnp2" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/pnp2" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/pnp4" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/pnp4" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/res" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/res" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/res2" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/res2" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/schottky" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/schottky" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/sw" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/sw" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/tline" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/tline" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/varactor" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/varactor" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/voltage" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/voltage" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/Symbols/zener" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/Symbols/zener" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GUI/gui_events.py" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/gui_events.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GUI/new_components.py" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/new_components.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GUI/sweepers.py" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/sweepers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GUI/tkinter_modification.py" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/tkinter_modification.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
