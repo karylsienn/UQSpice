@@ -70,8 +70,12 @@ class NewComponents:
         elif sys.platform == 'linux':
             default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
             fixed_default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
-            default_exe_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII')
-            fixed_default_exe_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII')
+
+            # /home/USER/.wine/drive_c/Program Files/LTC/LTspiceXVII
+            default_exe_path = os.path.join(os.path.expanduser('~'), '.wine', 'drive_c', 'Program Files', 'LTC',
+                                            'LTspiceXVII', 'XVIIx64.exe')
+            fixed_default_exe_path = os.path.join(os.path.expanduser('~'), '.wine', 'drive_c', 'Program Files', 'LTC',
+                                                  'LTspiceXVII', 'XVIIx64.exe')
 
         else:
             default_path = None
@@ -119,7 +123,9 @@ class NewComponents:
         # True for multiple_or_single indicates that a SINGLE symbol is selected.
         if multiple_or_single is True:
             try:
-                path_to_symbol = os.path.expanduser(os.getcwd() + '\\Symbols\\' + remove_suffix(self.file_name, '.asy'))
+                path_to_symbol = os.path.expanduser(os.path.join(os.getcwd(),
+                                                                 'Symbols',
+                                                                 remove_suffix(self.file_name, '.asy')))
                 file_exists = os.path.exists(path_to_symbol)
                 print(path_to_symbol)
                 if file_exists and self.file_name:
@@ -164,7 +170,8 @@ class NewComponents:
         # False for multiple_or_single indicates that MULTIPLE symbols are selected.
         elif multiple_or_single is False:
             try:
-                with open(os.path.expanduser(os.getcwd() + '\\Symbols\\' + remove_suffix(file_name, '.asy')), 'w') as file:
+                with open(os.path.expanduser(os.path.join(os.getcwd(), 'Symbols', remove_suffix(file_name, '.asy'))),
+                          'w') as file:
                     json.dump(self.component_information, file, indent=4)
 
             # except FileNotFoundError:
@@ -199,7 +206,8 @@ class NewComponents:
 
         try:
             # print('loading', file_name)
-            with open(os.path.expanduser(os.getcwd() + '\\Symbols\\' + file_name), 'r', encoding=encoding, errors='replace') as file:
+            with open(os.path.expanduser(os.path.join(os.getcwd(), 'Symbols', file_name)), 'r',
+                      encoding=encoding, errors='replace') as file:
                 items = json.load(file)
             for item in items.keys():
                 #     x_ = int(items['pins'][0]) + int(items['pins'][2])

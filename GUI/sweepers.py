@@ -27,6 +27,27 @@ class NetlistCreator:
                 assert isinstance(A, subprocess.CompletedProcess) # Assert process has completed
                 assert os.path.exists(pre + '.net')  # Assert netlist exists
                 return True
+
+            except Exception as e:
+                raise e
+
+        elif sys.platform == 'linux':
+            # Run a command to do it
+            try:
+                timeout = 20
+                ltpath, _ = PathFinder.find_ltspice_path(ltspice_path)
+                pre, ext = os.path.splitext(asc_file)
+                asc_file = '"' + asc_file + '"'
+                ltpath = re.sub(' ', '\ ', ltpath)
+                cmd = f"wine {ltpath} -b -netlist {asc_file}"
+                print(cmd)
+                A = subprocess.run(cmd,
+                                   shell=True, check=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
+                assert isinstance(A, subprocess.CompletedProcess)  # Assert process has completed
+                assert os.path.exists(pre + '.net')  # Assert netlist exists
+                return True
+
             except Exception as e:
                 raise e
         elif sys.platform == 'darwin':

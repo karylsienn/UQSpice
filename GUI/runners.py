@@ -14,6 +14,8 @@ class PathFinder:
                 cmd_sep = '; '
             elif sys.platform == 'win32':
                 cmd_sep = ' && '
+            elif sys.platform == 'linux':
+                cmd_sep = '; '
             else:
                 raise NotImplementedError("Platforms other than Mac and Windows are not implemented yet")
         else:
