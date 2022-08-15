@@ -8,3 +8,6 @@ notebooks/
 *.log
 GUI/runners.py
 GUI/sweepers.py
+.idea/UQSpice_0.02.iml
+.idea/workspace.xml
+GUI/Symbols/ind
