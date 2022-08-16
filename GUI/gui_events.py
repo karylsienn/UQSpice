@@ -13,7 +13,8 @@ from tkinter.colorchooser import askcolor
 import re
 import customtkinter
 import threading
-import sweepers
+import ltspicer.sweepers
+
 
 
 BACKGROUND_COLOUR = '#F0F0F0'
@@ -418,7 +419,7 @@ def set_preferences(root, schematic_analysis):
 
         reset_to_default_path_button.grid(row=7, column=4, pady=10)
 
-        browse_icon = tk.PhotoImage(file=os.path.join("images", "folder_icon_test.png"))
+        browse_icon = tk.PhotoImage(file=os.path.join('GUI', "images", "folder_icon_test.png"))
         change_default_path_button = customtkinter.CTkButton(file_path_preferences,
                                                              image=browse_icon,
                                                              text='',
@@ -579,13 +580,13 @@ def open_new_components(root):
     new_comp_instance = new_comp.NewComponents(new_components_canvas, open_new_component_window)
 
     save_symbol_button = customtkinter.CTkButton(button_frame, text='Save Symbol',
-                                                 command=lambda: new_comp_instance.save_component())
+                                                 command=lambda: new_comp_instance.save_component_json())
     open_symbol_button = customtkinter.CTkButton(button_frame, text='Open Symbol',
-                                                 command=lambda: new_comp_instance.open_component())
+                                                 command=lambda: new_comp_instance.open_single_component_asy())
     open_folder_button = customtkinter.CTkButton(button_frame, text='Add Symbols',
-                                                 command=lambda: new_comp_instance.open_folder())
+                                                 command=lambda: new_comp_instance.open_multiple_components_asy())
     load_symbol_button = customtkinter.CTkButton(button_frame, text='Load Symbol',
-                                                 command=lambda: new_comp_instance.load_component())
+                                                 command=lambda: new_comp_instance.load_component_json())
     delete_button = customtkinter.CTkButton(button_frame, text='Clear Canvas',
                                             command=lambda: new_comp_instance.clear_canvas())
     open_symbol_button.pack(side=tk.RIGHT, padx=10, pady=10)
@@ -934,7 +935,7 @@ def get_file_path(component_parameters_frame,
                                                 root,
                                                 encoding)).start(),
 
-                         threading.Thread(target=sweepers.NetlistCreator.create,
+                         threading.Thread(target=ltspicer.sweepers.NetlistCreator.create,
                                           args=(fpath,
                                                 new_comp.NewComponents.get_default_exe_path())).start()]
 
@@ -1363,21 +1364,20 @@ def sketch_schematic_asc(schematic,
         for symbol in range(0, len(full_list), 8):
             try:
                 if full_list[symbol + 3] == 'R0' or full_list[symbol + 3] == 0:
-                    # TODO: issue here if it does not work with mac, encoding should be default to UTF-8
-                    circuit_comps.load_component(file_name=full_list[symbol], encoding=encoding,
-                                                 x_coordinate=int(full_list[symbol + 1]) + adjustment,
-                                                 y_coordinate=int(full_list[symbol + 2]) + adjustment,
-                                                 angle=full_list[symbol + 3],
-                                                 window_x=0,
-                                                 window_y=0)
+                    circuit_comps.load_component_json(file_name=full_list[symbol],
+                                                      x_coordinate=int(full_list[symbol + 1]) + adjustment,
+                                                      y_coordinate=int(full_list[symbol + 2]) + adjustment,
+                                                      angle=full_list[symbol + 3],
+                                                      window_x=0,
+                                                      window_y=0)
                 # TODO: Fix Rotation issue with other components
                 elif full_list[symbol + 3] != 'R0' or full_list[symbol + 3] != 0:
-                    circuit_comps.load_component(file_name=full_list[symbol], encoding=encoding,
-                                                 x_coordinate=int(full_list[symbol + 1]) + adjustment,
-                                                 y_coordinate=int(full_list[symbol + 2]) + adjustment,
-                                                 angle=full_list[symbol + 3],
-                                                 window_x=int(full_list[symbol + 4]) + int(full_list[symbol + 6]),
-                                                 window_y=int(full_list[symbol + 5]) + int(full_list[symbol + 7]))
+                    circuit_comps.load_component_json(file_name=full_list[symbol],
+                                                      x_coordinate=int(full_list[symbol + 1]) + adjustment,
+                                                      y_coordinate=int(full_list[symbol + 2]) + adjustment,
+                                                      angle=full_list[symbol + 3],
+                                                      window_x=int(full_list[symbol + 4]) + int(full_list[symbol + 6]),
+                                                      window_y=int(full_list[symbol + 5]) + int(full_list[symbol + 7]))
             except ValueError:
                 pass
 

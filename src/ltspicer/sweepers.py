@@ -1,5 +1,5 @@
 import sys, os
-from pathfinder import LTPathFinder
+from ltspicer.pathfinder import LTPathFinder
 import re 
 import subprocess
 
@@ -11,11 +11,10 @@ class NetlistCreator:
     """Creates the netlist from the ASC file."""
     @staticmethod
     def create(asc_file, ltspice_path=None):
-        ltpath = LTPathFinder.find_ltspice_path(ltspice_path)
+        ltpath = LTPathFinder.find_exe_ltspice_path(ltspice_path)
         timeout = 20
         pre, ext = os.path.splitext(asc_file)
         asc_file = '"' + asc_file + '"'
-
         if sys.platform in ('win32', 'linux'):
             if sys.platform == 'win32':
                 cmd = f'"{ltpath}" -netlist {asc_file}'

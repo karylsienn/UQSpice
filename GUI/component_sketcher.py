@@ -296,18 +296,18 @@ class ComponentSketcher:
 
         # Pentagon in which the label is inside
         power_flags[element] = self.canvas_to_draw_in.create_polygon(start_coordinate_x,
-                                                            start_coordinate_y,
-                                                            start_coordinate_x + 25,
-                                                            start_coordinate_y + y_fixed_value,
-                                                            start_coordinate_x + 75,
-                                                            start_coordinate_y + y_fixed_value,
-                                                            start_coordinate_x + 75,
-                                                            start_coordinate_y - y_fixed_value,
-                                                            start_coordinate_x + 25,
-                                                            start_coordinate_y - y_fixed_value,
-                                                            fill='',
-                                                            outline='black',
-                                                            tags='power_flag')
+                                                                     start_coordinate_y,
+                                                                     start_coordinate_x + 25,
+                                                                     start_coordinate_y + y_fixed_value,
+                                                                     start_coordinate_x + 75,
+                                                                     start_coordinate_y + y_fixed_value,
+                                                                     start_coordinate_x + 75,
+                                                                     start_coordinate_y - y_fixed_value,
+                                                                     start_coordinate_x + 25,
+                                                                     start_coordinate_y - y_fixed_value,
+                                                                     fill='',
+                                                                     outline='black',
+                                                                     tags='power_flag')
 
         # self.canvas_to_draw_in.create_text(start_coordinate_x + 35, start_coordinate_y, text=power_flag, fill="black")
 
@@ -356,7 +356,7 @@ class ComponentSketcher:
                 coordinates[coordinate + 1] = coordinates[
                                                   coordinate + 1] - start_coordinate_x + start_coordinate_y - 2
 
-        # print(tag, angl, window_y, start_coordinate_x, start_coordinate_y)
+        # print(tag, angle, window_y, start_coordinate_x, start_coordinate_y)
 
         if shape_to_draw == 'line':
             # Adjustment Required for capacitor at an angle of 90 degrees
@@ -365,22 +365,22 @@ class ComponentSketcher:
             #                         coordinates[2] - 64,
             #                         coordinates[3] + 32, tags=tag + 'rotated')
             self.canvas_to_draw_in.create_line(coordinates[0],
-                                    coordinates[1],
-                                    coordinates[2],
-                                    coordinates[3],
-                                    tags=tag + 'rotated',
-                                    width=self.line_width,
-                                    fill=self.line_colour)
+                                               coordinates[1],
+                                               coordinates[2],
+                                               coordinates[3],
+                                               tags=tag + 'rotated',
+                                               width=self.line_width,
+                                               fill=self.line_colour)
         if shape_to_draw == 'circle':
             self.canvas_to_draw_in.create_oval(coordinates[0],
-                                    coordinates[1],
-                                    coordinates[2],
-                                    coordinates[3],
-                                    tags=tag + 'rotated',
-                                    width=self.line_width,
-                                    outline=self.line_colour,
-                                    fill=self.fill_colour
-                                    )
+                                               coordinates[1],
+                                               coordinates[2],
+                                               coordinates[3],
+                                               tags=tag + 'rotated',
+                                               width=self.line_width,
+                                               outline=self.line_colour,
+                                               fill=self.fill_colour
+                                               )
         if shape_to_draw == 'rectangle':
             self.canvas_to_draw_in.create_rectangle(coordinates,
                                                     tags=tag + 'rotated',
@@ -390,11 +390,11 @@ class ComponentSketcher:
                                                     )
         if shape_to_draw == 'polygon':
             self.canvas_to_draw_in.create_polygon(coordinates,
-                                                    tags=tag + '_rotated',
-                                                    width=self.line_width,
-                                                    outline=self.line_colour,
-                                                    fill=self.fill_colour
-                                                    )
+                                                  tags=tag + '_rotated',
+                                                  width=self.line_width,
+                                                  outline=self.line_colour,
+                                                  fill=self.fill_colour
+                                                  )
 
     def sketch_components(self,
                           component_coordinate_list,

@@ -9,11 +9,11 @@ class LTPathFinder:
     def find_exe_ltspice_path(ltspice_path=None):
         if ltspice_path:
             ltpath = ltspice_path
-        else: 
+        else:
             if sys.platform == 'darwin':
                 ltpath = "/Applications/LTspice.app/Contents/MacOS/LTspice"
             elif sys.platform == 'win32':
-                ltpath = '"C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"'
+                ltpath = "C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"
             elif sys.platform == 'linux':
                 ltpath = os.path.join(os.path.expanduser('~'), '.wine', 'drive_c', 'Program Files', 'LTC',
                                         'LTspiceXVII', 'XVIIx64.exe')
@@ -22,7 +22,7 @@ class LTPathFinder:
                 ltpath = None
                 raise NotImplementedError(not_implemented_string)  
 
-        if os.path.exists(ltpath) and os.access(ltspice_path, os.X_OK): # Check if it is an executable.
+        if os.path.exists(ltpath) and os.access(ltpath, os.X_OK): # Check if it is an executable.
             return ltpath
         else:
             raise FileNotFoundError(f"The executable path: {ltpath} could not be found or I cannot access it.")
@@ -36,7 +36,7 @@ class LTPathFinder:
                 _sym_folder = os.path.join(os.path.expanduser('~'),
                                             "Library", "Application Support", "LTspice", "lib" ,"sym")
             elif sys.platform == 'win32':
-                _sym_folder = '"C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym"'
+                _sym_folder = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym"
             elif sys.platform == 'linux':
                 _sym_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
             else:

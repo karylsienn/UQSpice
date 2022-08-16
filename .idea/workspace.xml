@@ -3,8 +3,11 @@
   <component name="ChangeListManager">
     <list default="true" id="c595454b-06b9-45c7-a6a9-fe72ec7d86b8" name="Changes" comment="Fixed exe path">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GUI/component_sketcher.py" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/component_sketcher.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GUI/gui_events.py" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/gui_events.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GUI/tkinter_modification.py" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/tkinter_modification.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GUI/new_components.py" beforeDir="false" afterPath="$PROJECT_DIR$/GUI/new_components.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ltspicer/pathfinder.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ltspicer/pathfinder.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ltspicer/sweepers.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ltspicer/sweepers.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -87,7 +90,7 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/GUI" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
@@ -142,6 +145,13 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Python.ltspice_reader" />
+      <item itemvalue="Python.ltspice_runner" />
+      <item itemvalue="Python.main" />
+      <item itemvalue="Python.parse_utils" />
+      <item itemvalue="Python.polynomial_chaos" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.main" />
