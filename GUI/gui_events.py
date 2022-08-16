@@ -6,15 +6,14 @@ import tkinter as tk
 from tkinter import filedialog as fd
 import ntpath
 import component_sketcher as comp
-import readers as read
+import ltspicer.readers as read
 import tkinter_modification as tkmod
 import new_components as new_comp
 from tkinter.colorchooser import askcolor
 import re
 import customtkinter
 import threading
-import ltspicer.sweepers
-
+import ltspicer.sweepers as sweepers
 
 
 BACKGROUND_COLOUR = '#F0F0F0'
@@ -935,7 +934,7 @@ def get_file_path(component_parameters_frame,
                                                 root,
                                                 encoding)).start(),
 
-                         threading.Thread(target=ltspicer.sweepers.NetlistCreator.create,
+                         threading.Thread(target=sweepers.NetlistCreator.create,
                                           args=(fpath,
                                                 new_comp.NewComponents.get_default_exe_path())).start()]
 

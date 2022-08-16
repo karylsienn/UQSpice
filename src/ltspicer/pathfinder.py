@@ -1,4 +1,7 @@
-import sys, os
+import sys
+import os
+import re
+
 
 class LTPathFinder:
     """Finds and returns LTSpice path if not provided by the user."""
@@ -9,7 +12,7 @@ class LTPathFinder:
     def find_exe_ltspice_path(ltspice_path=None):
         if ltspice_path:
             ltpath = ltspice_path
-        else:
+        else: 
             if sys.platform == 'darwin':
                 ltpath = "/Applications/LTspice.app/Contents/MacOS/LTspice"
             elif sys.platform == 'win32':
@@ -19,10 +22,8 @@ class LTPathFinder:
                                         'LTspiceXVII', 'XVIIx64.exe')
                 ltpath = re.sub(' ', '\ ', ltpath)
             else:
-                ltpath = None
-                raise NotImplementedError(not_implemented_string)  
-
-        if os.path.exists(ltpath) and os.access(ltpath, os.X_OK): # Check if it is an executable.
+                raise NotImplementedError(LTPathFinder.not_implemented_string)
+        if os.path.exists(ltpath) and os.access(ltpath, os.X_OK):  # Check if it is an executable.
             return ltpath
         else:
             raise FileNotFoundError(f"The executable path: {ltpath} could not be found or I cannot access it.")
@@ -34,14 +35,14 @@ class LTPathFinder:
         else:
             if sys.platform == 'darwin':
                 _sym_folder = os.path.join(os.path.expanduser('~'),
-                                            "Library", "Application Support", "LTspice", "lib" ,"sym")
+                                            "Library", "Application Support", "LTspice", "lib","sym")
             elif sys.platform == 'win32':
                 _sym_folder = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym"
             elif sys.platform == 'linux':
                 _sym_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
             else:
                 _sym_folder = None
-                raise NotImplementedError(not_implemented_string)
+                raise NotImplementedError(LTPathFinder.not_implemented_string)
         
         if os.path.exists(_sym_folder) and os.path.isdir(_sym_folder):
             return _sym_folder
@@ -57,5 +58,5 @@ class LTPathFinder:
         elif sys.platform == 'linux':
             return '; '
         else:
-            raise NotImplementedError(not_implemented_string)
+            raise NotImplementedError(LTPathFinder.not_implemented_string)
 

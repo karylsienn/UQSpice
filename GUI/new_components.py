@@ -1,4 +1,3 @@
-from email.policy import default
 import math
 import os.path
 import tkinter as tk
@@ -7,6 +6,7 @@ import customtkinter
 from tkinter import filedialog as fd, messagebox
 import ntpath
 import sys
+import os
 from ltspicer.pathfinder import LTPathFinder
 # import tkinterdnd2
 
@@ -73,10 +73,10 @@ class NewComponents:
     # Additional Symbol File paths to look into if added by the user
     list_of_added_file_paths = []
     try:
-
         if sys.platform in ('darwin', 'win32', 'linux'):
+            print(f"Platform: {sys.platform}")
             default_path = fixed_default_path = LTPathFinder.find_sym_folder()
-            default_exe_path = fixed_default_exe_path = LTPathFinder.find_exe_ltspice_path()
+            # default_exe_path = fixed_default_exe_path = LTPathFinder.find_exe_ltspice_path()
 
         # if sys.platform == 'darwin':
         #     default_path = LTPathFinder.find_exe_ltspice_path
@@ -106,7 +106,8 @@ class NewComponents:
             default_exe_path = None
             fixed_default_exe_path = None
             raise NotImplementedError("Platforms other than Mac, Windows and Linux are not implemented yet")
-    except Exception as e:
+
+    except NotImplementedError as e:
         messagebox.showerror(title="Not yet implemented",
                              message="Platforms other than Mac, Windows and Linux are not implemented yet")
 
@@ -132,7 +133,7 @@ class NewComponents:
         self.MULTIPLE_SYMBOL = False
         self.symbols_not_found_list = []
         # print('symbols_path', kwargs.get('ltspice_path'))
-        self._sym = NewComponents.default_path
+        self._sym_folder = NewComponents.default_path
 
     def move_component(self, event):
         component_coordinates = self.canvas.coords(self.file_name)
@@ -332,8 +333,8 @@ class NewComponents:
                 else:
                     try:
                         # Try and save symbol from default path
-                        self._sym = NewComponents.default_path
-                        symbol_in_default_path = os.path.exists(os.path.join(self._sym, file_name) + ".asy")
+                        self._sym_folder = NewComponents.default_path
+                        symbol_in_default_path = os.path.exists(os.path.join(self._sym_folder, file_name) + ".asy")
                         if symbol_in_default_path:
 
                             self.find_symbol_from_default_path(file_name,

@@ -9,22 +9,27 @@ ENC_UTF16LE = 'utf-16 le'
 ENC_UTF8 = 'utf8'
 
 
-class NetlistReader:
+class InputReader:
+    @staticmethod
+    def read(path: str):
+        pass
+
+    @staticmethod
+    def guess_encoding(path: str):
+        pass
+
+
+class NetlistReader(InputReader):
     """Reads the netlist file and returns its content as a list of strings"""
+    @staticmethod
     def read(netlist_path: str) -> List[str]:
         # Assert the file exists.
         if os.path.exists(netlist_path):
             # Parse the file and return a list of strings
-            with open(netlist_path, 'rb') as netlist:
-                # Guess the encoding
-                bytes = netlist.read(2)
-                if bytes.decode(ENC_UTF16LE) == '*':
-                    encoding = ENC_UTF16LE
-                elif bytes.decode(ENC_UTF8)[0] == '*':
-                    encoding = ENC_UTF8
-                else:
-                    raise UnicodeEncodeError(f"Unknown encoding. Make sure the files are either in {ENC_UTF16LE} or {ENC_UTF8}")
-            netlist.close()
+            try:
+                encoding = NetlistReader.guess_encoding(netlist_path)
+            except UnicodeDecodeError as e:
+                raise e
 
             with open(netlist_path, 'r', encoding=encoding) as netlist:
                 netlist_lines = netlist.readlines()
@@ -35,24 +40,33 @@ class NetlistReader:
         else:
             raise FileNotFoundError("There was a problem reading your file.")
 
+    @staticmethod
+    def guess_encoding(netlist_path: str) -> str:
+        with open(netlist_path, 'rb') as netlist:
+            # Guess the encoding
+            first_bytes = netlist.read(2)
+            if first_bytes.decode(ENC_UTF16LE) == '*':
+                encoding = ENC_UTF16LE
+            elif first_bytes.decode(ENC_UTF8)[0] == '*':
+                encoding = ENC_UTF8
+            else:
+                raise UnicodeDecodeError(
+                    f"Unknown encoding. Make sure the files are either in {ENC_UTF16LE} or {ENC_UTF8}")
+        netlist.close()
+        return encoding
 
 
-class CircuitReader:
+class CircuitReader(InputReader):
     """Reads the circuit file and returns its content as a list of strings"""
+    @staticmethod
     def read(circuit_path: str) -> List[str]:
         # Assert the file exists.
         if os.path.exists(circuit_path):
             # Parse the file and return a list of strings
-            with open(circuit_path, 'rb') as netlist:
-                # Guess the encoding
-                bytes = netlist.read(6)
-                if bytes.decode(ENC_UTF16LE) == 'Ver':
-                    encoding = ENC_UTF16LE
-                elif bytes.decode(ENC_UTF8) == 'Versio':
-                    encoding = ENC_UTF8
-                else:
-                    raise UnicodeEncodeError(f"Unknown encoding. Make sure the files are either in {ENC_UTF16LE} or {ENC_UTF8}")
-            netlist.close()
+            try:
+                encoding = CircuitReader.guess_encoding(circuit_path)
+            except UnicodeDecodeError as e:
+                raise e
 
             with open(circuit_path, 'r', encoding=encoding) as netlist:
                 netlist_lines = netlist.readlines()
@@ -63,10 +77,26 @@ class CircuitReader:
         else:
             raise FileNotFoundError("There was a problem reading your file.")
 
+    @staticmethod
+    def guess_encoding(circuit_path):
+        with open(circuit_path, 'rb') as netlist:
+            # Guess the encoding
+            first_bytes = netlist.read(6)
+            if first_bytes.decode(ENC_UTF16LE) == 'Ver':
+                encoding = ENC_UTF16LE
+            elif first_bytes.decode(ENC_UTF8) == 'Versio':
+                encoding = ENC_UTF8
+            else:
+                raise UnicodeDecodeError(
+                    f"Unknown encoding. Make sure the files are either in {ENC_UTF16LE} or {ENC_UTF8}")
+        netlist.close()
+        return encoding
+
 
 class LTSpiceReader:
-    """Base class for the readers"""
+    """Base class for the output readers (raw and log files)"""
     pass
+
 
 class RawReader(LTSpiceReader):
     """RawReader parses the raw LTSpice file given in 'raw_path'.
@@ -114,7 +144,7 @@ class RawReader(LTSpiceReader):
         """Returns a copy of the raw data as `pandas.DataFrame`.
 
         Parameter `columns` can be either a list of column names or 'all'.
-        `steps` can be a list, numpy.array, an integer or 'all'. If the data is stepped 
+        `steps` can be a list, numpy array, an integer or 'all'. If the data is stepped
         only a required portion of the data will be returned and a column `step` added 
         to a data frame. In case the required steps are not in the data, a warning will
         be shown and only existing steps will be returned, or an empty data frame in case
@@ -171,7 +201,7 @@ class RawReader(LTSpiceReader):
         """Returns a copy of the raw data as `numpy.array`.
 
         Parameter `columns` can be either a tuple of column names or 'all'.
-        `steps` can be a list, numpy.array, an integer or 'all'. If the data is stepped 
+        `steps` can be a list, numpy array, an integer or 'all'. If the data is stepped
         only a required portion of the data will be returned and a column `step` added 
         to a data frame. In case the required steps are not in the data, a warning will
         be shown and only existing steps will be returned, or an empty data frame in case
@@ -356,8 +386,9 @@ class RawReader(LTSpiceReader):
                     "n": len(xvar)
                 }
             }
-    
-    def _steps_dict_to_numpy_array(self, steps_dict):
+
+    @staticmethod
+    def _steps_dict_to_numpy_array(steps_dict):
         reps = [(
             int(re.match('step([0-9]+)', k).group(1)), # take the step number
             v['n'] # compute the number of repetitions
@@ -409,7 +440,6 @@ class RawReader(LTSpiceReader):
             header_dict["Binary_offset"] = offset # Append the number of lines at which "Data" or "Binary" appears
             header_dict["Encoding"] = encoding
         return header_dict
-
 
     def _get_data_array(self, columns='all', steps='all', interpolated=False, **kwargs):
         try: # First get the columns

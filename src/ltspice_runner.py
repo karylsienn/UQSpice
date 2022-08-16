@@ -64,7 +64,6 @@ class LTSpiceRunner:
 
         return param_line, values_lines
 
-
     def add_sweep(self, input_samples: pd.DataFrame, sweep_param_name='Rx', encoding=None):
         """
         Appends the netlist with sweep command created from the `input_samples`.
@@ -74,7 +73,6 @@ class LTSpiceRunner:
         netlist = parse_netlist(self.get_fullname(), encoding=encoding) # Hard encoding now.
 
         # Add this before the .backanno command
-        # Should also add some kind of marker.
         for idx, command in enumerate(netlist):
             if re.match('.backanno', command):
                 netlist.insert(idx, f"* Sweep added by LTSpiceRunner {self.hash}")
