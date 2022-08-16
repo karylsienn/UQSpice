@@ -192,19 +192,22 @@ class EditableListbox(tk.Listbox):
         return "break"
 
     def start_edit(self, index):
-        self.edit_item = index
-        text = self.get(index)
-        y0 = self.bbox(index)[1]
-        entry = tk.Entry(self, borderwidth=0, highlightthickness=1)
-        entry.bind("<Return>", self.accept_edit)
-        entry.bind("<Escape>", self.cancel_edit)
+        try:
+            self.edit_item = index
+            text = self.get(index)
+            y0 = self.bbox(index)[1]
+            entry = tk.Entry(self, borderwidth=0, highlightthickness=1)
+            entry.bind("<Return>", self.accept_edit)
+            entry.bind("<Escape>", self.cancel_edit)
 
-        entry.insert(0, text)
-        entry.selection_from(0)
-        entry.selection_to("end")
-        entry.place(relx=0, y=y0, relwidth=1, width=-1)
-        entry.focus_set()
-        entry.grab_set()
+            entry.insert(0, text)
+            entry.selection_from(0)
+            entry.selection_to("end")
+            entry.place(relx=0, y=y0, relwidth=1, width=-1)
+            entry.focus_set()
+            entry.grab_set()
+        except TypeError:
+            pass
 
     def cancel_edit(self, event):
         event.widget.destroy()

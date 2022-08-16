@@ -383,6 +383,7 @@ def set_preferences(root, schematic_analysis):
 
         # Create a list containing all extra file paths to check if symbols are not found
         file_paths = tkmod.EditableListbox(file_path_preferences, width=120, activestyle=tk.DOTBOX)
+        file_paths.insert(0, ' ')
         file_paths.grid(row=6, column=2, columnspan=4, padx=30)
 
         all_file_paths = new_comp.NewComponents.get_added_file_paths()
