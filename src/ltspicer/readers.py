@@ -68,11 +68,11 @@ class CircuitReader(InputReader):
             except UnicodeDecodeError as e:
                 raise e
 
-            with open(circuit_path, 'r', encoding=encoding) as netlist:
-                netlist_lines = netlist.readlines()
-                netlist_lines = [line.strip("\r\n") for line in netlist_lines]
-            netlist.close()
-            return netlist_lines
+            with open(circuit_path, 'r', encoding=encoding, errors='replace') as circuit:
+                circuit_lines = circuit.readlines()
+                circuit_lines = [line.strip("\r\n") for line in circuit_lines]
+            circuit.close()
+            return circuit_lines
 
         else:
             raise FileNotFoundError("There was a problem reading your file.")

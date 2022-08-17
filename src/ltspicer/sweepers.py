@@ -100,6 +100,52 @@ class Sweeper:
             raise e
 
 
+class ConstAdd:
+
+    def __init__(self):
+        self._hash = hash(random())
+        self._enter_line = f"* Parameters added by ConstAdd {self._hash}"
+        self._exit_line = f"* Parameters added by ConstAdd {self._hash}"
+
+    def __hash__(self):
+        return self._hash
+
+    def add_constants(self, netlist_path: str, vars: dict):
+        """
+        Adds lines of type .param PARAM=VALUE to the netlist.
+
+        Parameters
+        * netlist_path : str
+            path to the netlist
+        * vars : dict
+            a dictionary {'param_name': const_value}
+        """
+        # If vars is empty just quit
+        if len(vars) == 0:
+            return
+        # Read the netlist
+        try:
+            netlist = NetlistReader.read(netlist_path)
+        except FileNotFoundError or UnicodeDecodeError as e:
+            raise e
+
+        # Add this before the .backanno command
+        for idx, command in enumerate(netlist):
+            if re.match('.backanno', command):
+                netlist.insert(idx, self._enter_line)
+                end_idx = idx + 1
+                for idy, (param_name, param_value) in enumerate(vars.items()):
+                    netlist.insert(idx + idy + 1, f".param {param_name}={param_value}")
+                    end_idx = idx + idy + 2
+                netlist.insert(end_idx, self._exit_line)
+                break
+        try:
+            NetlistCreator.write_netlist_lines(netlist, netlist_path)
+            return True
+        except Exception as e:
+            raise e
+
+
 class NetlistCreator:
     """Creates the netlist from the ASC file."""
     @staticmethod
