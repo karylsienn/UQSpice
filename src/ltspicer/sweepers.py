@@ -4,7 +4,7 @@ from ltspicer.pathfinder import LTPathFinder
 from ltspicer.readers import NetlistReader
 import re 
 import subprocess
-import random
+from random import random
 import pandas as pd
 from typing import List
 
@@ -23,7 +23,7 @@ class Sweeper:
         return self.hash
 
     @staticmethod
-    def _create_sweep_command(self, input_samples: pd.DataFrame, sweep_param_name):
+    def _create_sweep_command(input_samples: pd.DataFrame, sweep_param_name):
         """
         Creates the sweep command based on the rows of the `input_samples`
         """
@@ -150,6 +150,11 @@ class NetlistCreator:
                 raise NotImplementedError("Platforms other than Mac, Windows and Linux (wine) are not implemented yet.")
 
         try:
+            netlist_lines = [line + '\n' for line in netlist_lines]
+            for elements in range(len(netlist_lines)):
+                if '�' in netlist_lines[elements]:
+                    netlist_lines[elements] = netlist_lines[elements].replace('�', 'u')
+
             with open(netlist_path, 'w', encoding=encoding) as netlist:
                 netlist.writelines(netlist_lines)
             netlist.close()

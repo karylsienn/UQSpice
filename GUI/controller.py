@@ -195,6 +195,8 @@ enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
 delete_all_constants_button = customtkinter.CTkButton(component_parameters_frame,
                                                       text='Delete constants')
 
+run_simulation_button = customtkinter.CTkButton(component_parameters_frame,
+                                                text='Simulation Preferences')
 # Select a schematic using a button
 openfile_button = customtkinter.CTkButton(schematic_analysis,
                                           text='Open a Schematic',
@@ -206,6 +208,7 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
                                                                   enter_parameters_button,
                                                                   entering_parameters_window,
                                                                   delete_all_constants_button,
+                                                                  run_simulation_button,
                                                                   root,
                                                                   tabControl)
                                           )

@@ -1,34 +1,37 @@
-import os.path
-import threading
-from tkinter import messagebox, ttk
-import mplcursors
-import tkinter as tk
-from tkinter import filedialog as fd
-import ntpath
-import component_sketcher as comp
+import tkinter as tk  # creating GUI
+from tkinter import filedialog as fd  # selecting files from a file browser
+from tkinter import messagebox, ttk  # displaying error messages
+from tkinter.colorchooser import askcolor  # selecting colours when choosing component outline or fill colour
+import customtkinter  # creating enhanced GUI - subset from tkinter
+import mplcursors  # display cursors on matplotlib graphs
+import ntpath  # used for just retrieving the file name from a file path
+import os.path  # checking if file path exists, directory exists, etc for default symbols and exe path
+import re  # used for substituting for matches
+import threading  # running netlist generation and sketching components when .asc file has been selected
+
+# Created Files and classes
+import ltspicer.sweepers as sweepers
 import ltspicer.readers as read
+import pystatemc.pcarchitects as pcarchitects
+import component_sketcher as comp
 import tkinter_modification as tkmod
 import new_components as new_comp
-from tkinter.colorchooser import askcolor
-import re
-import customtkinter
-import threading
-import ltspicer.sweepers as sweepers
 
 
 BACKGROUND_COLOUR = '#F0F0F0'
 Mode = 'dark'
 
-all_component_parameters = []
+all_component_parameters = {}
 entering_parameters_window = None
 preferences_window = None
-
+run_simulation_window = None
 # Canvas preferences
 line_width = 1
 outline_colour = 'black'
 fill_colour = ''
 
 
+# Draw MOSFET in root window
 def draw_logo(logo, root):
     factor = 2
     adjustment_x = 60
@@ -140,6 +143,7 @@ def dark_theme_set(root, canvas):
     # canvas.config(background='#2A2D2E')
 
 
+# Callback function for when selecting line thickness through a slider
 def slider_event(slider_label, slider, canvas):
     global line_width
     line_thickness = round(slider.get(), 1)
@@ -152,6 +156,7 @@ def slider_event(slider_label, slider, canvas):
     line_width = line_thickness
 
 
+# Change components outline of fill colour
 def change_colour(canvas, fill=True, outline=False):
     title = 'Select Colour'
     if outline:
@@ -188,6 +193,11 @@ def change_colour(canvas, fill=True, outline=False):
         fill_colour = colour_to_change
 
 
+# Set the component drawing preferences to default
+# Defaults are:
+#               Line Thickness: 1.0
+#               Fill = '' (empty quotations makes it transparent)
+#               Outline = 'black'
 def default_settings(canvas, slider, slider_label):
     global fill_colour
     global outline_colour
@@ -213,6 +223,7 @@ def default_settings(canvas, slider, slider_label):
     save_preferences(True)
 
 
+# callback function for saving the selected drawing preferences
 def save_preferences(default=True):
     global line_width
     global fill_colour
@@ -230,6 +241,7 @@ def save_preferences(default=True):
     new_comp.NewComponents.set_fill_colour(fill_colour)
 
 
+# callback function for changing the default LTSpice symbol or exe path
 def change_default_path(default_path_box, parent_window,  open_file_dialog=True, new_default_file_path='', ):
     # Open and return file path
     if open_file_dialog:
@@ -242,6 +254,7 @@ def change_default_path(default_path_box, parent_window,  open_file_dialog=True,
         default_path_box.insert(0, new_default_file_path)
 
 
+# callback function for adding extra symbol file paths to search into incase not found in default path or Symbols
 def add_file_path(listbox):
     # Open and return file path
     new_file_path = fd.askdirectory(
@@ -261,6 +274,16 @@ def add_file_path(listbox):
         pass
 
 
+def delete_selected_path(listbox):
+    selected_path = listbox.curselection()
+    if selected_path:
+        listbox.delete(selected_path)
+        new_comp.NewComponents.clear_file_paths(all_file_paths=False, index=int(selected_path[0]) - 1)
+    else:
+        pass
+
+
+# callback function for saving the newly selected paths for defaults and extra file paths
 def save_file_paths(default_symbol_path, default_exe_path, file_paths):
     symbols_path = False
     exe_path = False
@@ -306,15 +329,6 @@ def reset_to_default_path(listbox, default_symbols_path, default_exe_path):
     while number_of_file_paths != -1:
         listbox.delete(number_of_file_paths)
         number_of_file_paths -= 1
-
-
-def delete_selected_path(listbox):
-    selected_path = listbox.curselection()
-    if selected_path:
-        listbox.delete(selected_path)
-        new_comp.NewComponents.clear_file_paths(all_file_paths=False, index=int(selected_path[0]) - 1)
-    else:
-        pass
 
 
 def set_preferences(root, schematic_analysis):
@@ -450,6 +464,7 @@ def set_preferences(root, schematic_analysis):
 
         file_path_preferences.grid_rowconfigure(tuple(range(100)), weight=1)
         file_path_preferences.grid_columnconfigure(tuple(range(100)), weight=1)
+
         # ---------------------------------------------- Component Drawing Preferences ---------------------------------
         exit_preferences_button = customtkinter.CTkButton(all_preferences_frame,
                                                           text='Cancel',
@@ -477,7 +492,7 @@ def set_preferences(root, schematic_analysis):
 
         # Window Children
         preferences_window.minsize(preferences_window_width, preferences_window_height)
-        preferences_window.resizable(height=False, width=False)
+        preferences_window.resizable(height=True, width=True)
 
         slider_label = customtkinter.CTkLabel(master=preferences_frame, width=20,
                                               text='Line Width = ' + str(line_width),
@@ -539,9 +554,6 @@ def remove_suffix(input_string, suffix):
     return input_string
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------- Functions for Root starting window ------------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
 def reopen_root_window(root, window_to_close):
     window_to_close.withdraw()
     root.deiconify()
@@ -657,6 +669,7 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
     schematic_analysis_state = schematic_analysis.state()
     root_state = root.state()
 
+    parent = schematic_analysis
     if schematic_analysis_state == 'normal':
         parent = schematic_analysis
     if root_state == 'normal':
@@ -849,6 +862,7 @@ def get_file_path(component_parameters_frame,
                   enter_parameters_button,
                   entering_parameters_window,
                   delete_constants_button,
+                  set_simulation_preferences_button,
                   root,
                   tabs):
     """Obtains the file path selected from a dialog box, Event function for Open a schematic button.
@@ -923,13 +937,15 @@ def get_file_path(component_parameters_frame,
 
             # Generate Netlist and sketch schematic at the same time
             functions = [threading.Thread(target=sketch_schematic_asc,
-                                          args=(schematic,
+                                          args=(fpath,
+                                                schematic,
                                                 component_parameters_frame,
                                                 all_component_parameters,
                                                 canvas,
                                                 schematic_analysis,
                                                 enter_parameters_button,
                                                 delete_constants_button,
+                                                set_simulation_preferences_button,
                                                 entering_parameters_window,
                                                 root,
                                                 encoding)).start(),
@@ -952,13 +968,15 @@ def get_file_path(component_parameters_frame,
 # --------------------------------------- Function for Drawing Schematic -----------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function to sketch the schematic which has been opened
-def sketch_schematic_asc(schematic,
+def sketch_schematic_asc(fpath,
+                         schematic,
                          component_parameters_frame,
                          all_component_parameters,
                          canvas,
                          schematic_analysis,
                          enter_parameters_button,
                          delete_constants_button,
+                         set_simulation_preferences_button,
                          entering_parameters_window,
                          root,
                          encoding):
@@ -1263,13 +1281,15 @@ def sketch_schematic_asc(schematic,
         # ---------------------------------- when clicking on a component --------------------------------------------
 
         enter_parameters_button.configure(command=lambda: [threading.Thread(target=open_new_window,
-                                                                            args=(components,
+                                                                            args=(fpath,
+                                                                                  components,
                                                                                   root,
                                                                                   schematic_analysis,
                                                                                   component_parameters_frame,
                                                                                   entering_parameters_window,
                                                                                   component_value_array,
                                                                                   delete_constants_button,
+                                                                                  set_simulation_preferences_button,
                                                                                   canvas, component_details_dictionary,
                                                                                   symbols_and_name_dictionary)).start()])
         # Store all component names in a list after removing new lines
@@ -1538,6 +1558,11 @@ def change_component_index(component_selected,
         component_param1_label_array[component_index].configure(text='Mean (μ)')
         component_param2_label_array[component_index].configure(text='Standard deviation (σ)')
 
+    if distribution_type.get() == 'Uniform Distribution':
+        component_distribution_array[component_index].insert(tk.INSERT, 'Uniform')
+        component_param1_label_array[component_index].configure(text='Min')
+        component_param2_label_array[component_index].configure(text='Max')
+
     # Display the labels for the corresponding component index and remove labels of other components
     for labels in range(len(component_param1_label_array)):
         if labels == component_index:
@@ -1583,6 +1608,10 @@ def select_distribution_type(distribution_type,
         parameter1_label[index_of_selected_component].configure(text='Mean (μ)')
         parameter2_label[index_of_selected_component].configure(text='Standard deviation (σ)')
 
+    if distribution_type.get() == 'Uniform Distribution':
+        component_distribution[index_of_selected_component].insert(tk.INSERT, 'Uniform')
+        parameter1_label[index_of_selected_component].configure(text='Min')
+        parameter2_label[index_of_selected_component].configure(text='Max')
     # Remove all labels for parameters, except the user selected component label
     for labels in range(len(param1_array)):
         if labels == index_of_selected_component:
@@ -1640,125 +1669,82 @@ def if_number(parameter_value, value_before):
         return True
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# -------------------------------------- Make Components Switch in Root Window -----------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
-def change_component(master_window, starting_canvas):
-    factor = 2
-    adjustment_x = 60
-    adjustment_y = 20
+def only_integers(current_entered_parameter, previous_entered_parameters):
 
-    logo = comp.ComponentSketcher(starting_canvas)
+    if current_entered_parameter.isdigit():
+        return True
+    else:
+        return False
 
-    starting_canvas.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
-                     48 * factor + adjustment_x, 96 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(16 * factor + adjustment_x, 80 * factor + adjustment_y,
-                     48 * factor + adjustment_x, 80 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(16 * factor + adjustment_x, 48 * factor + adjustment_y,
-                     24 * factor + adjustment_x, 48 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
-                     24 * factor + adjustment_x, 44 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(48 * factor + adjustment_x, 48 * factor + adjustment_y,
-                     24 * factor + adjustment_x, 52 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(24 * factor + adjustment_x, 44 * factor + adjustment_y,
-                     24 * factor + adjustment_x, 52 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(16 * factor + adjustment_x, 8 * factor + adjustment_y,
-                     16 * factor + adjustment_x, 24 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(16 * factor + adjustment_x, 40 * factor + adjustment_y,
-                     16 * factor + adjustment_x, 56 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(16 * factor + adjustment_x, 72 * factor + adjustment_y,
-                     16 * factor + adjustment_x, 88 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(0 * factor + adjustment_x, 80 * factor + adjustment_y,
-                     8 * factor + adjustment_x, 80 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(8 * factor + adjustment_x, 16 * factor + adjustment_y,
-                     8 * factor + adjustment_x, 80 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(48 * factor + adjustment_x, 16 * factor + adjustment_y,
-                     16 * factor + adjustment_x, 16 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
-    starting_canvas.create_line(48 * factor + adjustment_x, 0 * factor + adjustment_y,
-                     48 * factor + adjustment_x, 16 * factor + adjustment_y,
-                     tags='MOSFET', fill='#1F6AA5')
 
-    # Changing Colour of shape to gradually disappear
-    light = ('MOSFET', '-fill', '#085691')
-    lighter = ('MOSFET', '-fill', '#053C66')
-    lightest = ('MOSFET', '-fill', '#212325')
+def simulation_run(number_of_simulations, netlist_path):
+    print('running simulation')
+    netlist_path, ext = os.path.splitext(netlist_path)
+    netlist_path = netlist_path + '.net'
+    simulation_object = pcarchitects.ExperimentalDesigner(all_component_parameters)
+    component_values_for_simulation = simulation_object.get_lhs_design_pandas(int(number_of_simulations.get()))
+    print(component_values_for_simulation)
 
-    starting_canvas.after(800, starting_canvas.itemconfig, light)
-    starting_canvas.after(1600, starting_canvas.itemconfig, lighter)
-    starting_canvas.after(2400, starting_canvas.itemconfig, lightest)
+    preform_sweep = sweepers.Sweeper()
+    preform_sweep.add_sweep(netlist_path=netlist_path,
+                            input_samples=component_values_for_simulation)
 
-    dark = ('Diode', '-fill', '#053C66')
-    darker = ('Diode', '-fill', '#085691')
-    darkest = ('Diode', '-fill', '#1F6AA5')
 
-    ground_line = 10
-    x_adjustment = 16
-    start_coordinate_x = adjustment_x
-    start_coordinate_y = adjustment_y
-    # wire before diode
-    starting_canvas.create_line(start_coordinate_x + x_adjustment,
-                                start_coordinate_y,
-                                start_coordinate_x + x_adjustment,
-                                start_coordinate_y + ground_line,
-                                tags='Diode',
-                                fill='#212325')
+def simulation_preferences(schematic_analysis_window, netlist_path):
+    global all_component_parameters
+    global run_simulation_window
 
-    # wire after diode
-    starting_canvas.create_line(start_coordinate_x + x_adjustment,
-                                start_coordinate_y + 35 + ground_line,
-                                start_coordinate_x + x_adjustment,
-                                start_coordinate_y + 35 + ground_line + 20,
-                                tags='Diode',
-                                fill='#212325')
+    if run_simulation_window is not None and run_simulation_window.winfo_exists():
+        run_simulation_window.lift(schematic_analysis_window)
+        run_simulation_window.wm_transient(schematic_analysis_window)
+    # if FALSE: Create a new run simulation window
+    else:
+        run_simulation_window = customtkinter.CTkToplevel(schematic_analysis_window)
 
-    # triangle shape of diode
-    starting_canvas.create_polygon(start_coordinate_x - 25 + x_adjustment,
-                                   start_coordinate_y + ground_line,
-                                   start_coordinate_x + 25 + x_adjustment,
-                                   start_coordinate_y + ground_line,
-                                   start_coordinate_x + x_adjustment,
-                                   start_coordinate_y + 35 + ground_line,
-                                   fill='',
-                                   outline='#212325',
-                                   tags='Diode')
+    # sets the title of the new window created for entering parameters
+    run_simulation_window.title("Run Simulation Preferences")
 
-    # Diode line in front of triangle shape
-    starting_canvas.create_line(start_coordinate_x - 25 + x_adjustment,
-                                start_coordinate_y + 35 + ground_line,
-                                start_coordinate_x + 25 + x_adjustment,
-                                start_coordinate_y + 35 + ground_line,
-                                tags='Diode',
-                                fill='#212325')
+    # Find the location of the main schematic analysis window
+    schematic_x = schematic_analysis_window.winfo_x()
+    schematic_y = schematic_analysis_window.winfo_y()
+    # set the size and location of the new window created for entering parameters
+    run_simulation_window.geometry("500x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
+    # make entering parameters window on top of the main schematic analysis window
+    run_simulation_window.wm_transient(schematic_analysis_window)
 
-    starting_canvas.after(3200, starting_canvas.itemconfig, light)
-    starting_canvas.after(4000, starting_canvas.itemconfig, lighter)
-    starting_canvas.after(4800, starting_canvas.itemconfig, lighter)
-    starting_canvas.after(5600, lambda: change_component(master_window, starting_canvas))
+    simulation_number_label = customtkinter.CTkLabel(run_simulation_window,
+                                                     height=1,
+                                                     width=20,
+                                                     text='Number of simulations:')
+    simulation_number_label.grid(row=1, column=1, padx=20, pady=15)
+
+    simulation_number_entry = customtkinter.CTkEntry(run_simulation_window, validate='key')
+
+    vcmd1 = (simulation_number_entry.register(only_integers), '%S', '%s')
+
+    simulation_number_entry.configure(validatecommand=vcmd1)
+    simulation_number_entry.grid(row=1, column=2, padx=20, pady=15)
+
+    run_simulation_button = customtkinter.CTkButton(run_simulation_window,
+                                                    text='Run Simulation',
+                                                    command=lambda: simulation_run(simulation_number_entry,
+                                                                                   netlist_path))
+    run_simulation_button.grid(row=4, column=2, padx=20, pady=15)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Function for enter all parameters button --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for entering parameters
-def open_new_window(components,
+def open_new_window(fpath,
+                    components,
                     root,
                     schematic_analysis,
                     component_parameters_frame,
                     parameters_window,
                     component_value_array,
                     delete_constants_button,
+                    set_simulation_preferences_button,
                     canvas,
                     values_dictionary,
                     symbol_type_dictionary):
@@ -1836,10 +1822,10 @@ def open_new_window(components,
 
             component_selected = tk.StringVar(entering_parameters_window)
             component_selected.set(components[0])
-            distributions = ['Normal Distribution', 'Gamma Distribution', 'Beta Distribution']
+            distributions = ['Normal Distribution', 'Uniform Distribution', 'Gamma Distribution', 'Beta Distribution']
             distribution_selected = tk.StringVar(entering_parameters_window)
             distribution_selected.set(distributions[0])
-            prefixes = ['None', 'm', 'μ', 'n', 'p', 'f', 'K', 'MEG', 'G', 'T']
+            prefixes = ['None', 'm', 'u', 'n', 'p', 'f', 'K', 'MEG', 'G', 'T']
             param1_prefix_selected = tk.StringVar(entering_parameters_window)
             param1_prefix_selected.set(prefixes[0])
             param2_prefix_selected = tk.StringVar(entering_parameters_window)
@@ -1937,7 +1923,7 @@ def open_new_window(components,
                 # Standard Deviation = 2
                 component_distribution_array[circuit_component].insert(tk.INSERT, 'Normal')
                 component_param1_label_array[circuit_component].configure(text='Mean (μ)')
-                component_param2_label_array[circuit_component].configure(text='Standard deviation (σ)')
+                component_param2_label_array[circuit_component].configure(text='Variance (σ^2)')
                 # component_param1_entry_box_array[circuit_component].insert(0, '1')
                 # component_param2_entry_box_array[circuit_component].insert(0, '2')
 
@@ -1946,6 +1932,10 @@ def open_new_window(components,
             delete_constants_button.configure(command=lambda: delete_all_constants(parameters_frame,
                                                                                    name_label_array,
                                                                                    component_value_array))
+
+            set_simulation_preferences_button.configure(command=lambda: simulation_preferences(schematic_analysis,
+                                                                                               fpath))
+
             # Drop down list for selecting prefixes
             param1_prefix_drop_down_list = \
                 customtkinter.CTkOptionMenu(master=entering_parameters_window,
@@ -2016,7 +2006,8 @@ def open_new_window(components,
                                         component_parameters_frame,
                                         param1_prefix_drop_down_list,
                                         param2_prefix_drop_down_list,
-                                        parameters_frame)
+                                        parameters_frame,
+                                        set_simulation_preferences_button)
             )
 
             # Button for saving all parameters
@@ -2036,7 +2027,8 @@ def open_new_window(components,
                                                             param1_prefix_drop_down_list,
                                                             param2_prefix_drop_down_list,
                                                             parameters_frame,
-                                                            values_dictionary)
+                                                            values_dictionary,
+                                                            set_simulation_preferences_button)
             )
 
             component_name_row = 3
@@ -2068,7 +2060,7 @@ def open_new_window(components,
             # Ensuring all widgets inside enter parameters window are resizable
             entering_parameters_window.grid_rowconfigure(tuple(range(button_row)), weight=1)
             entering_parameters_window.grid_columnconfigure(tuple(range(button_row)), weight=1)
-            delete_constants_button.pack(anchor=tk.SW, side=tk.TOP)
+            delete_constants_button.pack(anchor=tk.SW, side=tk.LEFT)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -2090,13 +2082,13 @@ def delete_label(label_to_remove, label_index,
 
         delete_label_button:  the button clicked to remove the label
 
-        all_stored_components:  list of dictionaries of all components, removes the component which the delete button
+        all_stored_components:  dictionary of all components, removes the component which the delete button
                                 has been clicked for
 
     """
     # Component name stored from label
-    component_name = [label_to_remove[label_index].__getattribute__('text').split('\n')[1]]
-
+    component_name = label_to_remove[label_index].__getattribute__('text').split('\n')[1]
+    print(component_name)
     # Clear Label from stored data and remove outline border
     label_to_remove[label_index].configure(text='')
     label_to_remove[label_index].configure(borderwidth=0)
@@ -2105,15 +2097,10 @@ def delete_label(label_to_remove, label_index,
     # delete_label_button[label_index].grid_forget()
     parameters_frame[label_index].pack_forget()
     # Deleting Item from dictionary
-    component_counter = 0
     if all_stored_components:
-        while component_counter < len(all_stored_components):
-            if component_name == list(all_stored_components[component_counter].keys()):
-                print(len(all_stored_components))
-                print(component_counter)
-                del all_stored_components[component_counter]
-                print(all_stored_components)
-            component_counter += 1
+        if component_name in all_stored_components:
+            del all_stored_components[component_name]
+            print(all_stored_components)
 
 
 # Delete all labels which have constant values
@@ -2146,24 +2133,28 @@ def save_entered_parameters(entering_parameters_window,
                             component_parameters_frame,
                             prefix1,
                             prefix2,
-                            parameters_frame):
+                            parameters_frame,
+                            set_simulation_preferences_button):
     global all_component_parameters
     global component_index
 
     component_value_array[index] = 'Random'
 
-    prefixes = {'m': 1e-3, 'μ': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9, 'T': 1e12}
+    prefixes = {'m': 1e-3, 'u': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9, 'T': 1e12}
 
     if component_value_array[index] == 'Random':
         if component_distribution == 'Normal':
-            component_param1_dictionary_input = 'mean'
-            component_param2_dictionary_input = 'standard deviation'
+            component_param1_dictionary_input = 'mu'
+            component_param2_dictionary_input = 'var'
+        elif component_distribution == 'Uniform':
+            component_param1_dictionary_input = 'min'
+            component_param2_dictionary_input = 'max'
         elif component_distribution == 'Gamma':
-            component_param1_dictionary_input = 'shape'
-            component_param2_dictionary_input = 'theta'
-        elif component_distribution == 'Beta':
             component_param1_dictionary_input = 'alpha'
             component_param2_dictionary_input = 'beta'
+        elif component_distribution == 'Beta':
+            component_param1_dictionary_input = 'a'
+            component_param2_dictionary_input = 'b'
 
         try:
             first_prefix_dropdown = prefix1.get()
@@ -2223,49 +2214,17 @@ def save_entered_parameters(entering_parameters_window,
                 component_param2 = float(component_param2)
             else:
                 raise TypeError
-
-            if len(all_component_parameters) == 0:
-                all_component_parameters.append({component_name:
-                                                {'distribution': component_distribution,
-                                                 'parameters': {
-                                                  component_param1_dictionary_input: component_param1,
-                                                  component_param2_dictionary_input: component_param2}
-                                                 }
-                                                 }
-                                                )
-
-        # -------------------------- removing duplicates and storing in a list of dictionaries -------------------------
-            appending_flag = 0
-            for parameters in range(len(all_component_parameters)):
-                if component_name == list(all_component_parameters[parameters].keys())[-1]:
-                    # If the last entered component is similar to the previously entered one then,
-                    # replace the old parameters with the new ones
-                    all_component_parameters[parameters] = ({component_name:
-                                                            {'distribution': component_distribution,
-                                                             'parameters': {
-                                                              component_param1_dictionary_input: component_param1,
-                                                              component_param2_dictionary_input: component_param2}
-                                                             }
-                                                             }
-                                                            )
-                    # Ensures no appending takes place
-                    appending_flag = 0
-                    break
-                else:
-                    # If the last entered component is NOT similar to the previously entered one then,
-                    # ensure to add the component to the end of the list
-                    appending_flag = 1
-
-            if appending_flag == 1:
-                all_component_parameters.append({component_name:
-                                                {'distribution': component_distribution,
-                                                 'parameters': {
-                                                  component_param1_dictionary_input: component_param1,
-                                                  component_param2_dictionary_input: component_param2}
-                                                 }
-                                                 }
-                                                )
-                appending_flag = 0
+            # {x.keys()[0]: x.value()[0] for x in ll}
+            all_component_parameters.update({component_name:
+                                    {
+                                        'distribution': component_distribution,
+                                        'parameters':
+                                            {
+                                                component_param1_dictionary_input: component_param1,
+                                                component_param2_dictionary_input: component_param2
+                                            }
+                                    }
+            })
 
             # --------------------------- Displaying entered parameters on schematic_analysis window -------------------
             # print(component_index)
@@ -2288,7 +2247,11 @@ def save_entered_parameters(entering_parameters_window,
             messagebox.showerror(parent=entering_parameters_window, title='More than one prefix',
                                  message='Please enter a single prefix only.')
 
-    print(all_component_parameters)
+    set_simulation_preferences_button.pack(anchor=tk.NW, side=tk.LEFT, padx=10)
+    # component_dictionary = {x.keys()[0]: x.value()[0] for x in all_component_parameters}
+    print(f'list: {all_component_parameters}',
+          # f'dictionary: {component_dictionary}'
+          )
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -2307,24 +2270,29 @@ def save_all_entered_parameters(component_name,
                                 prefix1,
                                 prefix2,
                                 parameters_frame,
-                                values_dictionary
+                                values_dictionary,
+                                set_simulation_preferences_button
                                 ):
     global all_component_parameters
-    all_component_parameters.clear()
+    # all_component_parameters.clear()
 
     component_param1_dictionary_input = [None] * len(component_param1_label_array)
     component_param2_dictionary_input = [None] * len(component_param2_label_array)
 
     for distributions in range(len(component_distribution_array)):
-        if component_distribution_array[distributions].get('1.0', tk.END).strip('\n') == 'Normal':
-            component_param1_dictionary_input[distributions] = 'mean'
-            component_param2_dictionary_input[distributions] = 'standard deviation'
-        elif component_distribution_array[distributions].get('1.0', tk.END).strip('\n') == 'Gamma':
-            component_param1_dictionary_input[distributions] = 'shape'
-            component_param2_dictionary_input[distributions] = 'theta'
-        elif component_distribution_array[distributions].get('1.0', tk.END).strip('\n') == 'Beta':
+        comp_distribution = component_distribution_array[distributions].get('1.0', tk.END).strip('\n')
+        if comp_distribution == 'Normal':
+            component_param1_dictionary_input[distributions] = 'mu'
+            component_param2_dictionary_input[distributions] = 'var'
+        elif comp_distribution == 'Uniform':
+            component_param1_dictionary_input[distributions] = 'min'
+            component_param2_dictionary_input[distributions] = 'max'
+        elif comp_distribution == 'Gamma':
             component_param1_dictionary_input[distributions] = 'alpha'
             component_param2_dictionary_input[distributions] = 'beta'
+        elif comp_distribution == 'Beta':
+            component_param1_dictionary_input[distributions] = 'a'
+            component_param2_dictionary_input[distributions] = 'b'
 
     # print(component_value_array)
     # If value is Random, display label and store in dictionary
@@ -2342,7 +2310,7 @@ def save_all_entered_parameters(component_name,
                     component_param1 = '1'
                 if len(component_param2) == 0:
                     component_param2 = '2'
-                prefixes = {'m': 1e-3, 'μ': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9,
+                prefixes = {'m': 1e-3, 'u': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9,
                             'T': 1e12}
 
                 print(component_param1, component_param2)
@@ -2421,21 +2389,16 @@ def save_all_entered_parameters(component_name,
                 full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
                 parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
 
-                # Storing all components with their parameters in a dictionary
-                all_component_parameters.append(
-                    {component_name[circuit_component]:
-                         {'distribution': component_distribution_array[circuit_component].get('1.0', tk.END).strip(
-                             '\n'),
-                          'parameters': {
-                              # Parameter 1 name and user entered number
-                              component_param1_dictionary_input[circuit_component]:
-                                  component_param1,
-                              # Parameter 2 name and user entered number
-                              component_param2_dictionary_input[circuit_component]:
-                                  component_param2}
-                          }
-                     }
-                )
+                all_component_parameters.update({component_name[circuit_component]:
+                    {
+                        'distribution': component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n'),
+                        'parameters':
+                            {
+                                component_param1_dictionary_input[circuit_component]: component_param1,
+                                component_param2_dictionary_input[circuit_component]: component_param2
+                            }
+                    }
+                })
 
             except ValueError:
                 messagebox.showerror(parent=entering_parameters_window, title='Illegal Value entered',
@@ -2458,7 +2421,7 @@ def save_all_entered_parameters(component_name,
             delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
             full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
             parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1, padx=(20, 0))
-
+    set_simulation_preferences_button.pack(anchor=tk.NW, side=tk.LEFT, padx=10)
     # print(all_component_parameters)
 
 

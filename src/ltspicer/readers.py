@@ -31,7 +31,7 @@ class NetlistReader(InputReader):
             except UnicodeDecodeError as e:
                 raise e
 
-            with open(netlist_path, 'r', encoding=encoding) as netlist:
+            with open(netlist_path, 'r', encoding=encoding, errors='replace') as netlist:
                 netlist_lines = netlist.readlines()
                 netlist_lines = [line.strip("\r\n") for line in netlist_lines]
             netlist.close()

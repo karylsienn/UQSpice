@@ -30,19 +30,20 @@ class ExperimentalDesigner:
 
     @staticmethod
     def _recognize_distributions(var: dict):
-        distr = var[DISTR_KEY]
+        distr = var[DISTR_KEY].upper()
+
         if distr not in ACCEPTED_DISTRIBUTIONS:
             raise ValueError(f"The only accepted distributions are: {', '.join(ACCEPTED_DISTRIBUTIONS)}.")
 
         parameters = var[PARAM_KEY]
-        if distr.upper() == 'NORMAL':
+        if distr == 'NORMAL':
             # For now let's assume that the parameters are given in a correct way.
             return ot.Normal(parameters['mu'], parameters['var'])
-        elif distr.upper() == 'UNIFORM':
+        elif distr == 'UNIFORM':
             return ot.Uniform(parameters['min'], parameters['max'])
-        elif distr.upper() == 'BETA':
+        elif distr == 'BETA':
             return ot.Beta(parameters['a'], parameters['b'])
-        elif distr.upper() == 'GAMMA':
+        elif distr == 'GAMMA':
             return ot.Gamma(parameters['alpha'], parameters['beta'])
         else:
             raise NotImplementedError('Other distributions are not implemented yet.')

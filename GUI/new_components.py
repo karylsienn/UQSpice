@@ -76,7 +76,7 @@ class NewComponents:
         if sys.platform in ('darwin', 'win32', 'linux'):
             print(f"Platform: {sys.platform}")
             default_path = fixed_default_path = LTPathFinder.find_sym_folder()
-            # default_exe_path = fixed_default_exe_path = LTPathFinder.find_exe_ltspice_path()
+            default_exe_path = fixed_default_exe_path = LTPathFinder.find_exe_ltspice_path()
 
         # if sys.platform == 'darwin':
         #     default_path = LTPathFinder.find_exe_ltspice_path
@@ -372,7 +372,7 @@ class NewComponents:
     # -------------------------------------- Make New Symbol From Default Path -----------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
     def find_symbol_from_default_path(self, file_name, x_coordinate, y_coordinate, window_x, window_y, angle):
-        symbol_path = os.path.expanduser(os.path.join(self._sym, file_name)) + '.asy'
+        symbol_path = os.path.expanduser(os.path.join(self._sym_folder, file_name)) + '.asy'
         self.open_single_component_asy(symbol_path, sketch=False)
         self.file_name = file_name
         self.save_component_json(self.file_name, self.SINGLE_SYMBOL, display_message=False)
