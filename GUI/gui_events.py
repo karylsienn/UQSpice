@@ -852,6 +852,213 @@ def on_resistor_press(event, arg, components, canvas):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------- Filtering variables ---------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def window_filtering(full_list, component_name_and_windows, flag_error):
+    try:
+        full_list = full_list.split('\n')
+        flag_error = 'Error when filtering the window parameter - stage 1'
+        component_name_and_windows_list = component_name_and_windows.split('\n')
+        for window in range(0, len(component_name_and_windows_list)):
+            if 'Left' in component_name_and_windows_list[window] \
+                    or 'Right' in component_name_and_windows_list[window] \
+                    or 'VBottom' in component_name_and_windows_list[window] \
+                    or 'VTop' in component_name_and_windows_list[window]:
+                component_name_and_windows_list[window] = \
+                    re.sub(r"^\s+|\s+$", '',
+                           re.sub(r'[0-9].*? ', '',
+                                  re.sub(r'[A-Z]', '',
+                                         re.sub(r'[A-Z][a-z]*.' + '\d', '',
+                                                component_name_and_windows_list[window])), 1))
+
+        for window in range(0, len(full_list)):
+            if 'Left' in full_list[window] \
+                    or 'Right' in full_list[window] \
+                    or 'VBottom' in full_list[window] \
+                    or 'VTop' in full_list[window]:
+                full_list[window] = re.sub(r'VBottom.' + '\d', '', re.sub(r'VTop.' + '\d', '',
+                                                                          re.sub(r'Right.' + '\d', '',
+                                                                                 re.sub(r'Left.' + '\d', '',
+                                                                                        full_list[window]))))
+        old_list = full_list
+        full_list = ' '.join(full_list).split(' ')
+        flag_error = 'Error when filtering the window parameter - stage 2'
+        # Removing \\ from component names
+        for window in range(0, len(full_list)):
+            if '\\' or '\\\\' in full_list[window]:
+                full_list[window] = full_list[window].replace('\\', '').replace('\\\\', '')
+
+        while '' in full_list:
+            full_list.remove('')
+
+        print(full_list)
+        # Removing extra unnecessary elements from window
+        for window in range(0, len(full_list)):
+            if (window + 5) < len(full_list):
+                if ('R0' in full_list[window]
+                    or 'R90' in full_list[window]
+                    or 'R180' in full_list[window]
+                    or 'R270' in full_list[window]) \
+                        and not re.search('[a-zA-Z]', full_list[window + 1]):
+                    full_list[window + 1] = re.sub('[0-9]', '', full_list[window + 1])
+                    full_list[window + 4] = ''
+
+        while '' in full_list:
+            full_list.remove('')
+
+        print(full_list)
+        while_window_counter = 0
+        flag_error = 'Error when filtering the window parameter - stage 3'
+        # Adding 0 for components which have no window parameter
+        while while_window_counter < len(full_list):
+            if (while_window_counter + 1) < len(full_list):
+                if (('R0' in full_list[while_window_counter]
+                     or 'R90' in full_list[while_window_counter]
+                     or 'R180' in full_list[while_window_counter]
+                     or 'R270' in full_list[while_window_counter])
+                        and re.search('[a-zA-Z]', full_list[while_window_counter + 1])):
+                    # print(full_list[while_window_counter + 1])
+                    full_list.insert(while_window_counter + 1, str(0))
+                    full_list.insert(while_window_counter + 2, str(0))
+                    full_list.insert(while_window_counter + 3, str(0))
+                    full_list.insert(while_window_counter + 4, str(0))
+
+                if (('R0' in full_list[while_window_counter]
+                     or 'R90' in full_list[while_window_counter]
+                     or 'R180' in full_list[while_window_counter]
+                     or 'R270' in full_list[while_window_counter])
+                        and re.search('[a-zA-Z][0-9]', full_list[while_window_counter + 1])):
+                    # print(full_list[while_window_counter + 1])
+                    full_list.insert(while_window_counter + 1, str(0))
+                    full_list.insert(while_window_counter + 2, str(0))
+                    full_list.insert(while_window_counter + 3, str(0))
+                    full_list.insert(while_window_counter + 4, str(0))
+
+                if ('R0' in full_list[while_window_counter]
+                    or 'R90' in full_list[while_window_counter]
+                    or 'R180' in full_list[while_window_counter]
+                    or 'R270' in full_list[while_window_counter]) \
+                        and full_list[while_window_counter + 3].isalpha():
+                    full_list.insert(while_window_counter + 3, str(0))
+                    full_list.insert(while_window_counter + 4, str(0))
+            while_window_counter += 1
+
+        if ('R0' in full_list[len(full_list) - 1]
+                or 'R90' in full_list[len(full_list) - 1]
+                or 'R180' in full_list[len(full_list) - 1]
+                or 'R270' in full_list[len(full_list) - 1]):
+            full_list.append(str(0))
+            full_list.append(str(0))
+            full_list.append(str(0))
+            full_list.append(str(0))
+
+        print('full filtered list ', len(full_list), full_list)
+
+        component_name_and_windows_list.pop()
+        filtered_component_name_and_window = ' '.join(component_name_and_windows_list).split(' ')
+
+        return full_list, filtered_component_name_and_window
+
+    except IndexError:
+        raise IndexError(flag_error)
+
+
+def component_name_and_value_to_dict(component_name_and_values, components_with_values, flag_error):
+    component_name_and_values = component_name_and_values.split('\n')
+    component_name_and_values.pop()
+    value = 0
+    flag_error = 'Error when storing component names and values in dictionary'
+    print(component_name_and_values)
+    component_already_has_value_flag = False
+    stopping_condition = len(component_name_and_values)
+    try:
+        while value < stopping_condition:
+            # Find if a component has more than one value stored and then skip those values
+            if 'Value' in component_name_and_values[value]:
+                elements_to_skip = component_name_and_values[value].replace('SYMATTR ', '')
+                elements_to_skip = elements_to_skip[0:6].replace('Value', '')
+                elements_to_skip = int(elements_to_skip) + 1
+                value += elements_to_skip
+            # If a component already has a value from LTSpice then skip those values
+            if components_with_values:
+                for elements in components_with_values:
+                    if component_name_and_values[value] == elements:
+                        # print('true:', component_name_and_values[value], value)
+                        value += 2
+                        component_already_has_value_flag = True
+            # Place a zero for components which have no values at all
+            if component_already_has_value_flag is False:
+                component_name_and_values.insert(value + 1, '0')
+                stopping_condition += 1
+                value += 2
+
+            component_already_has_value_flag = False
+
+        print(component_name_and_values)
+        component_details_dictionary = {}
+        comps = 0
+
+        # This condition occurs only if the first element is an AC voltage source
+        if ('Value2' in component_name_and_values[1]) or ('Value2' in component_name_and_values[2]):
+            component_details_dictionary[component_name_and_values[comps]] = \
+                {component_name_and_values[comps + 1].replace('SYMATTR Value2 ', ''),
+                 component_name_and_values[comps + 2].replace('SYMATTR Value2 ', '')}
+
+            comps += 3
+        # Creating a dictionary to store component names and values
+        while comps <= len(component_name_and_values) - 2:
+            # If a component has two attributes like (VALUE2, component name, VALUE)
+            # Then store as {component: {VALUE, VALUE2}}
+            if 'Value2' in component_name_and_values[comps]:
+                component_details_dictionary[component_name_and_values[comps + 1]] = \
+                    {component_name_and_values[comps].replace('SYMATTR Value2 ', ''),
+                     component_name_and_values[comps + 2]}
+
+                comps += 3
+            # For components which just have a single value like component_name, VALUE
+            # then store as {component_name: VALUE}
+            else:
+                component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
+                comps += 2
+        return component_details_dictionary
+    except IndexError:
+        raise IndexError(flag_error)
+
+
+def find_uq_vars_from_dict(variable_to_filter, value_is_type_set=False):
+    # Removing any operations and replacing them with spaces and then creating a list
+    list_without_operations = []
+    # If a component has two values it will be stored as a set so filter each element in the set first
+    # TODO: FIND BUG WHEN MOSFET IS 2N3904
+    if value_is_type_set is True:
+        list_without_operations = variable_to_filter.split()
+        for loop_value in range(len(list_without_operations)):
+            list_without_operations[loop_value] = list_without_operations[loop_value].strip('{').strip('}')
+
+        for loop_value in range(len(list_without_operations)):
+            if 'UQ_' not in list_without_operations[loop_value]:
+                list_without_operations[loop_value] = ''
+
+    # Components with single values
+    if value_is_type_set is False:
+        list_without_operations = re.sub(r'[-+*/^%()]', ' ', variable_to_filter).strip('{').strip('}').split()
+
+    # Removing prefixes from numbers
+    for loop_value in range(len(list_without_operations)):
+        print(list_without_operations[loop_value])
+        if 'UQ_' not in list_without_operations[loop_value]:
+            list_without_operations[loop_value] = ''
+
+    while '' in list_without_operations:
+        list_without_operations.remove('')
+
+    print(f'given value: {variable_to_filter}, after filtering', list_without_operations)
+    removed_duplicates_list = list(dict.fromkeys(list_without_operations))
+
+    return removed_duplicates_list
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------- Function for opening an LTSpice schematic ----------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for opening a ltspice schematic file
@@ -907,9 +1114,9 @@ def get_file_path(component_parameters_frame,
             flag_error = 'file opening'
             with open(fpath, 'rb') as ltspiceascfile:
                 first_line = ltspiceascfile.read(4)
-                print(first_line.decode('utf-8', errors='replace'))
-                print((first_line.decode('utf-16') == 'V'))
-                print(first_line.decode('utf-16 le').split('\n'))
+                # print(first_line.decode('utf-8', errors='replace'))
+                # print((first_line.decode('utf-16') == 'V'))
+                # print(first_line.decode('utf-16 le').split('\n'))
                 if (first_line.decode('utf-16 le') == 'Ve') or (first_line.decode('utf-16 le') == '\ufeffV'):
                     encoding = 'utf-16 le'
                 elif first_line.decode('utf-8', errors='ignore') == "Vers":
@@ -1115,163 +1322,45 @@ def sketch_schematic_asc(fpath,
             sym += 2
         print('symbols and name', symbols_and_name_dictionary)
 
-        full_list = full_list.split('\n')
-        flag_error = 'Error when filtering the window parameter - stage 1'
-        component_name_and_windows_list = component_name_and_windows.split('\n')
-        for window in range(0, len(component_name_and_windows_list)):
-            if 'Left' in component_name_and_windows_list[window] \
-                    or 'Right' in component_name_and_windows_list[window] \
-                    or 'VBottom' in component_name_and_windows_list[window] \
-                    or 'VTop' in component_name_and_windows_list[window]:
-                component_name_and_windows_list[window] = \
-                    re.sub(r"^\s+|\s+$", '',
-                           re.sub(r'[0-9].*? ', '',
-                                  re.sub(r'[A-Z]', '',
-                                         re.sub(r'[A-Z][a-z]*.' + '\d', '',
-                                                component_name_and_windows_list[window])), 1))
-
-        for window in range(0, len(full_list)):
-            if 'Left' in full_list[window] \
-                    or 'Right' in full_list[window] \
-                    or 'VBottom' in full_list[window] \
-                    or 'VTop' in full_list[window]:
-                full_list[window] = re.sub(r'VBottom.' + '\d', '', re.sub(r'VTop.' + '\d', '',
-                                                                          re.sub(r'Right.' + '\d', '',
-                                                                                 re.sub(r'Left.' + '\d', '',
-                                                                                        full_list[window]))))
-        old_list = full_list
-        full_list = ' '.join(full_list).split(' ')
-        flag_error = 'Error when filtering the window parameter - stage 2'
-        # Removing \\ from component names
-        for window in range(0, len(full_list)):
-            if '\\' or '\\\\' in full_list[window]:
-                full_list[window] = full_list[window].replace('\\', '').replace('\\\\', '')
-
-        while '' in full_list:
-            full_list.remove('')
-
-        print(full_list)
-        # Removing extra unnecessary elements from window
-        for window in range(0, len(full_list)):
-            if (window + 5) < len(full_list):
-                if ('R0' in full_list[window]
-                    or 'R90' in full_list[window]
-                    or 'R180' in full_list[window]
-                    or 'R270' in full_list[window]) \
-                        and not re.search('[a-zA-Z]', full_list[window + 1]):
-                    full_list[window + 1] = re.sub('[0-9]', '', full_list[window + 1])
-                    full_list[window + 4] = ''
-
-        while '' in full_list:
-            full_list.remove('')
-
-        print(full_list)
-        while_window_counter = 0
-        flag_error = 'Error when filtering the window parameter - stage 3'
-        # Adding 0 for components which have no rotations
-        while while_window_counter < len(full_list):
-            if (while_window_counter + 1) < len(full_list):
-                if (('R0' in full_list[while_window_counter]
-                     or 'R90' in full_list[while_window_counter]
-                     or 'R180' in full_list[while_window_counter]
-                     or 'R270' in full_list[while_window_counter])
-                        and re.search('[a-zA-Z]', full_list[while_window_counter + 1])):
-                    # print(full_list[while_window_counter + 1])
-                    full_list.insert(while_window_counter + 1, str(0))
-                    full_list.insert(while_window_counter + 2, str(0))
-                    full_list.insert(while_window_counter + 3, str(0))
-                    full_list.insert(while_window_counter + 4, str(0))
-
-                if (('R0' in full_list[while_window_counter]
-                     or 'R90' in full_list[while_window_counter]
-                     or 'R180' in full_list[while_window_counter]
-                     or 'R270' in full_list[while_window_counter])
-                        and re.search('[a-zA-Z][0-9]', full_list[while_window_counter + 1])):
-                    # print(full_list[while_window_counter + 1])
-                    full_list.insert(while_window_counter + 1, str(0))
-                    full_list.insert(while_window_counter + 2, str(0))
-                    full_list.insert(while_window_counter + 3, str(0))
-                    full_list.insert(while_window_counter + 4, str(0))
-
-                if ('R0' in full_list[while_window_counter]
-                    or 'R90' in full_list[while_window_counter]
-                    or 'R180' in full_list[while_window_counter]
-                    or 'R270' in full_list[while_window_counter]) \
-                        and full_list[while_window_counter + 3].isalpha():
-                    full_list.insert(while_window_counter + 3, str(0))
-                    full_list.insert(while_window_counter + 4, str(0))
-            while_window_counter += 1
-
-        if ('R0' in full_list[len(full_list) - 1]
-                or 'R90' in full_list[len(full_list) - 1]
-                or 'R180' in full_list[len(full_list) - 1]
-                or 'R270' in full_list[len(full_list) - 1]):
-            full_list.append(str(0))
-            full_list.append(str(0))
-            full_list.append(str(0))
-            full_list.append(str(0))
-
-        print('full filtered list ', len(full_list), full_list)
-
-        component_name_and_windows_list.pop()
-        filtered_component_name_and_window = ' '.join(component_name_and_windows_list).split(' ')
+        component_full_filtered_list, component_name_and_windows = \
+            window_filtering(full_list, component_name_and_windows, flag_error)
 
         flag_error = 'Error when converting values of components to integers'
         for element in range(0, len(circuit_symbols_list), 4):
             circuit_symbols_list[element + 1] = int(circuit_symbols_list[element + 1])
             circuit_symbols_list[element + 2] = int(circuit_symbols_list[element + 2])
             # circuit_symbols_list[element + 3] = int(circuit_symbols_list[element + 3].replace('R', ''))
-        # Store all component names and values
-        component_name_and_values = component_name_and_values.split('\n')
-        component_name_and_values.pop()
-        value = 0
-        flag_error = 'Error when storing component names and values in dictionary'
-        print(component_name_and_values)
-        component_already_has_value_flag = False
-        stopping_condition = len(component_name_and_values)
-        while value < stopping_condition:
-            # Find if a component has more than one value stored and then skipping those values
-            if 'Value' in component_name_and_values[value]:
-                elements_to_skip = component_name_and_values[value].replace('SYMATTR ', '')
-                elements_to_skip = elements_to_skip[0:6].replace('Value', '')
-                elements_to_skip = int(elements_to_skip) + 1
-                value += elements_to_skip
-            # If a component already has a value from LTSpice then skip those values
-            if components_with_values:
-                for elements in components_with_values:
-                    if component_name_and_values[value] == elements:
-                        # print('true:', component_name_and_values[value], value)
-                        value += 2
-                        component_already_has_value_flag = True
-            # Place a zero for components which have no values at all
-            if component_already_has_value_flag is False:
-                component_name_and_values.insert(value + 1, '0')
-                stopping_condition += 1
-                value += 2
 
-            component_already_has_value_flag = False
+        # Filter out the component name with their values and store in a dictionary like:
+        # {Component_1: Value_1, Component_2: {Value_2, Value_3}}
+        components_name_and_values_dictionary = component_name_and_value_to_dict(component_name_and_values,
+                                                                                 components_with_values,
+                                                                                 flag_error)
 
-        print(component_name_and_values)
-        component_details_dictionary = {}
-        comps = 0
+        # Check if the random stored values contain any operations and removing those operations
+        # and removing duplicates as well
+        # Examples: Storing {UQ_C1*2} as [UQ_C1]
+        #           Storing {UQ_C1*UQ_C2+UQ_C3+UQ_C1} as [UQ_C1, UQ_C2, UQ_C3]
+        #           Storing {UQ_C1*5+UQ_C3/25 + 66} as [UQ_C1, UQ_C3]
+        variable_names_list = []
+        for keys, dict_values in components_name_and_values_dictionary.items():
+            # If a component has two values stored then check both values
+            if isinstance(dict_values, set):
+                for set_value in dict_values:
+                    variable_names_list.append(find_uq_vars_from_dict(set_value, value_is_type_set=True))
+            # For components with single values
+            elif isinstance(dict_values, str):
+                variable_names_list.append(find_uq_vars_from_dict(dict_values, value_is_type_set=False))
 
-        # Creating a dictionary to store component names and values
-        while comps <= len(component_name_and_values) - 2:
-            # If a component has two attributes like (VALUE2, component name, VALUE)
-            # Then store as {component: {VALUE, VALUE2}}
-            if 'Value2' in component_name_and_values[comps]:
-                component_details_dictionary[component_name_and_values[comps + 1]] = \
-                    {component_name_and_values[comps].replace('SYMATTR Value2 ', ''),
-                     component_name_and_values[comps + 2]}
+        # Remove all empty lists
+        filtered_variables_list = [x for x in variable_names_list if x != []]
 
-                comps += 3
-            # For components which just have a single value like component_name, VALUE
-            # then store as {component_name: VALUE}
-            else:
-                component_details_dictionary[component_name_and_values[comps]] = component_name_and_values[comps + 1]
-                comps += 2
+        # Change list of lists to a single list
+        clean_list_of_variables = [item for sublist in filtered_variables_list for item in sublist]
 
-        print(component_details_dictionary)
+        print(f"Variables list after filtering: {clean_list_of_variables}")
+        print(f'dictionary: {components_name_and_values_dictionary},'
+              f' values: {components_name_and_values_dictionary.values()}')
 
         # ------------------------------------------------------------------------------------------------------------
         # ------------------------------------------------------------------------------------------------------------
@@ -1279,19 +1368,20 @@ def sketch_schematic_asc(fpath,
         # ------------------------------------------------------------------------------------------------------------
         # -------------- Pass symbols_and_name_dictionary for allowing capability to change values -------------------
         # ---------------------------------- when clicking on a component --------------------------------------------
-
-        enter_parameters_button.configure(command=lambda: [threading.Thread(target=open_new_window,
-                                                                            args=(fpath,
-                                                                                  components,
-                                                                                  root,
-                                                                                  schematic_analysis,
-                                                                                  component_parameters_frame,
-                                                                                  entering_parameters_window,
-                                                                                  component_value_array,
-                                                                                  delete_constants_button,
-                                                                                  set_simulation_preferences_button,
-                                                                                  canvas, component_details_dictionary,
-                                                                                  symbols_and_name_dictionary)).start()])
+        # TODO: NOT IMPLEMENTED YET
+        enter_parameters_button.configure(command=lambda:
+                                          open_enter_parameters_window(fpath,
+                                                                       components,
+                                                                       root,
+                                                                       schematic_analysis,
+                                                                       component_parameters_frame,
+                                                                       entering_parameters_window,
+                                                                       component_value_array,
+                                                                       delete_constants_button,
+                                                                       set_simulation_preferences_button,
+                                                                       canvas,
+                                                                       components_name_and_values_dictionary,
+                                                                       symbols_and_name_dictionary))
         # Store all component names in a list after removing new lines
         components = components.split('\n')
         # Remove last element which is empty
@@ -1380,23 +1470,23 @@ def sketch_schematic_asc(fpath,
         list_to_add = []
         components_dictionary = {}
 
-        for symbol in range(0, len(full_list), 8):
+        for symbol in range(0, len(component_full_filtered_list), 8):
             try:
-                if full_list[symbol + 3] == 'R0' or full_list[symbol + 3] == 0:
-                    circuit_comps.load_component_json(file_name=full_list[symbol],
-                                                      x_coordinate=int(full_list[symbol + 1]) + adjustment,
-                                                      y_coordinate=int(full_list[symbol + 2]) + adjustment,
-                                                      angle=full_list[symbol + 3],
+                if component_full_filtered_list[symbol + 3] == 'R0' or component_full_filtered_list[symbol + 3] == 0:
+                    circuit_comps.load_component_json(file_name=component_full_filtered_list[symbol],
+                                                      x_coordinate=int(component_full_filtered_list[symbol + 1]) + adjustment,
+                                                      y_coordinate=int(component_full_filtered_list[symbol + 2]) + adjustment,
+                                                      angle=component_full_filtered_list[symbol + 3],
                                                       window_x=0,
                                                       window_y=0)
                 # TODO: Fix Rotation issue with other components
-                elif full_list[symbol + 3] != 'R0' or full_list[symbol + 3] != 0:
-                    circuit_comps.load_component_json(file_name=full_list[symbol],
-                                                      x_coordinate=int(full_list[symbol + 1]) + adjustment,
-                                                      y_coordinate=int(full_list[symbol + 2]) + adjustment,
-                                                      angle=full_list[symbol + 3],
-                                                      window_x=int(full_list[symbol + 4]) + int(full_list[symbol + 6]),
-                                                      window_y=int(full_list[symbol + 5]) + int(full_list[symbol + 7]))
+                elif component_full_filtered_list[symbol + 3] != 'R0' or component_full_filtered_list[symbol + 3] != 0:
+                    circuit_comps.load_component_json(file_name=component_full_filtered_list[symbol],
+                                                      x_coordinate=int(component_full_filtered_list[symbol + 1]) + adjustment,
+                                                      y_coordinate=int(component_full_filtered_list[symbol + 2]) + adjustment,
+                                                      angle=component_full_filtered_list[symbol + 3],
+                                                      window_x=int(component_full_filtered_list[symbol + 4]) + int(component_full_filtered_list[symbol + 6]),
+                                                      window_y=int(component_full_filtered_list[symbol + 5]) + int(component_full_filtered_list[symbol + 7]))
             except ValueError:
                 pass
 
@@ -1518,6 +1608,86 @@ def sketch_schematic_asc(fpath,
         print(flag_error)
 
 
+def constant_or_random_switch(constant_or_random,
+                              component_selected,
+                              distrubtion_label,
+                              distribution_type,
+                              component_distribution_array,
+                              component_param1_label_array,
+                              component_param2_label_array,
+                              component_param1_array,
+                              component_param2_array,
+                              components,
+                              param1_prefix_drop_down_list,
+                              param2_prefix_drop_down_list
+                              ):
+    if constant_or_random.get() == 'Constant':
+        # Remove parameters and distribution if constant
+        for labels in range(len(component_param1_label_array)):
+            component_param1_label_array[labels].grid_remove()
+            component_param2_label_array[labels].grid_remove()
+            component_param1_array[labels].grid_remove()
+            component_param2_array[labels].grid_remove()
+            distribution_type.grid_remove()
+            distrubtion_label.grid_remove()
+
+        param1_prefix_drop_down_list.grid_remove()
+        param2_prefix_drop_down_list.grid_remove()
+    elif constant_or_random.get() == 'Random':
+        global component_index
+        for comp_index in range(len(components)):
+            if component_selected.get() == components[comp_index]:
+                component_index = comp_index
+
+        distrubtion_label.configure(height=1, width=20)
+        distrubtion_label.grid(row=4, column=5)
+        distribution_type.grid(row=4, column=6)
+        height = 1,
+        width = 20,
+        component_param1_array[component_index].grid_remove()
+        component_param2_array[component_index].grid_remove()
+        component_distribution_array[component_index].delete('1.0', tk.END)
+
+        # Check which distribution has been selected and change the parameters accordingly
+        if distribution_type.get() == 'Gamma Distribution':
+            component_distribution_array[component_index].insert(tk.INSERT, 'Gamma')
+            component_param1_label_array[component_index].configure(text='Shape (k)')
+            component_param2_label_array[component_index].configure(text='Scale (θ)')
+
+        if distribution_type.get() == 'Beta Distribution':
+            component_distribution_array[component_index].insert(tk.INSERT, 'Beta')
+            component_param1_label_array[component_index].configure(text='Alpha (α)')
+            component_param2_label_array[component_index].configure(text='Beta (β)')
+
+        if distribution_type.get() == 'Normal Distribution':
+            component_distribution_array[component_index].insert(tk.INSERT, 'Normal')
+            component_param1_label_array[component_index].configure(text='Mean (μ)')
+            component_param2_label_array[component_index].configure(text='Variance (σ^2)')
+
+        if distribution_type.get() == 'Uniform Distribution':
+            component_distribution_array[component_index].insert(tk.INSERT, 'Uniform')
+            component_param1_label_array[component_index].configure(text='Min')
+            component_param2_label_array[component_index].configure(text='Max')
+
+        # Display the labels for the corresponding component index and remove labels of other components
+        for labels in range(len(component_param1_label_array)):
+            if labels == component_index:
+                component_param1_array[labels].configure(height=1, width=20)
+                component_param2_array[labels].configure(height=1, width=20)
+                component_param1_label_array[labels].grid(row=6, column=5, sticky='nsew')
+                component_param2_label_array[labels].grid(row=7, column=5, sticky='nsew')
+                component_param1_array[labels].grid(row=6, column=6, sticky='nsew')
+                component_param2_array[labels].grid(row=7, column=6, sticky='nsew')
+            else:
+                component_param1_label_array[labels].grid_remove()
+                component_param2_label_array[labels].grid_remove()
+                component_param1_array[labels].grid_remove()
+                component_param2_array[labels].grid_remove()
+
+        param1_prefix_drop_down_list.grid(row=6, column=7, sticky='n')
+        param2_prefix_drop_down_list.grid(row=7, column=7, sticky='n')
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # ------------------------------------------- Functions for drop down lists --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1556,7 +1726,7 @@ def change_component_index(component_selected,
     if distribution_type.get() == 'Normal Distribution':
         component_distribution_array[component_index].insert(tk.INSERT, 'Normal')
         component_param1_label_array[component_index].configure(text='Mean (μ)')
-        component_param2_label_array[component_index].configure(text='Standard deviation (σ)')
+        component_param2_label_array[component_index].configure(text='Variance (σ^2)')
 
     if distribution_type.get() == 'Uniform Distribution':
         component_distribution_array[component_index].insert(tk.INSERT, 'Uniform')
@@ -1606,7 +1776,7 @@ def select_distribution_type(distribution_type,
     if distribution_type.get() == 'Normal Distribution':
         component_distribution[index_of_selected_component].insert(tk.INSERT, 'Normal')
         parameter1_label[index_of_selected_component].configure(text='Mean (μ)')
-        parameter2_label[index_of_selected_component].configure(text='Standard deviation (σ)')
+        parameter2_label[index_of_selected_component].configure(text='Variance (σ^2)')
 
     if distribution_type.get() == 'Uniform Distribution':
         component_distribution[index_of_selected_component].insert(tk.INSERT, 'Uniform')
@@ -1736,18 +1906,18 @@ def simulation_preferences(schematic_analysis_window, netlist_path):
 # -------------------------------------- Function for enter all parameters button --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for entering parameters
-def open_new_window(fpath,
-                    components,
-                    root,
-                    schematic_analysis,
-                    component_parameters_frame,
-                    parameters_window,
-                    component_value_array,
-                    delete_constants_button,
-                    set_simulation_preferences_button,
-                    canvas,
-                    values_dictionary,
-                    symbol_type_dictionary):
+def open_enter_parameters_window(fpath,
+                                 components,
+                                 root,
+                                 schematic_analysis,
+                                 component_parameters_frame,
+                                 parameters_window,
+                                 component_value_array,
+                                 delete_constants_button,
+                                 set_simulation_preferences_button,
+                                 canvas,
+                                 values_dictionary,
+                                 symbol_type_dictionary):
 
     """Event function used to open enter parameter window when enter parameters button has been clicked
 
@@ -1784,7 +1954,7 @@ def open_new_window(fpath,
             schematic_x = schematic_analysis.winfo_x()
             schematic_y = schematic_analysis.winfo_y()
             # set the size and location of the new window created for entering parameters
-            entering_parameters_window.geometry("460x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
+            entering_parameters_window.geometry("480x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
             # make entering parameters window on top of the main schematic analysis window
             entering_parameters_window.wm_transient(schematic_analysis)
 
@@ -1811,7 +1981,7 @@ def open_new_window(fpath,
             component_name_array_label = customtkinter.CTkLabel(entering_parameters_window,
                                                                 height=1,
                                                                 width=20,
-                                                                text='Component Name:'
+                                                                text='Variable Name:'
                                                                 )
 
             component_distribution_label = customtkinter.CTkLabel(entering_parameters_window,
@@ -1915,12 +2085,13 @@ def open_new_window(fpath,
 
                 delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.5)
 
+
                 # component_full_information_array[circuit_component] = tk.Entry(component_parameters_frame)
 
                 # Default parameters which are:
                 # distribution: Normal
                 # Mean = 1
-                # Standard Deviation = 2
+                # Variance = 2
                 component_distribution_array[circuit_component].insert(tk.INSERT, 'Normal')
                 component_param1_label_array[circuit_component].configure(text='Mean (μ)')
                 component_param2_label_array[circuit_component].configure(text='Variance (σ^2)')
@@ -2039,23 +2210,47 @@ def open_new_window(fpath,
             cancel_button = customtkinter.CTkButton(entering_parameters_window,
                                                     text='Cancel',
                                                     command=entering_parameters_window.destroy)
+            constant_or_random = customtkinter.StringVar(value="Constant")
+            constant_label = customtkinter.CTkLabel(entering_parameters_window, text='Constant  ', width=0, height=18)
+            variable_switch = customtkinter.CTkSwitch(entering_parameters_window,
+                                                      variable=constant_or_random,
+                                                      text='Random',
+                                                      onvalue="Random",
+                                                      offvalue="Constant",
+                                                      command=lambda: constant_or_random_switch
+                                                      (constant_or_random,
+                                                       component_selected,
+                                                       component_distribution_label,
+                                                       distribution_drop_down_list,
+                                                       component_distribution_array,
+                                                       component_param1_label_array,
+                                                       component_param2_label_array,
+                                                       component_param1_entry_box_array,
+                                                       component_param2_entry_box_array,
+                                                       components,
+                                                       param1_prefix_drop_down_list,
+                                                       param2_prefix_drop_down_list
+                                                       ))
+
+            constant_label.grid(row=component_name_row, column=7, sticky=tk.E)
+            variable_switch.grid(row=component_name_row, column=8, sticky=tk.W)
 
             # Component drop down list and component name label
             component_name_array_label.grid(row=component_name_row, column=5, sticky='news')
-            component_drop_down_list.grid(row=component_name_row, column=6)
+            component_drop_down_list.grid(row=component_name_row, column=6, padx=0)
 
             # Placing label and dropdown for distributions
             component_distribution_label.grid(row=distribution_row, column=5, sticky='news')
-            distribution_drop_down_list.grid(row=distribution_row, column=6)
+            distribution_drop_down_list.grid(row=distribution_row, column=6, sticky=tk.W)
 
             # Closing parameters window
             cancel_button.grid(row=button_row, column=5)
 
             # Saving Parameters button location in new window
-            save_parameters_button.grid(row=button_row, column=6)
+            save_parameters_button.grid(row=button_row, column=6, columnspan=2)
 
             # Saving All Parameters button location in new window
-            save_all_parameters_button.grid(row=button_row, column=7)
+            save_all_parameters_button.grid(row=button_row, column=8)
 
             # Ensuring all widgets inside enter parameters window are resizable
             entering_parameters_window.grid_rowconfigure(tuple(range(button_row)), weight=1)
