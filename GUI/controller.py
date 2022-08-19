@@ -111,7 +111,8 @@ canvas = tkmod.ResizingCanvas(schematic_canvas_frame,
                               # background=DARK_THEME_COLOUR
                               )
 
-all_component_parameters = []
+variable_component_parameters = {}
+constant_component_parameters = {}
 entering_parameters_window = None
 
 # param1_prefix_selected = tk.StringVar(entering_parameters_window)
@@ -131,7 +132,8 @@ schematic_analysis.config(menu=menu)
 fileMenu = tkmod.CTkMenu(menu)
 fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
                      command=lambda: guievents.get_file_path(component_parameters_frame_scroll.scrollable_frame,
-                                                             all_component_parameters,
+                                                             variable_component_parameters,
+                                                             constant_component_parameters,
                                                              canvas,
                                                              schematic_analysis,
                                                              enter_parameters_button,
@@ -202,7 +204,8 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
                                           text='Open a Schematic',
                                           command=lambda:
                                           guievents.get_file_path(component_parameters_frame_scroll.scrollable_frame,
-                                                                  all_component_parameters,
+                                                                  variable_component_parameters,
+                                                                  constant_component_parameters,
                                                                   canvas,
                                                                   schematic_analysis,
                                                                   enter_parameters_button,

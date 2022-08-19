@@ -21,7 +21,8 @@ import new_components as new_comp
 BACKGROUND_COLOUR = '#F0F0F0'
 Mode = 'dark'
 
-all_component_parameters = {}
+variable_component_parameters = {}
+constant_component_parameters = {}
 entering_parameters_window = None
 preferences_window = None
 run_simulation_window = None
@@ -1063,7 +1064,8 @@ def find_uq_vars_from_dict(variable_to_filter, value_is_type_set=False):
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for opening a ltspice schematic file
 def get_file_path(component_parameters_frame,
-                  all_component_parameters,
+                  variable_component_parameters,
+                  constant_component_parameters,
                   canvas,
                   schematic_analysis,
                   enter_parameters_button,
@@ -1078,7 +1080,7 @@ def get_file_path(component_parameters_frame,
             --------
             component_parameters_frame : frame in which the component parameters are placed after selection
 
-            all_component_parameters: List for storing parameters of all components
+            variable_component_parameters: List for storing variable parameters of all components
 
             canvas: The canvas in which the components are sketched
 
@@ -1147,7 +1149,8 @@ def get_file_path(component_parameters_frame,
                                           args=(fpath,
                                                 schematic,
                                                 component_parameters_frame,
-                                                all_component_parameters,
+                                                variable_component_parameters,
+                                                constant_component_parameters,
                                                 canvas,
                                                 schematic_analysis,
                                                 enter_parameters_button,
@@ -1178,7 +1181,8 @@ def get_file_path(component_parameters_frame,
 def sketch_schematic_asc(fpath,
                          schematic,
                          component_parameters_frame,
-                         all_component_parameters,
+                         variable_component_parameters,
+                         constant_component_parameters,
                          canvas,
                          schematic_analysis,
                          enter_parameters_button,
@@ -1196,7 +1200,7 @@ def sketch_schematic_asc(fpath,
 
         component_parameters_frame: frame in which the component parameters are placed after selection
 
-        all_component_parameters: List for storing parameters of all components
+        variable_component_parameters: List for storing parameters of all components
 
         canvas: Canvas to draw the components inside
 
@@ -1214,7 +1218,8 @@ def sketch_schematic_asc(fpath,
     for labels in component_parameters_frame.winfo_children():
         labels.destroy()
     # Clear all previous component parameters
-    all_component_parameters.clear()
+    variable_component_parameters.clear()
+    variable_component_parameters.clear()
     flag_error = ''
 
     # Clear all previous drawn wires, components, power flags, voltage sources, etc.
@@ -1731,7 +1736,6 @@ def change_component_index(variable_selected,
                 const_value_entry[labels].grid_remove()
 
     if constant_or_random.get() == 'Random':
-        print('Random')
         # component_param1_array[component_index].grid_remove()
         # component_param2_array[component_index].grid_remove()
         component_distribution_array[component_index].delete('1.0', tk.END)
@@ -1871,21 +1875,45 @@ def only_integers(current_entered_parameter, previous_entered_parameters):
         return False
 
 
-def simulation_run(number_of_simulations, netlist_path):
+def save_simulation_preferences(variables_in_schematic, number_of_simulations, netlist_path):
     print('running simulation')
     netlist_path, ext = os.path.splitext(netlist_path)
     netlist_path = netlist_path + '.net'
-    simulation_object = pcarchitects.ExperimentalDesigner(all_component_parameters)
-    component_values_for_simulation = simulation_object.get_lhs_design_pandas(int(number_of_simulations.get()))
-    print(component_values_for_simulation)
+    variable_not_present = []
+    for variables in variables_in_schematic:
+        if variables not in variable_component_parameters.keys():
+            if variables not in constant_component_parameters.keys():
+                variable_not_present.append(variables)
 
-    preform_sweep = sweepers.Sweeper()
-    preform_sweep.add_sweep(netlist_path=netlist_path,
-                            input_samples=component_values_for_simulation)
+    if not variable_not_present:
+        if variable_component_parameters:
+            simulation_object = pcarchitects.ExperimentalDesigner(variable_component_parameters)
+            component_values_for_simulation = simulation_object.get_lhs_design_pandas(int(number_of_simulations.get()))
+            print(component_values_for_simulation)
+            preform_sweep = sweepers.Sweeper()
+            preform_sweep.add_sweep(netlist_path=netlist_path,
+                                    input_samples=component_values_for_simulation)
+
+        if constant_component_parameters:
+            add_constants = sweepers.ConstAdd()
+            add_constants.add_constants(netlist_path=netlist_path,
+                                        vars=constant_component_parameters)
+    if variable_not_present:
+        message = ''
+        if len(variable_not_present) == 1:
+            message = 'Please enter the value for the following variable: ' + str(variable_not_present[0])
+        elif len(variable_not_present) > 1:
+            message = 'Please enter the values for the following variables:'
+            for variables in variable_not_present:
+                message += '\n' + str(variables)
+
+        messagebox.showerror(parent=run_simulation_window,
+                             title='Not Found',
+                             message=message)
 
 
-def simulation_preferences(schematic_analysis_window, netlist_path):
-    global all_component_parameters
+def simulation_preferences(variables_in_schematic, schematic_analysis_window, netlist_path):
+    global variable_component_parameters
     global run_simulation_window
 
     if run_simulation_window is not None and run_simulation_window.winfo_exists():
@@ -1918,11 +1946,12 @@ def simulation_preferences(schematic_analysis_window, netlist_path):
 
     simulation_number_entry.configure(validatecommand=vcmd1)
     simulation_number_entry.grid(row=1, column=2, padx=20, pady=15)
-
+    simulation_number_entry.insert(0, '10')
     run_simulation_button = customtkinter.CTkButton(run_simulation_window,
                                                     text='Run Simulation',
-                                                    command=lambda: simulation_run(simulation_number_entry,
-                                                                                   netlist_path))
+                                                    command=lambda: save_simulation_preferences(variables_in_schematic,
+                                                                                                simulation_number_entry,
+                                                                                                netlist_path))
     run_simulation_button.grid(row=4, column=2, padx=20, pady=15)
 
 
@@ -2120,7 +2149,8 @@ def open_enter_parameters_window(fpath,
                                                                            delete_label(name_label_array,
                                                                                         t,
                                                                                         delete_button,
-                                                                                        all_component_parameters,
+                                                                                        variable_component_parameters,
+                                                                                        constant_component_parameters,
                                                                                         variable_names,
                                                                                         parameters_frame)
                                                                            )
@@ -2145,7 +2175,8 @@ def open_enter_parameters_window(fpath,
                                                                                    name_label_array,
                                                                                    component_value_array))
 
-            set_simulation_preferences_button.configure(command=lambda: simulation_preferences(schematic_analysis,
+            set_simulation_preferences_button.configure(command=lambda: simulation_preferences(variable_names,
+                                                                                               schematic_analysis,
                                                                                                fpath))
 
             # Drop down list for selecting prefixes
@@ -2208,6 +2239,7 @@ def open_enter_parameters_window(fpath,
                 save_entered_parameters(entering_parameters_window,
                                         component_selected.get(),
                                         distribution_selected.get(),
+                                        constant_or_random.get(),
                                         component_distribution_array[component_index].get('1.0', tk.END).strip('\n'),
                                         component_param1_label_array[component_index].__getattribute__('text'),
                                         component_param2_label_array[component_index].__getattribute__('text'),
@@ -2319,7 +2351,7 @@ def open_enter_parameters_window(fpath,
 
 # Delete inserted label using x button
 def delete_label(label_to_remove, label_index,
-                 delete_label_button, all_stored_components, components,
+                 delete_label_button, variable_stored_components, constant_stored_components, components,
                  parameters_frame):
     """
     Event Function for when the delete button of label has been clicked
@@ -2332,8 +2364,11 @@ def delete_label(label_to_remove, label_index,
 
         delete_label_button:  the button clicked to remove the label
 
-        all_stored_components:  dictionary of all components, removes the component which the delete button
-                                has been clicked for
+        variable_stored_components:  dictionary of components with random, removes the component which the delete button
+                                     has been clicked for
+
+        constant_stored_components:  dictionary of components with constant, removes the component which the delete
+                                     button has been clicked for
 
     """
     # Component name stored from label
@@ -2347,10 +2382,16 @@ def delete_label(label_to_remove, label_index,
     # delete_label_button[label_index].grid_forget()
     parameters_frame[label_index].pack_forget()
     # Deleting Item from dictionary
-    if all_stored_components:
-        if component_name in all_stored_components:
-            del all_stored_components[component_name]
-            print(all_stored_components)
+    if variable_stored_components:
+        if component_name in variable_stored_components:
+            del variable_stored_components[component_name]
+            print(variable_stored_components)
+
+    # Deleting Item from dictionary
+    if constant_stored_components:
+        if component_name in constant_stored_components:
+            del constant_stored_components[component_name]
+            print(constant_stored_components)
 
 
 # Delete all labels which have constant values
@@ -2370,6 +2411,7 @@ def delete_all_constants(parameters_frame, labels_to_remove, component_value_arr
 def save_entered_parameters(entering_parameters_window,
                             variable_name,
                             selected_distribution,
+                            constant_or_random,
                             component_distribution,
                             component_param1_label,
                             component_param2_label,
@@ -2386,13 +2428,14 @@ def save_entered_parameters(entering_parameters_window,
                             prefix2,
                             parameters_frame,
                             set_simulation_preferences_button):
-    global all_component_parameters
+    global variable_component_parameters
+    global constant_component_parameters
     global component_index
 
     # component_value_array[index] = 'Random'
 
     prefixes = {'m': 1e-3, 'u': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9, 'T': 1e12}
-
+    component_value_array[index] = constant_or_random
     if component_value_array[index] == 'Random':
         if component_distribution == 'Normal':
             component_param1_dictionary_input = 'mu'
@@ -2466,10 +2509,16 @@ def save_entered_parameters(entering_parameters_window,
             else:
                 raise TypeError
             # {x.keys()[0]: x.value()[0] for x in ll}
-            all_component_parameters.update(
+
+            print(f'variable name: {str(variable_name)} {constant_component_parameters.keys()}')
+            print(component_value_array)
+            constant_component_parameters.pop(variable_name, None)
+
+            variable_component_parameters.update(
                 {
                     variable_name:
                     {
+                     'type': 'random',
                      'distribution': component_distribution,
                      'parameters':
                      {
@@ -2479,7 +2528,10 @@ def save_entered_parameters(entering_parameters_window,
                     }
                  }
             )
-
+            constant_component_parameters.pop(variable_name, None)
+            print(f'variable: {variable_component_parameters}',
+                  f'constant: {constant_component_parameters}'
+                  )
             # --------------------------- Displaying entered parameters on schematic_analysis window -------------------
             # print(component_index)
             # full_name_labels[index].configure(borderwidth=1)
@@ -2493,7 +2545,7 @@ def save_entered_parameters(entering_parameters_window,
                                                    + '\n')
 
             full_name_labels[component_index].place(x=0, y=1, relwidth=1.0, relheight=0.95)
-            parameters_frame[component_index].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
+            parameters_frame[component_index].pack(expand=False, fill=tk.BOTH, side=tk.TOP,  pady=1, padx=(20, 0))
         except ValueError:
             messagebox.showerror(parent=entering_parameters_window, title='Illegal Value entered',
                                  message='Please enter only numbers with prefixes such as n, p, m, etc.')
@@ -2512,10 +2564,23 @@ def save_entered_parameters(entering_parameters_window,
         full_name_labels[index].place(x=0, y=1, relwidth=1.0, relheight=0.95)
         parameters_frame[index].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1, padx=(20, 0))
 
+        variable_component_parameters.pop(variable_name, None)
+
+        constant_component_parameters.update(
+            {
+                variable_name:
+                    {
+                        'type': 'constant',
+                        'Value': const_value
+                    }
+            }
+        )
+
     set_simulation_preferences_button.pack(anchor=tk.NW, side=tk.LEFT, padx=10)
-    # component_dictionary = {x.keys()[0]: x.value()[0] for x in all_component_parameters}
-    print(f'list: {all_component_parameters}',
-          # f'dictionary: {component_dictionary}'
+
+    # component_dictionary = {x.keys()[0]: x.value()[0] for x in variable_component_parameters}
+    print(f'variable: {variable_component_parameters}',
+          f'constant: {constant_component_parameters}'
           )
 
 
@@ -2538,8 +2603,8 @@ def save_all_entered_parameters(component_name,
                                 values_dictionary,
                                 set_simulation_preferences_button
                                 ):
-    global all_component_parameters
-    # all_component_parameters.clear()
+    global variable_component_parameters
+    # variable_component_parameters.clear()
 
     component_param1_dictionary_input = [None] * len(component_param1_label_array)
     component_param2_dictionary_input = [None] * len(component_param2_label_array)
@@ -2654,7 +2719,7 @@ def save_all_entered_parameters(component_name,
                 full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
                 parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
 
-                all_component_parameters.update({component_name[circuit_component]:
+                variable_component_parameters.update({component_name[circuit_component]:
                     {
                         'distribution': component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n'),
                         'parameters':
@@ -2687,7 +2752,7 @@ def save_all_entered_parameters(component_name,
             full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
             parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1, padx=(20, 0))
     set_simulation_preferences_button.pack(anchor=tk.NW, side=tk.LEFT, padx=10)
-    # print(all_component_parameters)
+    # print(variable_component_parameters)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
