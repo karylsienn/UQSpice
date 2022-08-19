@@ -1372,6 +1372,7 @@ def sketch_schematic_asc(fpath,
         enter_parameters_button.configure(command=lambda:
                                           open_enter_parameters_window(fpath,
                                                                        components,
+                                                                       clean_list_of_variables,
                                                                        root,
                                                                        schematic_analysis,
                                                                        component_parameters_frame,
@@ -1609,8 +1610,11 @@ def sketch_schematic_asc(fpath,
 
 
 def constant_or_random_switch(constant_or_random,
+                              component_entry_label,
+                              component_entry_array,
+                              variable_type_array,
                               component_selected,
-                              distrubtion_label,
+                              distribution_label,
                               distribution_type,
                               component_distribution_array,
                               component_param1_label_array,
@@ -1621,7 +1625,14 @@ def constant_or_random_switch(constant_or_random,
                               param1_prefix_drop_down_list,
                               param2_prefix_drop_down_list
                               ):
+    global component_index
     if constant_or_random.get() == 'Constant':
+
+        variable_type_array[component_index] = 'Constant'
+        component_entry_array[component_index].configure(height=1, width=20)
+        component_entry_label.grid(row=5, column=5, sticky='nsew')
+        component_entry_array[component_index].grid(row=5, column=6, sticky='nsew')
+
         # Remove parameters and distribution if constant
         for labels in range(len(component_param1_label_array)):
             component_param1_label_array[labels].grid_remove()
@@ -1629,21 +1640,22 @@ def constant_or_random_switch(constant_or_random,
             component_param1_array[labels].grid_remove()
             component_param2_array[labels].grid_remove()
             distribution_type.grid_remove()
-            distrubtion_label.grid_remove()
+            distribution_label.grid_remove()
 
         param1_prefix_drop_down_list.grid_remove()
         param2_prefix_drop_down_list.grid_remove()
     elif constant_or_random.get() == 'Random':
-        global component_index
-        for comp_index in range(len(components)):
-            if component_selected.get() == components[comp_index]:
+        variable_type_array[component_index] = 'Random'
+        for comp_index in range(len(variable_type_array)):
+            if component_selected.get() == variable_type_array[comp_index]:
                 component_index = comp_index
-
-        distrubtion_label.configure(height=1, width=20)
-        distrubtion_label.grid(row=4, column=5)
+        distribution_label.configure(height=1, width=20)
+        distribution_label.grid(row=4, column=5)
         distribution_type.grid(row=4, column=6)
-        height = 1,
-        width = 20,
+        for elements in range(len(component_entry_array)):
+            component_entry_array[elements].grid_remove()
+
+        component_entry_label.grid_remove()
         component_param1_array[component_index].grid_remove()
         component_param2_array[component_index].grid_remove()
         component_distribution_array[component_index].delete('1.0', tk.END)
@@ -1672,8 +1684,6 @@ def constant_or_random_switch(constant_or_random,
         # Display the labels for the corresponding component index and remove labels of other components
         for labels in range(len(component_param1_label_array)):
             if labels == component_index:
-                component_param1_array[labels].configure(height=1, width=20)
-                component_param2_array[labels].configure(height=1, width=20)
                 component_param1_label_array[labels].grid(row=6, column=5, sticky='nsew')
                 component_param2_label_array[labels].grid(row=7, column=5, sticky='nsew')
                 component_param1_array[labels].grid(row=6, column=6, sticky='nsew')
@@ -1692,62 +1702,76 @@ def constant_or_random_switch(constant_or_random,
 # ------------------------------------------- Functions for drop down lists --------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function when the selected component has been changed from dropdown list
-def change_component_index(component_selected,
+def change_component_index(variable_selected,
                            distribution_type,
                            component_distribution_array,
                            component_param1_label_array,
                            component_param2_label_array,
                            component_param1_array,
                            component_param2_array,
+                           const_value_label,
+                           const_value_entry,
                            components,
                            param1_prefix_drop_down_list,
-                           param2_prefix_drop_down_list
+                           param2_prefix_drop_down_list,
+                           constant_or_random
                            ):
     global component_index
     for comp_index in range(len(components)):
-        if component_selected.get() == components[comp_index]:
+        if variable_selected.get() == components[comp_index]:
             component_index = comp_index
 
-    component_param1_array[component_index].grid_remove()
-    component_param2_array[component_index].grid_remove()
-    component_distribution_array[component_index].delete('1.0', tk.END)
+    if constant_or_random.get() == 'Constant':
+        const_value_label.grid(row=5, column=5, sticky='nsew')
+        # Remove all labels for parameters, except the user selected component label
+        for labels in range(len(component_param1_array)):
+            if labels == component_index:
+                const_value_entry[labels].grid(row=5, column=6, sticky='nsew')
+            else:
+                const_value_entry[labels].grid_remove()
 
-    # Check which distribution has been selected and change the parameters accordingly
-    if distribution_type.get() == 'Gamma Distribution':
-        component_distribution_array[component_index].insert(tk.INSERT, 'Gamma')
-        component_param1_label_array[component_index].configure(text='Shape (k)')
-        component_param2_label_array[component_index].configure(text='Scale (θ)')
+    if constant_or_random.get() == 'Random':
+        print('Random')
+        # component_param1_array[component_index].grid_remove()
+        # component_param2_array[component_index].grid_remove()
+        component_distribution_array[component_index].delete('1.0', tk.END)
 
-    if distribution_type.get() == 'Beta Distribution':
-        component_distribution_array[component_index].insert(tk.INSERT, 'Beta')
-        component_param1_label_array[component_index].configure(text='Alpha (α)')
-        component_param2_label_array[component_index].configure(text='Beta (β)')
+        # Check which distribution has been selected and change the parameters accordingly
+        if distribution_type.get() == 'Gamma Distribution':
+            component_distribution_array[component_index].insert(tk.INSERT, 'Gamma')
+            component_param1_label_array[component_index].configure(text='Shape (k)')
+            component_param2_label_array[component_index].configure(text='Scale (θ)')
 
-    if distribution_type.get() == 'Normal Distribution':
-        component_distribution_array[component_index].insert(tk.INSERT, 'Normal')
-        component_param1_label_array[component_index].configure(text='Mean (μ)')
-        component_param2_label_array[component_index].configure(text='Variance (σ^2)')
+        if distribution_type.get() == 'Beta Distribution':
+            component_distribution_array[component_index].insert(tk.INSERT, 'Beta')
+            component_param1_label_array[component_index].configure(text='Alpha (α)')
+            component_param2_label_array[component_index].configure(text='Beta (β)')
 
-    if distribution_type.get() == 'Uniform Distribution':
-        component_distribution_array[component_index].insert(tk.INSERT, 'Uniform')
-        component_param1_label_array[component_index].configure(text='Min')
-        component_param2_label_array[component_index].configure(text='Max')
+        if distribution_type.get() == 'Normal Distribution':
+            component_distribution_array[component_index].insert(tk.INSERT, 'Normal')
+            component_param1_label_array[component_index].configure(text='Mean (μ)')
+            component_param2_label_array[component_index].configure(text='Variance (σ^2)')
 
-    # Display the labels for the corresponding component index and remove labels of other components
-    for labels in range(len(component_param1_label_array)):
-        if labels == component_index:
-            component_param1_label_array[labels].grid(row=6, column=5, sticky='nsew')
-            component_param2_label_array[labels].grid(row=7, column=5, sticky='nsew')
-            component_param1_array[labels].grid(row=6, column=6, sticky='nsew')
-            component_param2_array[labels].grid(row=7, column=6, sticky='nsew')
-        else:
-            component_param1_label_array[labels].grid_remove()
-            component_param2_label_array[labels].grid_remove()
-            component_param1_array[labels].grid_remove()
-            component_param2_array[labels].grid_remove()
+        if distribution_type.get() == 'Uniform Distribution':
+            component_distribution_array[component_index].insert(tk.INSERT, 'Uniform')
+            component_param1_label_array[component_index].configure(text='Min')
+            component_param2_label_array[component_index].configure(text='Max')
 
-    param1_prefix_drop_down_list.grid(row=6, column=7, sticky='n')
-    param2_prefix_drop_down_list.grid(row=7, column=7, sticky='n')
+        # Remove all labels for parameters, except the user selected component label
+        for labels in range(len(component_param1_array)):
+            if labels == component_index:
+                component_param1_label_array[labels].grid(row=6, column=5, sticky='nsew')
+                component_param2_label_array[labels].grid(row=7, column=5, sticky='nsew')
+                component_param1_array[labels].grid(row=6, column=6, sticky='nsew')
+                component_param2_array[labels].grid(row=7, column=6, sticky='nsew')
+            else:
+                component_param1_label_array[labels].grid_remove()
+                component_param2_label_array[labels].grid_remove()
+                component_param1_array[labels].grid_remove()
+                component_param2_array[labels].grid_remove()
+
+        param1_prefix_drop_down_list.grid(row=6, column=7, sticky='n')
+        param2_prefix_drop_down_list.grid(row=7, column=7, sticky='n')
 
 
 # Function when the selected distribution for the component has been changed from dropdown list
@@ -1908,6 +1932,7 @@ def simulation_preferences(schematic_analysis_window, netlist_path):
 # Function for entering parameters
 def open_enter_parameters_window(fpath,
                                  components,
+                                 variable_names,
                                  root,
                                  schematic_analysis,
                                  component_parameters_frame,
@@ -1935,7 +1960,8 @@ def open_enter_parameters_window(fpath,
      component_value_array: Array which contains whether a component is a Constant (Value from LTSpice) or
                             Random (Selected According to user requirements) value
     """
-    if components:
+
+    if variable_names:
         # Creating a new window for entering parameters
         # Check if entering parameters window is already open:
         # if TRUE: lift it on top of schematic analysis window
@@ -1954,18 +1980,19 @@ def open_enter_parameters_window(fpath,
             schematic_x = schematic_analysis.winfo_x()
             schematic_y = schematic_analysis.winfo_y()
             # set the size and location of the new window created for entering parameters
-            entering_parameters_window.geometry("480x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
+            entering_parameters_window.geometry("500x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
             # make entering parameters window on top of the main schematic analysis window
             entering_parameters_window.wm_transient(schematic_analysis)
-
-            component_distribution_array = [None] * len(components)
-            component_param1_entry_box_array = [None] * len(components)
-            component_param2_entry_box_array = [None] * len(components)
-            component_param1_label_array = [None] * len(components)
-            component_param2_label_array = [None] * len(components)
-            name_label_array = [None] * len(components)
-            parameters_frame = [None] * len(components)
-            delete_button = [None] * len(components)
+            number_of_variables = len(variable_names)
+            component_distribution_array = [None] * number_of_variables
+            component_param1_entry_box_array = [None] * number_of_variables
+            component_param2_entry_box_array = [None] * number_of_variables
+            component_param1_label_array = [None] * number_of_variables
+            component_param2_label_array = [None] * number_of_variables
+            name_label_array = [None] * number_of_variables
+            parameters_frame = [None] * number_of_variables
+            delete_button = [None] * number_of_variables
+            component_const_entry_array = [None] * number_of_variables
             # Example Structure
             # name: L1
             # distribution: normal
@@ -1989,9 +2016,13 @@ def open_enter_parameters_window(fpath,
                                                                   width=20,
                                                                   text='Distribution'
                                                                   )
-
+            component_value_label = customtkinter.CTkLabel(entering_parameters_window,
+                                                           height=1,
+                                                           width=20,
+                                                           text='Value'
+                                                           )
             component_selected = tk.StringVar(entering_parameters_window)
-            component_selected.set(components[0])
+            component_selected.set(variable_names[0])
             distributions = ['Normal Distribution', 'Uniform Distribution', 'Gamma Distribution', 'Beta Distribution']
             distribution_selected = tk.StringVar(entering_parameters_window)
             distribution_selected.set(distributions[0])
@@ -2002,7 +2033,7 @@ def open_enter_parameters_window(fpath,
             param2_prefix_selected.set(prefixes[0])
             max_distribution_width = len(max(distributions, key=len))
 
-            for circuit_component in range(len(components)):
+            for circuit_component in range(number_of_variables):
 
                 component_distribution_array[circuit_component] = tk.Text(entering_parameters_window,
                                                                           height=1,
@@ -2041,6 +2072,17 @@ def open_enter_parameters_window(fpath,
 
                 component_param2_entry_box_array[circuit_component].configure(validatecommand=vcmd2)
 
+                component_const_entry_array[circuit_component] = customtkinter.CTkEntry(entering_parameters_window,
+                                                                                        height=1,
+                                                                                        width=20,
+                                                                                        text='',
+                                                                                        validate='key'
+                                                                                        )
+                vcmd3 = (component_const_entry_array[circuit_component].register(if_number),
+                         '%S',
+                         '%s')
+
+                component_const_entry_array[circuit_component].configure(validatecommand=vcmd3)
                 component_param2_label_array[circuit_component] = customtkinter.CTkLabel(entering_parameters_window,
                                                                                          height=1,
                                                                                          width=20,
@@ -2079,12 +2121,11 @@ def open_enter_parameters_window(fpath,
                                                                                         t,
                                                                                         delete_button,
                                                                                         all_component_parameters,
-                                                                                        components,
+                                                                                        variable_names,
                                                                                         parameters_frame)
                                                                            )
 
                 delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.5)
-
 
                 # component_full_information_array[circuit_component] = tk.Entry(component_parameters_frame)
 
@@ -2121,11 +2162,10 @@ def open_enter_parameters_window(fpath,
                                             values=prefixes,
                                             width=max_distribution_width)
 
-            # Drop down list for selecting which component to enter parameters for
             component_drop_down_list = \
                 customtkinter.CTkOptionMenu(master=entering_parameters_window,
                                             variable=component_selected,
-                                            values=components,
+                                            values=variable_names,
                                             width=max_distribution_width,
                                             command=lambda _: change_component_index(component_selected,
                                                                                      distribution_selected,
@@ -2134,10 +2174,14 @@ def open_enter_parameters_window(fpath,
                                                                                      component_param2_label_array,
                                                                                      component_param1_entry_box_array,
                                                                                      component_param2_entry_box_array,
-                                                                                     components,
+                                                                                     component_value_label,
+                                                                                     component_const_entry_array,
+                                                                                     variable_names,
                                                                                      param1_prefix_drop_down_list,
-                                                                                     param2_prefix_drop_down_list
+                                                                                     param2_prefix_drop_down_list,
+                                                                                     constant_or_random
                                                                                      ))
+            # Drop down list for selecting which component to enter parameters for
             # Drop down list for selecting the type of distribution for random components
             distribution_drop_down_list = \
                 customtkinter.CTkOptionMenu(master=entering_parameters_window,
@@ -2169,11 +2213,12 @@ def open_enter_parameters_window(fpath,
                                         component_param2_label_array[component_index].__getattribute__('text'),
                                         component_param1_entry_box_array[component_index].get(),
                                         component_param2_entry_box_array[component_index].get(),
+                                        component_const_entry_array[component_index].get(),
                                         component_index,
                                         name_label_array,
                                         delete_button,
                                         component_value_array,
-                                        components,
+                                        variable_names,
                                         component_parameters_frame,
                                         param1_prefix_drop_down_list,
                                         param2_prefix_drop_down_list,
@@ -2185,7 +2230,7 @@ def open_enter_parameters_window(fpath,
             save_all_parameters_button = customtkinter.CTkButton(
                 entering_parameters_window,
                 text='Save All Parameters',
-                command=lambda: save_all_entered_parameters(components,
+                command=lambda: save_all_entered_parameters(variable_names,
                                                             component_distribution_array,
                                                             component_param1_label_array,
                                                             component_param2_label_array,
@@ -2211,6 +2256,8 @@ def open_enter_parameters_window(fpath,
                                                     text='Cancel',
                                                     command=entering_parameters_window.destroy)
             constant_or_random = customtkinter.StringVar(value="Constant")
+            # Create a switch for constant and Random
+            # Constant O----- Random
             constant_label = customtkinter.CTkLabel(entering_parameters_window, text='Constant  ', width=0, height=18)
             variable_switch = customtkinter.CTkSwitch(entering_parameters_window,
                                                       variable=constant_or_random,
@@ -2219,6 +2266,9 @@ def open_enter_parameters_window(fpath,
                                                       offvalue="Constant",
                                                       command=lambda: constant_or_random_switch
                                                       (constant_or_random,
+                                                       component_value_label,
+                                                       component_const_entry_array,
+                                                       component_value_array,
                                                        component_selected,
                                                        component_distribution_label,
                                                        distribution_drop_down_list,
@@ -2239,10 +2289,11 @@ def open_enter_parameters_window(fpath,
             component_name_array_label.grid(row=component_name_row, column=5, sticky='news')
             component_drop_down_list.grid(row=component_name_row, column=6, padx=0)
 
-            # Placing label and dropdown for distributions
-            component_distribution_label.grid(row=distribution_row, column=5, sticky='news')
-            distribution_drop_down_list.grid(row=distribution_row, column=6, sticky=tk.W)
-
+            # # Placing label and dropdown for distributions
+            # component_distribution_label.grid(row=distribution_row, column=5, sticky='news')
+            # distribution_drop_down_list.grid(row=distribution_row, column=6, sticky=tk.W)
+            component_value_label.grid(row=5, column=5, sticky='nsew')
+            component_const_entry_array[0].grid(row=5, column=6, sticky='nsew')
             # Closing parameters window
             cancel_button.grid(row=button_row, column=5)
 
@@ -2256,6 +2307,10 @@ def open_enter_parameters_window(fpath,
             entering_parameters_window.grid_rowconfigure(tuple(range(button_row)), weight=1)
             entering_parameters_window.grid_columnconfigure(tuple(range(button_row)), weight=1)
             delete_constants_button.pack(anchor=tk.SW, side=tk.LEFT)
+    else:
+        messagebox.showerror(parent=schematic_analysis, title='No variable error',
+                             message='Please Select a schematic with UQ_ variable names'
+                             )
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -2313,13 +2368,14 @@ def delete_all_constants(parameters_frame, labels_to_remove, component_value_arr
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for closing new windows using a  button
 def save_entered_parameters(entering_parameters_window,
-                            component_name,
+                            variable_name,
                             selected_distribution,
                             component_distribution,
                             component_param1_label,
                             component_param2_label,
                             component_param1,
                             component_param2,
+                            const_value,
                             index,
                             full_name_labels,
                             delete_label_button,
@@ -2333,7 +2389,7 @@ def save_entered_parameters(entering_parameters_window,
     global all_component_parameters
     global component_index
 
-    component_value_array[index] = 'Random'
+    # component_value_array[index] = 'Random'
 
     prefixes = {'m': 1e-3, 'u': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9, 'T': 1e12}
 
@@ -2410,16 +2466,19 @@ def save_entered_parameters(entering_parameters_window,
             else:
                 raise TypeError
             # {x.keys()[0]: x.value()[0] for x in ll}
-            all_component_parameters.update({component_name:
-                                    {
-                                        'distribution': component_distribution,
-                                        'parameters':
-                                            {
-                                                component_param1_dictionary_input: component_param1,
-                                                component_param2_dictionary_input: component_param2
-                                            }
-                                    }
-            })
+            all_component_parameters.update(
+                {
+                    variable_name:
+                    {
+                     'distribution': component_distribution,
+                     'parameters':
+                     {
+                         component_param1_dictionary_input: component_param1,
+                         component_param2_dictionary_input: component_param2
+                     }
+                    }
+                 }
+            )
 
             # --------------------------- Displaying entered parameters on schematic_analysis window -------------------
             # print(component_index)
@@ -2427,7 +2486,7 @@ def save_entered_parameters(entering_parameters_window,
             full_name_labels[index].configure(text='')
             delete_label_button[index].place(x=0, y=0, relwidth=0.05, relheight=0.2)
 
-            full_name_labels[index].configure(text='\n' + component_name +
+            full_name_labels[index].configure(text='\nVariable Name: ' + variable_name +
                                                    '\nDistribution: ' + component_distribution
                                                    + '\n' + component_param1_label + '=' + str(component_param1)
                                                    + '\n' + component_param2_label + '=' + str(component_param2)
@@ -2441,6 +2500,17 @@ def save_entered_parameters(entering_parameters_window,
         except TypeError:
             messagebox.showerror(parent=entering_parameters_window, title='More than one prefix',
                                  message='Please enter a single prefix only.')
+
+    elif component_value_array[index] == 'Constant':
+        full_name_labels[index].configure(text='')
+        # Storing the name label of all parameters
+        full_name_labels[index].configure(text='\n' +
+                                          variable_name
+                                          + '\nValue: ' + str(const_value)
+                                          )
+        delete_label_button[index].place(x=0, y=0, relwidth=0.05, relheight=0.2)
+        full_name_labels[index].place(x=0, y=1, relwidth=1.0, relheight=0.95)
+        parameters_frame[index].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1, padx=(20, 0))
 
     set_simulation_preferences_button.pack(anchor=tk.NW, side=tk.LEFT, padx=10)
     # component_dictionary = {x.keys()[0]: x.value()[0] for x in all_component_parameters}
