@@ -1890,12 +1890,16 @@ def save_simulation_preferences(variables_in_schematic, number_of_simulations, n
             simulation_object = pcarchitects.ExperimentalDesigner(variable_component_parameters)
             component_values_for_simulation = simulation_object.get_lhs_design_pandas(int(number_of_simulations.get()))
             print(component_values_for_simulation)
-            preform_sweep = sweepers.Sweeper()
-            preform_sweep.add_sweep(netlist_path=netlist_path,
+            perform_sweep = sweepers.Sweeper()
+            # Clean the sweeps if there any inside
+            perform_sweep.clean(netlist_path=netlist_path)
+            perform_sweep.add_sweep(netlist_path=netlist_path,
                                     input_samples=component_values_for_simulation)
 
         if constant_component_parameters:
             add_constants = sweepers.ConstAdd()
+            # Clean the constants if there any
+            add_constants.clean(netlist_path=netlist_path)
             add_constants.add_constants(netlist_path=netlist_path,
                                         vars=constant_component_parameters)
     if variable_not_present:

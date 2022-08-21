@@ -16,8 +16,10 @@ class Sweeper:
     """Adds sweep to the LTSpice netlist."""
     def __init__(self):
         self.hash = hash(random())
-        self.enter_line = f"* Sweep added by Sweeper {self.hash}"
-        self.exit_line = f'* Finished sweep by Sweeper {self.hash}'
+        self._default_enter_line = "* Sweep added by Sweeper"
+        self._default_exit_line = "* Finished sweep by Sweeper"
+        self.enter_line = f"{self._default_enter_line} {self.hash}"
+        self.exit_line = f'{self._default_exit_line} {self.hash}'
 
     def __hash__(self):
         return self.hash
@@ -73,39 +75,45 @@ class Sweeper:
         except Exception as e:
             raise e
 
-    def clean_sweeps(self, netlist_path: str):
+    def clean(self, netlist_path: str):
         try:
             netlist = NetlistReader.read(netlist_path)
         except UnicodeDecodeError or FileNotFoundError as e:
             raise e
 
+        start_idx = end_idx = None
         en = enumerate(netlist)
         for idx, command in en:
-            if re.match(re.escape(self.enter_line), command):
+            if re.match(re.escape(self._default_enter_line), command):
                 start_idx = idx
-            elif re.match(re.escape(self.exit_line), command):
+            elif re.match(re.escape(self._default_exit_line), command):
                 end_idx = idx
                 break
             else:
                 pass
+        if start_idx and end_idx:
+            while start_idx <= end_idx:
+                netlist.pop(start_idx)
+                end_idx -= 1
 
-        while start_idx <= end_idx:
-            netlist.pop(start_idx)
-            end_idx -= 1
-
-        try:
-            NetlistCreator.write_netlist_lines(netlist, netlist_path)
-            return True
-        except Exception as e:
-            raise e
+            try:
+                NetlistCreator.write_netlist_lines(netlist, netlist_path)
+                return True
+            except Exception as e:
+                raise e
+        else:
+            warnings.warn(f"Sweeper {self.hash}: I could not find any sweep to clean. Quitting.")
+            return False
 
 
 class ConstAdd:
 
     def __init__(self):
         self._hash = hash(random())
-        self._enter_line = f"* Parameters added by ConstAdd {self._hash}"
-        self._exit_line = f"* Parameters added by ConstAdd {self._hash}"
+        self._default_enter_line = "* Parameters added by ConstAdd"
+        self._default_exit_line = "* Finished adding by ConstAdd"
+        self._enter_line = f"{self._default_enter_line} {self._hash}"
+        self._exit_line = f"{self._default_exit_line} {self._hash}"
 
     def __hash__(self):
         return self._hash
@@ -122,7 +130,7 @@ class ConstAdd:
         """
         # If vars is empty just quit
         if len(vars) == 0:
-            return
+            return False
         # Read the netlist
         try:
             netlist = NetlistReader.read(netlist_path)
@@ -134,8 +142,8 @@ class ConstAdd:
             if re.match('.backanno', command):
                 netlist.insert(idx, self._enter_line)
                 end_idx = idx + 1
-                for idy, (param_name, param_value) in enumerate(vars.items()):
-                    netlist.insert(idx + idy + 1, f".param {param_name}={param_value}")
+                for idy, (param_name, values) in enumerate(vars.items()):
+                    netlist.insert(idx + idy + 1, f".param {param_name}={values['Value']}")
                     end_idx = idx + idy + 2
                 netlist.insert(end_idx, self._exit_line)
                 break
@@ -144,6 +152,36 @@ class ConstAdd:
             return True
         except Exception as e:
             raise e
+
+    def clean(self, netlist_path: str):
+        try:
+            netlist = NetlistReader.read(netlist_path)
+        except UnicodeDecodeError or FileNotFoundError as e:
+            raise e
+
+        start_idx = end_idx = None
+        en = enumerate(netlist)
+        for idx, command in en:
+            if re.match(re.escape(self._default_enter_line), command):
+                start_idx = idx
+            elif re.match(re.escape(self._default_exit_line), command):
+                end_idx = idx
+                break
+            else:
+                pass
+        if start_idx and end_idx:
+            while start_idx <= end_idx:
+                netlist.pop(start_idx)
+                end_idx -= 1
+
+            try:
+                NetlistCreator.write_netlist_lines(netlist, netlist_path)
+                return True
+            except Exception as e:
+                raise e
+        else:
+            warnings.warn(f"ConstAdd {self._hash}: I could not find any sweep to clean. Quitting.")
+            return False
 
 
 class NetlistCreator:
