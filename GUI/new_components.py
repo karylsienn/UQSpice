@@ -708,10 +708,10 @@ class NewComponents:
         self.canvas.delete('all')
 
     @staticmethod
-    def filter_components(components, adjustment):
+    def filter_components(components, adjustment=0):
         """Function used to extract coordinates of components from LTSpice file
 
-            Parameter `components` is a list of strings all components.
+            Parameter `components` is a list of strings fo all components.
             `adjustment` is an integer or a float
 
 
@@ -720,8 +720,8 @@ class NewComponents:
             components : list(str)
                 The component to extract coordinates from
             adjustment : int
-                The addition to move the component coordinates, this is done because any coordinates in the
-                negative side are not shown at all by the canvas
+                The addition to move the component coordinates, this was done previously before canvas was scrollable as
+                components were not visible at the time
 
             Returns
             -----------------------
@@ -795,7 +795,7 @@ class NewComponents:
         return list(dict.fromkeys(self.symbols_not_found_list))
 
     # This is a fixed a variable and should not be changed once assigned the first time at the beginning of the class
-    # it is used to change the default_path variable back to its original path if it has been changed before by the
+    # it is used to change the default_exe_path variable back to its original path if it has been changed before by the
     # set default path method outside the class
     @staticmethod
     def get_fixed_default_exe_path():
