@@ -56,10 +56,20 @@ class ResizingCanvas(tk.Canvas):
     background = ''
 
     def do_zoom(self, event):
+        all_text_in_canvas = self.find_withtag('power_flag_text')
+
         x = self.canvasx(event.x)
         y = self.canvasy(event.y)
-        factor = 1.00001 ** event.delta
+        factor = 1.001 ** event.delta
+        if event.delta < 0:
+            self.font_size *= 0.68
+            self.font_type.configure(size=int(self.font_size))
+        if event.delta > 0:
+            self.font_size *= 1.5
         self.scale(tk.ALL, x, y, factor, factor)
+        # print(self.font_size)
+        for text_elements in all_text_in_canvas:
+            self.itemconfig(text_elements, font=f"Times {round(self.font_size)}")
         # Respond to Linux (event.num) or Windows (event.delta) wheel event
         if event.num == 5 or event.delta == -120:  # scroll down
             x = self.canvasx(event.x)
@@ -75,6 +85,9 @@ class ResizingCanvas(tk.Canvas):
     def __init__(self, parent, resize_zoom=True, **kwargs):
         tk.Canvas.__init__(self, parent, **kwargs)
         ResizingCanvas.instances.append(self)
+
+        self.font_type = Font(self, "Arial 15")  # create font object
+        self.font_size = 15
         # tk.Canvas.configure(self, background=ResizingCanvas.background)
         if resize_zoom:
             self.height = self.winfo_reqheight()
@@ -104,6 +117,9 @@ class ResizingCanvas(tk.Canvas):
     @staticmethod
     def get_background_colour():
         return ResizingCanvas.background
+
+    def get_font_type(self):
+        return self.font_type
 
     @classmethod
     def get(cls):
