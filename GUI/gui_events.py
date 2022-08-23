@@ -8,8 +8,10 @@ import ntpath  # used for just retrieving the file name from a file path
 import os.path  # checking if file path exists, directory exists, etc for default symbols and exe path
 import re  # used for substituting for matches
 import threading  # running netlist generation and sketching components when .asc file has been selected
-
+import pandas as pd
 # Created Files and classes
+from matplotlib import pyplot as plt
+
 import ltspicer.sweepers as sweepers
 import ltspicer.readers as read
 import pystatemc.pcarchitects as pcarchitects
@@ -563,7 +565,7 @@ def reopen_root_window(root, window_to_close):
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Functions for Root starting window ------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def open_new_components(root):
+def open_new_components(root, show_master_window=True):
     # ------------------------------------------- New Components Window Buttons ----------------------------------------
     root.withdraw()
     open_new_component_window = customtkinter.CTkToplevel()
@@ -608,9 +610,10 @@ def open_new_components(root):
     delete_button.pack(side=tk.RIGHT, padx=10, pady=10)
     button_frame.pack(side=tk.BOTTOM, fill=tk.X)
     new_components_canvas.pack(expand=True, fill=tk.BOTH)
-
-    # Removing the root window if schematic analysis window has been destroyed
-    open_new_component_window.protocol("WM_DELETE_WINDOW", lambda: reopen_root_window(root, open_new_component_window))
+    if show_master_window:
+        # Removing the root window if schematic analysis window has been destroyed
+        open_new_component_window.protocol("WM_DELETE_WINDOW",
+                                           lambda: reopen_root_window(root, open_new_component_window))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -691,36 +694,50 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
             # read.parse_and_save("RawReader", raw_file_path, 'test')
             raw_reader = read.RawReader(raw_file_path)
             data = raw_reader.get_pandas()
+            grouped_data = data.groupby('step')
+
+            # print(grouped_data.iloc[:, 1])
+            # for elements in grouped_data.idxmax():
+            #     grouped_data[[elements]].plot(ax=axis, label=elements)
+            # plt.legend()
+            # plt.show()
+
+            # Store data columns and headers
             data_as_list = data.values.tolist()
             data_headers = list(data.columns.values)
             data_table.headers(data_headers)
             data_table.set_sheet_data(data_as_list)
             data_table.enable_bindings()
+
+            # x-axis and y-axis to be selected from graph tab
             col1_prefix_selected = tk.StringVar(graphs)
             col1_prefix_selected.set(data_headers[0])
             col2_prefix_selected = tk.StringVar(graphs)
             col2_prefix_selected.set(data_headers[0])
             column_1_dropdown_list.configure(variable=col1_prefix_selected)
             column_1_dropdown_list.configure(values=data_headers)
-            column_2_dropdown_list.configure(values=data_headers)
             column_2_dropdown_list.configure(variable=col2_prefix_selected)
+            column_2_dropdown_list.configure(values=data_headers)
 
-            column_1_dropdown_list.configure(command=lambda arg=column_1_dropdown_list.get:
-                                             sketch_graphs(data, graphs, data_headers,
+            previous_sketched_columns = [[], []]
+            previous_sketched_columns.pop()
+            # sketch command for when either the x or y axes are changed.
+            column_1_dropdown_list.configure(command=lambda arg:
+                                             sketch_graphs(data, grouped_data, graphs, data_headers,
                                                            data_headers.index(column_1_dropdown_list.get()),
                                                            data_headers.index(column_2_dropdown_list.get()),
                                                            figure, ax, lines_array, toolbar, new_subplot,
-                                                           subplot_number, subplots))
-            column_2_dropdown_list.configure(command=lambda arg=column_2_dropdown_list.get:
-                                             sketch_graphs(data, graphs, data_headers,
+                                                           subplot_number, subplots, previous_sketched_columns))
+
+            column_2_dropdown_list.configure(command=lambda arg:
+                                             sketch_graphs(data, grouped_data, graphs, data_headers,
                                                            data_headers.index(column_1_dropdown_list.get()),
                                                            data_headers.index(column_2_dropdown_list.get()),
                                                            figure, ax, lines_array, toolbar, new_subplot,
-                                                           subplot_number, subplots))
-            print(data.iloc[:, 2])
+                                                           subplot_number, subplots, previous_sketched_columns))
+            # print(data.iloc[:, 2])
             if schematic_analysis_open is False:
                 root.withdraw()
-                # TODO: TRY USING SCREENINFO LIBRARY TO PLACE IN CENTRE OF SCREEN
                 schematic_analysis_width = 1100  # width for the Tk schematic_analysis
                 schematic_analysis_height = 750  # height for the Tk schematic_analysis
                 # Find the location of the main schematic analysis window
@@ -759,67 +776,136 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Function for sketching graphs on tab 2 ----------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def sketch_graphs(data, frame_to_display, column_headings, column1, column2, figure, ax, lines_array, toolbar,
-                  new_subplot, plot_index, subplots):
+def sketch_graphs(data, grouped_data, frame_to_display,
+                  column_headings, column1, column2, figure, ax, lines_array, toolbar,
+                  new_subplot, plot_index, subplots, previous_drawn_columns):
+    selected_steps_to_show = [1+0j, 2+0j, 3+0j, 5+0j]
     if new_subplot.get() == 'off':
         plot_number = int(plot_index.get()) - 1
         ax[plot_number].clear()
-        lines_array[plot_number], = ax[plot_number].plot(data.iloc[:, column1], data.iloc[:, column2])
+        print(column1)
+
+        previous_drawn_columns[plot_number] = [column1, column2]
+        print(previous_drawn_columns)
+        # Example of plotting:
+        # Plot number is used when there are multiple subplots, plot number is selected by the user to select which
+        # subplot.
+        # grouped data is the pandas data frame which has been grouped according to number of steps present
+        # ax is just which axis or which graph to plot on selected according to plot number
+        # lines_array[plot_number] = grouped_data[['V(n001)']].plot(ax=ax[plot_number])
+
+        legend_array = [None]
+
+        for label, df in grouped_data:
+            legend_array.insert(-1, label)
+        print(legend_array)
+        legend_array.remove(None)
+
+        # User selected steps from plot preferences
+        selected_steps_to_show = [1+0j, 2+0j, 3+0j, 5+0j]
+        for steps in selected_steps_to_show:
+            # Example for accessing a step
+            # data.loc[grouped_data.groups[step], (x-axis, y-axis)]
+            # step is any value from available steps for example like 1+0j or 2+0j
+            plotting_data = data.loc[grouped_data.groups[steps], (column_headings[previous_drawn_columns[plot_number][0]],
+                                                                  column_headings[previous_drawn_columns[plot_number][1]])]
+            # plotting data is 3 columns:
+            # column 1 is row numbers, x-axis is column 2, y-axis is column 3.
+            lines_array[plot_number], = ax[plot_number].plot(plotting_data[column_headings[column1]],
+                                                             plotting_data[column_headings[column2]],
+                                                             label=steps)
+            mplcursors.cursor(lines_array[plot_number], hover=mplcursors.HoverMode.Transient)
+        ax[plot_number].legend()
+
+        # print(lines_array[plot_number])
+        # lines_array[plot_number] = ax[plot_number].plot(data.iloc[:, column1], data.iloc[:, column2])
+
         ax[plot_number].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
         ax[plot_number].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
         ax[plot_number].grid('on')
         figure.canvas.draw()
         figure.canvas.flush_events()
         toolbar.update()
-        mplcursors.cursor(lines_array[plot_number], hover=mplcursors.HoverMode.Transient)
 
     if new_subplot.get() == 'on':
-        # Retrieve line data from previous sketched axes
-        previous_line_data = [None] * len(lines_array)
-        previous_line_title = [None] * len(lines_array)
-        previous_line_xlabels = [None] * len(lines_array)
-        previous_line_ylabels = [None] * len(lines_array)
-
         if lines_array[0] is not None:
-            for axis in range(len(ax)):
-                previous_line_data[axis] = lines_array[axis].get_data()
-                previous_line_title[axis] = ax[axis].get_title()
-                previous_line_xlabels[axis] = ax[axis].get_xlabel()
-                previous_line_ylabels[axis] = ax[axis].get_ylabel()
-            print(previous_line_title, previous_line_xlabels, previous_line_ylabels)
+            # print(figure.gca().lines)
+            # If a graph has already been sketched in the first figure
+            # then get its data, clear the figure, create new subplots, plot data stored of first figure and add
+            # a new figure
+            # for axis in range(len(ax)):
+            #     # .gca() gets an axis handle
+            #     # .lines[0] gets the first line, there might be more
+            #     # get_data retrieves the x
+            #     previous_line_data[axis] = figure.gca().lines[0].get_data()
+            #     previous_line_data[axis] = figure.gca().lines[0].get_data()
+            #     previous_line_title[axis] = ax[axis].get_title()
+            #     previous_line_xlabels[axis] = ax[axis].get_xlabel()
+            #     previous_line_ylabels[axis] = ax[axis].get_ylabel()
+            # print(previous_line_data)
+
             # Clear old figure and add new axis
             figure.clear()
             ax.append(figure.add_subplot(len(ax) + 1, 1, len(ax) + 1))
             lines_array.append(None)
+            previous_drawn_columns.insert(-1, [column1, column2])
+            # User selected steps from plot preferences
 
-            # Add new axis to graph
-            for axis in range(len(ax)):
-                if axis is not len(ax) - 1:
-                    ax[axis] = figure.add_subplot(len(ax), 1, axis + 1)
-                    lines_array[axis], = ax[axis].plot(previous_line_data[axis][0], previous_line_data[axis][1])
-                    ax[axis].set_title(previous_line_xlabels[axis] + ' against ' + previous_line_ylabels[axis])
-                    ax[axis].set(xlabel=previous_line_xlabels[axis], ylabel=previous_line_ylabels[axis])
-                    mplcursors.cursor(lines_array[axis], hover=mplcursors.HoverMode.Transient)
-                    ax[axis].grid('on')
-                    print(axis)
+            for plots in range(len(previous_drawn_columns)):
+                ax[plots] = figure.add_subplot(len(ax), 1, plots + 1)
+                for steps in selected_steps_to_show:
+                    # Example for accessing a step
+                    # data.loc[grouped_data.groups[step], (x-axis, y-axis)]
+                    # step is any value from available steps for example like 1+0j or 2+0j
+                    plotting_data = data.loc[
+                        grouped_data.groups[steps], (column_headings[previous_drawn_columns[plots][0]],
+                                                     column_headings[previous_drawn_columns[plots][1]])]
+                    # plotting data is 3 columns:
+                    # column 1 is row numbers, x-axis is column 2, y-axis is column 3.
+                    lines_array[plots], = ax[plots].plot(plotting_data[column_headings[previous_drawn_columns[plots][0]]],
+                                                         plotting_data[column_headings[previous_drawn_columns[plots][1]]],
+                                                         label=steps)
+                    ax[plots].set_title(column_headings[previous_drawn_columns[plots][0]] + ' against '
+                                        + column_headings[previous_drawn_columns[plots][1]])
 
+                    ax[plots].set(xlabel=column_headings[previous_drawn_columns[plots][0]],
+                                  ylabel=column_headings[previous_drawn_columns[plots][1]])
+                    ax[plots].grid('on')
+                    mplcursors.cursor(lines_array[plots], hover=mplcursors.HoverMode.Transient)
+
+            # Increase number of subplots
             subplots.append(str(len(ax)))
             plot_index.configure(values=subplots)
-            print(subplots)
-            lines_array[len(ax) - 1], = ax[len(ax) - 1].plot(data.iloc[:, column1], data.iloc[:, column2])
-            ax[len(ax) - 1].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
-            ax[len(ax) - 1].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
-            ax[len(ax) - 1].grid('on')
-            mplcursors.cursor(lines_array[len(ax) - 1], hover=mplcursors.HoverMode.Transient)
+
+        # If no graph has been sketched in the figure
+        # then create a new graph in the first plot only
         else:
-            ax[int(plot_index.get()) - 1].clear()
-            lines_array[int(plot_index.get()) - 1], = ax[int(plot_index.get()) - 1].plot(data.iloc[:, column1],
-                                                                                         data.iloc[:, column2])
-            ax[int(plot_index.get()) - 1].set_title(
-                str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
-            ax[int(plot_index.get()) - 1].set(xlabel=str(column_headings[column1]),
-                                              ylabel=str(column_headings[column2]))
-            ax[int(plot_index.get()) - 1].grid('on')
+            plot_number = int(plot_index.get()) - 1
+            previous_drawn_columns[plot_number] = [column1, column2]
+            for steps in selected_steps_to_show:
+                # Example for accessing a step
+                # data.loc[grouped_data.groups[step], (x-axis, y-axis)]
+                # step is any value from available steps for example like 1+0j or 2+0j
+                plotting_data = data.loc[
+                    grouped_data.groups[steps], (column_headings[previous_drawn_columns[plot_number][0]],
+                                                 column_headings[previous_drawn_columns[plot_number][1]])]
+                # plotting data is 3 columns:
+                # column 1 is row numbers, x-axis is column 2, y-axis is column 3.
+                lines_array[plot_number], = ax[plot_number].plot(plotting_data[column_headings[column1]],
+                                                                 plotting_data[column_headings[column2]],
+                                                                 label=steps)
+                mplcursors.cursor(lines_array[plot_number], hover=mplcursors.HoverMode.Transient)
+            ax[plot_number].legend()
+
+            # print(lines_array[plot_number])
+            # lines_array[plot_number] = ax[plot_number].plot(data.iloc[:, column1], data.iloc[:, column2])
+
+            ax[plot_number].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
+            ax[plot_number].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
+            ax[plot_number].grid('on')
+            figure.canvas.draw()
+            figure.canvas.flush_events()
+            toolbar.update()
 
         figure.tight_layout()
         figure.canvas.draw()
@@ -881,33 +967,35 @@ def window_filtering(full_list, component_name_and_windows, flag_error):
                                                                           re.sub(r'Right.' + '\d', '',
                                                                                  re.sub(r'Left.' + '\d', '',
                                                                                         full_list[window]))))
+
+        print(f'Window Filtering stage 1: {full_list}')
         old_list = full_list
+        for window in range(0, len(full_list)):
+
+            if 'WINDOW' in full_list[window]:
+                full_list[window] = re.sub('WINDOW \d+', '', full_list[window])
+
         full_list = ' '.join(full_list).split(' ')
         flag_error = 'Error when filtering the window parameter - stage 2'
-        # Removing \\ from component names
-        for window in range(0, len(full_list)):
-            if '\\' or '\\\\' in full_list[window]:
-                full_list[window] = full_list[window].replace('\\', '').replace('\\\\', '')
+
+
+
+        print(f'Window Filtering stage 2: {full_list}')
+        # # Removing extra unnecessary elements from window
+        # for window in range(0, len(full_list)):
+        #     if (window + 5) < len(full_list):
+        #         if ('R0' in full_list[window]
+        #             or 'R90' in full_list[window]
+        #             or 'R180' in full_list[window]
+        #             or 'R270' in full_list[window]) \
+        #                 and not re.search('[a-zA-Z]', full_list[window + 1]):
+        #             full_list[window + 1] = re.sub('[0-9]', '', full_list[window + 1])
+        #             full_list[window + 4] = ''
 
         while '' in full_list:
             full_list.remove('')
 
-        print(full_list)
-        # Removing extra unnecessary elements from window
-        for window in range(0, len(full_list)):
-            if (window + 5) < len(full_list):
-                if ('R0' in full_list[window]
-                    or 'R90' in full_list[window]
-                    or 'R180' in full_list[window]
-                    or 'R270' in full_list[window]) \
-                        and not re.search('[a-zA-Z]', full_list[window + 1]):
-                    full_list[window + 1] = re.sub('[0-9]', '', full_list[window + 1])
-                    full_list[window + 4] = ''
-
-        while '' in full_list:
-            full_list.remove('')
-
-        print(full_list)
+        print(f'Window Filtering stage 3: {full_list}')
         while_window_counter = 0
         flag_error = 'Error when filtering the window parameter - stage 3'
         # Adding 0 for components which have no window parameter
@@ -953,6 +1041,7 @@ def window_filtering(full_list, component_name_and_windows, flag_error):
             full_list.append(str(0))
             full_list.append(str(0))
 
+        print(f'Window Filtering stage 4: {full_list}')
         print('full filtered list ', len(full_list), full_list)
 
         component_name_and_windows_list.pop()
@@ -1046,14 +1135,14 @@ def find_uq_vars_from_dict(variable_to_filter, value_is_type_set=False):
 
     # Removing prefixes from numbers
     for loop_value in range(len(list_without_operations)):
-        print(list_without_operations[loop_value])
+        # print(list_without_operations[loop_value])
         if 'UQ_' not in list_without_operations[loop_value]:
             list_without_operations[loop_value] = ''
 
     while '' in list_without_operations:
         list_without_operations.remove('')
 
-    print(f'given value: {variable_to_filter}, after filtering', list_without_operations)
+    # print(f'given value: {variable_to_filter}, after filtering', list_without_operations)
     removed_duplicates_list = list(dict.fromkeys(list_without_operations))
 
     return removed_duplicates_list
@@ -1070,8 +1159,8 @@ def get_file_path(component_parameters_frame,
                   schematic_analysis,
                   enter_parameters_button,
                   entering_parameters_window,
-                  delete_constants_button,
                   set_simulation_preferences_button,
+                  run_simulation_button,
                   root,
                   tabs):
     """Obtains the file path selected from a dialog box, Event function for Open a schematic button.
@@ -1154,8 +1243,8 @@ def get_file_path(component_parameters_frame,
                                                 canvas,
                                                 schematic_analysis,
                                                 enter_parameters_button,
-                                                delete_constants_button,
                                                 set_simulation_preferences_button,
+                                                run_simulation_button,
                                                 entering_parameters_window,
                                                 root,
                                                 encoding)).start(),
@@ -1186,8 +1275,8 @@ def sketch_schematic_asc(fpath,
                          canvas,
                          schematic_analysis,
                          enter_parameters_button,
-                         delete_constants_button,
                          set_simulation_preferences_button,
+                         run_simulation_button,
                          entering_parameters_window,
                          root,
                          encoding):
@@ -1261,7 +1350,7 @@ def sketch_schematic_asc(fpath,
         # Store all component names and values
         if "WINDOW" in lines:
             component_name_and_windows += lines.replace("WINDOW ", '')
-            full_list += lines.replace("WINDOW ", '')
+            full_list += lines
         if "SYMATTR InstName" in lines:
             components += lines.replace("SYMATTR InstName ", '')
             component_name_and_values += lines.replace("SYMATTR InstName ", '')
@@ -1305,7 +1394,7 @@ def sketch_schematic_asc(fpath,
         for symbols in range(len(symbols_and_name)):
             symbols_and_name[symbols] = re.sub(r' R\d.*', ' ', symbols_and_name[symbols])
         # symbols_and_name = ''.join(symbols_and_name)
-        print('symbols and name', symbols_and_name)
+        # print('symbols and name', symbols_and_name)
         symbols_and_name = ''.join(symbols_and_name).split(' ')
 
         while '' in symbols_and_name:
@@ -1327,6 +1416,7 @@ def sketch_schematic_asc(fpath,
             sym += 2
         print('symbols and name', symbols_and_name_dictionary)
 
+        # Filter the window parameter in LTSpice asc file
         component_full_filtered_list, component_name_and_windows = \
             window_filtering(full_list, component_name_and_windows, flag_error)
 
@@ -1364,8 +1454,8 @@ def sketch_schematic_asc(fpath,
         clean_list_of_variables = [item for sublist in filtered_variables_list for item in sublist]
 
         print(f"Variables list after filtering: {clean_list_of_variables}")
-        print(f'dictionary: {components_name_and_values_dictionary},'
-              f' values: {components_name_and_values_dictionary.values()}')
+        # print(f'dictionary: {components_name_and_values_dictionary},'
+        #      f' values: {components_name_and_values_dictionary.values()}')
 
         # ------------------------------------------------------------------------------------------------------------
         # ------------------------------------------------------------------------------------------------------------
@@ -1383,8 +1473,8 @@ def sketch_schematic_asc(fpath,
                                                                        component_parameters_frame,
                                                                        entering_parameters_window,
                                                                        component_value_array,
-                                                                       delete_constants_button,
                                                                        set_simulation_preferences_button,
+                                                                       run_simulation_button,
                                                                        canvas,
                                                                        components_name_and_values_dictionary,
                                                                        symbols_and_name_dictionary))
@@ -1394,18 +1484,16 @@ def sketch_schematic_asc(fpath,
         components.pop()
 
         # Stores whether a component is stored as a :
-        # Constant: Take same values from LTSpice and just use them
-        # Random: Adjusted by the user in enter parameters window, which automatically changes Constant to Random
-        # when the user clicks the save parameters button
+        # Constant or Random which are adjusted by the user in enter parameters window
         component_value_array = ['Constant'] * len(components)
 
         # Used for moving the objects to a new location in the canvas
         # This was originally used when the canvas was not scrollable as components did not appear at negative values
         adjustment = 0
-# -------------------------------------------- Separating Wires --------------------------------------------------------
+# -------------------------------------------- Filtering Wires (Line parameter in LTSpice) -----------------------------
         modified_coordinates = new_comp.NewComponents.filter_components(wires, adjustment)
 
-# ------------------------------------------- Separating Power Flags ---------------------------------------------------
+# ------------------------------------------- Filtering Power Flags (Flag parameter in LTSpice) ------------------------
         ground_flags = []
         other_power_flags = []
         power_flags = power_flags.split('\n')
@@ -1414,7 +1502,7 @@ def sketch_schematic_asc(fpath,
 
         # If a flag has the value '0' this means it ground
         # If a flag has ANY value OTHER THAN '0' this means it is NOT a ground
-        print(power_flags)
+        # print(power_flags)
         for flag_coordinates in range(2, len(power_flags), 3):
             # Store all ground power flags
             if power_flags[flag_coordinates] == '0':
@@ -1432,16 +1520,12 @@ def sketch_schematic_asc(fpath,
             other_power_flags[power_flag] = int(other_power_flags[power_flag]) + adjustment
             other_power_flags[power_flag + 1] = int(other_power_flags[power_flag + 1]) + adjustment
 
-        print('other power flags:', end='')
-        print(other_power_flags)
+        # print('other power flags:', end='')
+        # print(other_power_flags)
         modified_ground_flags = [modification + adjustment for modification in ground_flags]
 
         drawing_components = comp.ComponentSketcher(canvas)
 # -------------------------------------------- Drawing Grounds ---------------------------------------------------------
-        circuit_comps = new_comp.NewComponents(canvas, root, symbols_path='file')
-        circuit_comps.set_line_width(line_width)
-        circuit_comps.set_outline_colour(outline_colour)
-        circuit_comps.set_fill_colour(fill_colour)
         drawn_ground_flags = len(ground_flags) * [None]
         drawing_components.sketch_components(modified_ground_flags,
                                              drawn_ground_flags,
@@ -1475,7 +1559,11 @@ def sketch_schematic_asc(fpath,
         component_drawn = ''
         list_to_add = []
         components_dictionary = {}
-
+# -------------------------------------------- Drawing All symbols -----------------------------------------------------
+        circuit_comps = new_comp.NewComponents(canvas, root, symbols_path='file')
+        circuit_comps.set_line_width(line_width)
+        circuit_comps.set_outline_colour(outline_colour)
+        circuit_comps.set_fill_colour(fill_colour)
         for symbol in range(0, len(component_full_filtered_list), 8):
             try:
                 if component_full_filtered_list[symbol + 3] == 'R0' or component_full_filtered_list[symbol + 3] == 0:
@@ -1610,7 +1698,7 @@ def sketch_schematic_asc(fpath,
     #                                           power_flag_to_check[1], 'R270', 'power_flag', 'polygon')
 
     except IndexError:
-        messagebox.showerror('Error', message=flag_error, parent=schematic_analysis)
+        messagebox.showerror(title='Error', message=flag_error, parent=schematic_analysis)
         print(flag_error)
 
 
@@ -1875,48 +1963,72 @@ def only_integers(current_entered_parameter, previous_entered_parameters):
         return False
 
 
-def save_simulation_preferences(variables_in_schematic, number_of_simulations, netlist_path):
-    print('running simulation')
-    netlist_path, ext = os.path.splitext(netlist_path)
-    netlist_path = netlist_path + '.net'
+def run_simulation(variables_in_schematic, entered_number_of_simulation, netlist_path, schematic_analysis_window):
     variable_not_present = []
+    # Check if all variables have been entered
     for variables in variables_in_schematic:
         if variables not in variable_component_parameters.keys():
             if variables not in constant_component_parameters.keys():
                 variable_not_present.append(variables)
 
+    # If all variables have been entered
     if not variable_not_present:
         if variable_component_parameters:
             simulation_object = pcarchitects.ExperimentalDesigner(variable_component_parameters)
-            component_values_for_simulation = simulation_object.get_lhs_design_pandas(int(number_of_simulations.get()))
+            component_values_for_simulation = \
+                simulation_object.get_lhs_design_pandas(entered_number_of_simulation)
             print(component_values_for_simulation)
             perform_sweep = sweepers.Sweeper()
-            # Clean the sweeps if there any inside
+            # Clean the sweeps if there are any inside
             perform_sweep.clean(netlist_path=netlist_path)
             perform_sweep.add_sweep(netlist_path=netlist_path,
                                     input_samples=component_values_for_simulation)
 
         if constant_component_parameters:
             add_constants = sweepers.ConstAdd()
-            # Clean the constants if there any
+            # Clean the constants if there are any
             add_constants.clean(netlist_path=netlist_path)
             add_constants.add_constants(netlist_path=netlist_path,
                                         vars=constant_component_parameters)
     if variable_not_present:
         message = ''
         if len(variable_not_present) == 1:
-            message = 'Please enter the value for the following variable: ' + str(variable_not_present[0])
+            message = 'Please enter the value for the following variable:\n' + str(variable_not_present[0])
         elif len(variable_not_present) > 1:
             message = 'Please enter the values for the following variables:'
+            print(variables)
             for variables in variable_not_present:
                 message += '\n' + str(variables)
 
-        messagebox.showerror(parent=run_simulation_window,
+        messagebox.showerror(parent=schematic_analysis_window,
                              title='Not Found',
                              message=message)
 
 
-def simulation_preferences(variables_in_schematic, schematic_analysis_window, netlist_path):
+def save_simulation_preferences(variables_in_schematic, number_of_simulations, netlist_path, run_simulation_button,
+                                schematic_analysis_window):
+    print('running simulation')
+    MAXIMUM_SIMULATION_LIMIT = 200
+    netlist_path, ext = os.path.splitext(netlist_path)
+    netlist_path = netlist_path + '.net'
+
+    entered_number_of_simulation = int(number_of_simulations.get())
+    try:
+        if entered_number_of_simulation <= MAXIMUM_SIMULATION_LIMIT:
+            run_simulation_button.configure(command=lambda: run_simulation(variables_in_schematic,
+                                                                           entered_number_of_simulation,
+                                                                           netlist_path,
+                                                                           schematic_analysis_window))
+            run_simulation_button.pack(side=tk.LEFT)
+        elif entered_number_of_simulation > MAXIMUM_SIMULATION_LIMIT:
+            raise ValueError
+    except ValueError:
+        messagebox.showerror(parent=run_simulation_window,
+                             title='Maximum simulation number exceeded',
+                             message='The maximum number of allowed simulations is ' + str(MAXIMUM_SIMULATION_LIMIT))
+
+
+def simulation_preferences(variables_in_schematic, schematic_analysis_window, netlist_path, run_simulation_button):
     global variable_component_parameters
     global run_simulation_window
 
@@ -1951,12 +2063,15 @@ def simulation_preferences(variables_in_schematic, schematic_analysis_window, ne
     simulation_number_entry.configure(validatecommand=vcmd1)
     simulation_number_entry.grid(row=1, column=2, padx=20, pady=15)
     simulation_number_entry.insert(0, '10')
-    run_simulation_button = customtkinter.CTkButton(run_simulation_window,
-                                                    text='Run Simulation',
-                                                    command=lambda: save_simulation_preferences(variables_in_schematic,
-                                                                                                simulation_number_entry,
-                                                                                                netlist_path))
-    run_simulation_button.grid(row=4, column=2, padx=20, pady=15)
+    save_preferences_button = \
+        customtkinter.CTkButton(run_simulation_window,
+                                text='Save preferences',
+                                command=lambda: save_simulation_preferences(variables_in_schematic,
+                                                                            simulation_number_entry,
+                                                                            netlist_path,
+                                                                            run_simulation_button,
+                                                                            schematic_analysis_window))
+    save_preferences_button.grid(row=4, column=2, padx=20, pady=15)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1971,8 +2086,8 @@ def open_enter_parameters_window(fpath,
                                  component_parameters_frame,
                                  parameters_window,
                                  component_value_array,
-                                 delete_constants_button,
                                  set_simulation_preferences_button,
+                                 run_simulation_button,
                                  canvas,
                                  values_dictionary,
                                  symbol_type_dictionary):
@@ -2175,13 +2290,11 @@ def open_enter_parameters_window(fpath,
 
             global component_index
             component_index = 0
-            delete_constants_button.configure(command=lambda: delete_all_constants(parameters_frame,
-                                                                                   name_label_array,
-                                                                                   component_value_array))
 
             set_simulation_preferences_button.configure(command=lambda: simulation_preferences(variable_names,
                                                                                                schematic_analysis,
-                                                                                               fpath))
+                                                                                               fpath,
+                                                                                               run_simulation_button))
 
             # Drop down list for selecting prefixes
             param1_prefix_drop_down_list = \
@@ -2236,51 +2349,37 @@ def open_enter_parameters_window(fpath,
                                                                      ))
 
             # Button for saving individual parameters
-            save_parameters_button = customtkinter.CTkButton(
+            add_parameter = customtkinter.CTkButton(
                 entering_parameters_window,
-                text='Save Parameters',
+                text='Add parameter',
                 command=lambda:
-                save_entered_parameters(entering_parameters_window,
-                                        component_selected.get(),
-                                        distribution_selected.get(),
-                                        constant_or_random.get(),
-                                        component_distribution_array[component_index].get('1.0', tk.END).strip('\n'),
-                                        component_param1_label_array[component_index].__getattribute__('text'),
-                                        component_param2_label_array[component_index].__getattribute__('text'),
-                                        component_param1_entry_box_array[component_index].get(),
-                                        component_param2_entry_box_array[component_index].get(),
-                                        component_const_entry_array[component_index].get(),
-                                        component_index,
-                                        name_label_array,
-                                        delete_button,
-                                        component_value_array,
-                                        variable_names,
-                                        component_parameters_frame,
-                                        param1_prefix_drop_down_list,
-                                        param2_prefix_drop_down_list,
-                                        parameters_frame,
-                                        set_simulation_preferences_button)
+                add_parameters(entering_parameters_window,
+                               component_selected.get(),
+                               distribution_selected.get(),
+                               constant_or_random.get(),
+                               component_distribution_array[component_index].get('1.0', tk.END).strip('\n'),
+                               component_param1_label_array[component_index].__getattribute__('text'),
+                               component_param2_label_array[component_index].__getattribute__('text'),
+                               component_param1_entry_box_array[component_index].get(),
+                               component_param2_entry_box_array[component_index].get(),
+                               component_const_entry_array[component_index].get(),
+                               component_index,
+                               name_label_array,
+                               delete_button,
+                               component_value_array,
+                               variable_names,
+                               component_parameters_frame,
+                               param1_prefix_drop_down_list,
+                               param2_prefix_drop_down_list,
+                               parameters_frame,
+                               set_simulation_preferences_button)
             )
 
             # Button for saving all parameters
-            save_all_parameters_button = customtkinter.CTkButton(
+            save_parameters_button = customtkinter.CTkButton(
                 entering_parameters_window,
-                text='Save All Parameters',
-                command=lambda: save_all_entered_parameters(variable_names,
-                                                            component_distribution_array,
-                                                            component_param1_label_array,
-                                                            component_param2_label_array,
-                                                            component_param1_entry_box_array,
-                                                            component_param2_entry_box_array,
-                                                            name_label_array,
-                                                            component_value_array,
-                                                            component_parameters_frame,
-                                                            delete_button,
-                                                            param1_prefix_drop_down_list,
-                                                            param2_prefix_drop_down_list,
-                                                            parameters_frame,
-                                                            values_dictionary,
-                                                            set_simulation_preferences_button)
+                text='Save',
+                command=lambda: save_all_entered_parameters(variable_names)
             )
 
             component_name_row = 3
@@ -2334,15 +2433,14 @@ def open_enter_parameters_window(fpath,
             cancel_button.grid(row=button_row, column=5)
 
             # Saving Parameters button location in new window
-            save_parameters_button.grid(row=button_row, column=6, columnspan=2)
+            add_parameter.grid(row=button_row, column=6, columnspan=2)
 
             # Saving All Parameters button location in new window
-            save_all_parameters_button.grid(row=button_row, column=8)
+            save_parameters_button.grid(row=button_row, column=8)
 
             # Ensuring all widgets inside enter parameters window are resizable
             entering_parameters_window.grid_rowconfigure(tuple(range(button_row)), weight=1)
             entering_parameters_window.grid_columnconfigure(tuple(range(button_row)), weight=1)
-            delete_constants_button.pack(anchor=tk.SW, side=tk.LEFT)
     else:
         messagebox.showerror(parent=schematic_analysis, title='No variable error',
                              message='Please Select a schematic with UQ_ variable names'
@@ -2368,11 +2466,11 @@ def delete_label(label_to_remove, label_index,
 
         delete_label_button:  the button clicked to remove the label
 
-        variable_stored_components:  dictionary of components with random, removes the component which the delete button
-                                     has been clicked for
+        variable_stored_components:  dictionary of components with random variables, removes the component which the
+                                     delete button has been clicked for
 
-        constant_stored_components:  dictionary of components with constant, removes the component which the delete
-                                     button has been clicked for
+        constant_stored_components:  dictionary of components with constant variables, removes the component which the
+                                     delete button has been clicked for
 
     """
     # Component name stored from label
@@ -2412,26 +2510,26 @@ def delete_all_constants(parameters_frame, labels_to_remove, component_value_arr
 # ---------------------------------------- Function for saving a single parameter --------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # Function for closing new windows using a  button
-def save_entered_parameters(entering_parameters_window,
-                            variable_name,
-                            selected_distribution,
-                            constant_or_random,
-                            component_distribution,
-                            component_param1_label,
-                            component_param2_label,
-                            component_param1,
-                            component_param2,
-                            const_value,
-                            index,
-                            full_name_labels,
-                            delete_label_button,
-                            component_value_array,
-                            components,
-                            component_parameters_frame,
-                            prefix1,
-                            prefix2,
-                            parameters_frame,
-                            set_simulation_preferences_button):
+def add_parameters(entering_parameters_window,
+                   variable_name,
+                   selected_distribution,
+                   constant_or_random,
+                   component_distribution,
+                   component_param1_label,
+                   component_param2_label,
+                   component_param1,
+                   component_param2,
+                   const_value,
+                   index,
+                   full_name_labels,
+                   delete_label_button,
+                   component_value_array,
+                   components,
+                   component_parameters_frame,
+                   prefix1,
+                   prefix2,
+                   parameters_frame,
+                   set_simulation_preferences_button):
     global variable_component_parameters
     global constant_component_parameters
     global component_index
@@ -2558,6 +2656,8 @@ def save_entered_parameters(entering_parameters_window,
                                  message='Please enter a single prefix only.')
 
     elif component_value_array[index] == 'Constant':
+        if not const_value:
+            const_value = 5
         full_name_labels[index].configure(text='')
         # Storing the name label of all parameters
         full_name_labels[index].configure(text='\n' +
@@ -2591,172 +2691,32 @@ def save_entered_parameters(entering_parameters_window,
 # ----------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------- Function for saving all parameters ------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def save_all_entered_parameters(component_name,
-                                component_distribution_array,
-                                component_param1_label_array,
-                                component_param2_label_array,
-                                component_param1_array,
-                                component_param2_array,
-                                full_name_labels,
-                                component_value_array,
-                                component_parameters_frame,
-                                delete_button,
-                                prefix1,
-                                prefix2,
-                                parameters_frame,
-                                values_dictionary,
-                                set_simulation_preferences_button
-                                ):
+def save_all_entered_parameters(variable_names):
     global variable_component_parameters
-    # variable_component_parameters.clear()
+    global constant_component_parameters
+    variable_not_present = []
+    # Check if all variables have been entered
+    for variables in variable_names:
+        if variables not in variable_component_parameters.keys():
+            if variables not in constant_component_parameters.keys():
+                variable_not_present.append(variables)
 
-    component_param1_dictionary_input = [None] * len(component_param1_label_array)
-    component_param2_dictionary_input = [None] * len(component_param2_label_array)
+    # If all variables have been entered
+    if not variable_not_present:
+        pass
+    if variable_not_present:
+        message = ''
+        if len(variable_not_present) == 1:
+            message = 'Please enter the value for the following variable:\n' + str(variable_not_present[0])
+        elif len(variable_not_present) > 1:
+            message = 'Please enter the values for the following variables:'
+            print(variables)
+            for variables in variable_not_present:
+                message += '\n' + str(variables)
 
-    for distributions in range(len(component_distribution_array)):
-        comp_distribution = component_distribution_array[distributions].get('1.0', tk.END).strip('\n')
-        if comp_distribution == 'Normal':
-            component_param1_dictionary_input[distributions] = 'mu'
-            component_param2_dictionary_input[distributions] = 'var'
-        elif comp_distribution == 'Uniform':
-            component_param1_dictionary_input[distributions] = 'min'
-            component_param2_dictionary_input[distributions] = 'max'
-        elif comp_distribution == 'Gamma':
-            component_param1_dictionary_input[distributions] = 'alpha'
-            component_param2_dictionary_input[distributions] = 'beta'
-        elif comp_distribution == 'Beta':
-            component_param1_dictionary_input[distributions] = 'a'
-            component_param2_dictionary_input[distributions] = 'b'
-
-    # print(component_value_array)
-    # If value is Random, display label and store in dictionary
-    for circuit_component in range(len(component_name)):
-        if component_value_array[circuit_component] == 'Random':
-            # print(component_name)
-            # clearing the name label of all parameters
-            # full_name_labels[circuit_component].configure(borderwidth=1)
-            full_name_labels[circuit_component].configure(text='')
-
-            try:
-                component_param1 = component_param1_array[circuit_component].get()
-                component_param2 = component_param2_array[circuit_component].get()
-                if len(component_param1) == 0:
-                    component_param1 = '1'
-                if len(component_param2) == 0:
-                    component_param2 = '2'
-                prefixes = {'m': 1e-3, 'u': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'K': 1e3, 'MEG': 1e6, 'G': 1e9,
-                            'T': 1e12}
-
-                print(component_param1, component_param2)
-                first_prefix_dropdown = prefix1.get()
-                second_prefix_dropdown = prefix2.get()
-                allowed_characters_list = ['m', 'u', 'n', 'p', 'f', 'K', 'M', 'G', 'T']
-                print(component_param1, component_param2, first_prefix_dropdown, second_prefix_dropdown)
-                # If prefix dropdown list has nothing selected then check if prefix is typed in entry box
-                first_prefix_typed = "".join(
-                    [character for character in allowed_characters_list if
-                     character in component_param1])
-                second_prefix_typed = "".join(
-                    [character for character in allowed_characters_list if
-                     character in component_param2])
-
-                # Error checking for first parameter
-                # If prefix has been typed in
-                # TODO: Fix when a prefix is selected for a single component it changes all others
-                if (first_prefix_dropdown == 'None') and (len(first_prefix_typed) == 1):
-                    print('No prefix selected from dropdown')
-                    for prefix in prefixes:
-                        if first_prefix_typed == prefix:
-                            component_param1 = float(remove_suffix(component_param1, first_prefix_typed)) \
-                                               * prefixes[prefix]
-                # If prefix has been selected from drop down list
-                elif (first_prefix_dropdown != 'None') and (len(first_prefix_typed) == 0):
-                    print('No prefix typed')
-                    for prefix in prefixes:
-                        if first_prefix_dropdown == prefix:
-                            component_param1 = float(component_param1) * prefixes[prefix]
-
-                # When no prefixes are selected either from drop down list or typed
-                elif (first_prefix_dropdown == 'None') and (len(first_prefix_typed) == 0):
-                    print('No prefix typed and no prefix from dropdown list')
-                    component_param1 = float(component_param1)
-                else:
-                    raise TypeError
-
-                # Error checking for second parameter
-                # If prefix has been typed in
-                if (second_prefix_dropdown == 'None') and (len(second_prefix_typed) == 1):
-                    print('No prefix selected from dropdown')
-                    for prefix in prefixes:
-                        if second_prefix_typed == prefix:
-                            component_param2 = float(remove_suffix(component_param2, second_prefix_typed)) \
-                                               * prefixes[prefix]
-                # If prefix has been selected from drop down list
-                elif (second_prefix_dropdown != 'None') and (len(second_prefix_typed) == 0):
-                    print('No prefix typed')
-                    for prefix in prefixes:
-                        if second_prefix_dropdown == prefix:
-                            component_param2 = float(component_param2) * prefixes[prefix]
-
-                # When no prefixes are selected either from drop down list or typed
-                elif (second_prefix_dropdown == 'None') and (len(second_prefix_typed) == 0):
-                    print('No prefix typed and no prefix from dropdown list')
-                    component_param2 = float(component_param2)
-                else:
-                    raise TypeError
-
-                # Storing the name label of all parameters
-                full_name_labels[circuit_component].configure(
-                    text='\n' + component_name[circuit_component]
-                         + '\nDistribution: ' +
-                         component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n')
-                         + '\n' +
-                         component_param1_label_array[circuit_component].__getattribute__('text') + '='
-                         + str(component_param1)
-                         + '\n' + component_param2_label_array[circuit_component].__getattribute__('text')
-                         + '=' + str(component_param2)
-                         + '\n'
-                )
-
-                # Placing the name label of all parameters on the schematic_analysis window
-                delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
-                full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
-                parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1)
-
-                variable_component_parameters.update({component_name[circuit_component]:
-                    {
-                        'distribution': component_distribution_array[circuit_component].get('1.0', tk.END).strip('\n'),
-                        'parameters':
-                            {
-                                component_param1_dictionary_input[circuit_component]: component_param1,
-                                component_param2_dictionary_input[circuit_component]: component_param2
-                            }
-                    }
-                })
-
-            except ValueError:
-                messagebox.showerror(parent=entering_parameters_window, title='Illegal Value entered',
-                                     message='Please enter only numbers with prefixes such as n, p, m, etc.')
-            except TypeError:
-                messagebox.showerror(parent=entering_parameters_window, title='More than one prefix',
-                                     message='Please enter a single prefix only.')
-
-        # If value is Constant, display label only. DO NOT store in dictionary
-        elif component_value_array[circuit_component] == 'Constant':
-            # full_name_labels[circuit_component].configure(borderwidth=1)
-            full_name_labels[circuit_component].configure(text='')
-
-            # Storing the name label of all parameters
-            full_name_labels[circuit_component].configure(text='\n' + component_name[circuit_component]
-                                                          + '\nValue: '
-                                                          + str(list(values_dictionary.values())[circuit_component])
-                                                          )
-
-            delete_button[circuit_component].place(x=0, y=0, relwidth=0.05, relheight=0.2)
-            full_name_labels[circuit_component].place(x=0, y=1, relwidth=1.0, relheight=0.95)
-            parameters_frame[circuit_component].pack(expand=False, fill=tk.BOTH, side=tk.TOP, pady=1, padx=(20, 0))
-    set_simulation_preferences_button.pack(anchor=tk.NW, side=tk.LEFT, padx=10)
-    # print(variable_component_parameters)
+        messagebox.showerror(parent=entering_parameters_window,
+                             title='Not Found',
+                             message=message)
 
 
 # ----------------------------------------------------------------------------------------------------------------------

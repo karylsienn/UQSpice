@@ -78,28 +78,6 @@ class NewComponents:
             default_path = fixed_default_path = LTPathFinder.find_sym_folder()
             default_exe_path = fixed_default_exe_path = LTPathFinder.find_exe_ltspice_path()
 
-        # if sys.platform == 'darwin':
-        #     default_path = LTPathFinder.find_exe_ltspice_path
-        #     fixed_default_path =  os.path.join(os.path.expanduser('~'), r"Library/Application\ Support/LTspice/lib/sym")
-        #     default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
-        #     fixed_default_exe_path = "/Applications/LTspice.app/Contents/MacOS/LTspice"
-
-        # elif sys.platform == 'win32':
-        #     default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym"
-        #     fixed_default_path = "C:\\Program Files\\LTC\\LTspiceXVII\\lib\\sym"
-        #     default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"
-        #     fixed_default_exe_path = "C:\\Program Files\\LTC\\LTspiceXVII\\XVIIx64.exe"
-
-        # elif sys.platform == 'linux':
-        #     default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
-        #     fixed_default_path = os.path.join(os.path.expanduser('~'), 'Documents', 'LTspiceXVII', 'lib', 'sym')
-
-        #     # /home/USER/.wine/drive_c/Program Files/LTC/LTspiceXVII
-        #     default_exe_path = os.path.join(os.path.expanduser('~'), '.wine', 'drive_c', 'Program Files', 'LTC',
-        #                                     'LTspiceXVII', 'XVIIx64.exe')
-        #     fixed_default_exe_path = os.path.join(os.path.expanduser('~'), '.wine', 'drive_c', 'Program Files', 'LTC',
-        #                                           'LTspiceXVII', 'XVIIx64.exe')
-
         else:
             default_path = None
             fixed_default_path = None
@@ -466,21 +444,22 @@ class NewComponents:
                                     (first_four_arc_coordinates[1] + first_four_arc_coordinates[3]) / 2]
                 radius = centre_of_circle[0] - first_four_arc_coordinates[0]
 
-                reference_angle = [centre_of_circle[0] + radius, centre_of_circle[1]]
+                reference_angle_coordinates = [centre_of_circle[0] + radius, centre_of_circle[1]]
 
-                start_angle = \
-                    self.calculate_arc_angle(start, centre_of_circle, reference_angle)
-                extent_angle = self.calculate_arc_angle(extent, centre_of_circle, start)
                 self.rotate(first_four_arc_coordinates, x_coordinate, y_coordinate, angle, window_x, window_y,
                             file_name + '.asy' + 'arcs', 'arc',
-                            arc_start_angle=start_angle, arc_extent_angle=extent_angle)
+                            centre_of_circle=centre_of_circle, reference_angle_coordinates=reference_angle_coordinates,
+                            start_arc_coordinates=start, extent_arc_coordinates=extent)
 
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------ Rotate Symbol and Sketch-----------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
     def rotate(self,
                coordinates, start_coordinate_x, start_coordinate_y, angle, window_x, window_y,
-               tag, shape_to_draw, arc_start_angle=0.0, arc_extent_angle=0.0):
+               tag, shape_to_draw, centre_of_circle=None, reference_angle_coordinates=None,
+               start_arc_coordinates=None, extent_arc_coordinates=None):
+        start_angle = 0.0
+        extent_angle = 0.0
 
         # if angle == 'R0' or angle == 0:
         #     start_coordinate_x = 0
@@ -526,6 +505,9 @@ class NewComponents:
                     coordinates[coordinate + 1] - start_coordinate_x + start_coordinate_y - 2 * window_x
 
         # print(tag, angle, window_x, window_y, start_coordinate_x, start_coordinate_y)
+        if centre_of_circle:
+            start_angle = self.calculate_arc_angle(start_arc_coordinates, centre_of_circle, reference_angle_coordinates)
+            extent_angle = self.calculate_arc_angle(extent_arc_coordinates, centre_of_circle, start_arc_coordinates)
 
         if shape_to_draw == 'line':
             # Adjustment Required for capacitor at an angle of 90 degrees
@@ -561,18 +543,33 @@ class NewComponents:
                                          fill=self.fill_colour
                                          )
         if shape_to_draw == 'arc':
-            self.canvas.create_arc(coordinates[0] - window_y + start_coordinate_x,
-                                   coordinates[1] + window_x + start_coordinate_y,
-                                   coordinates[2] - window_y + start_coordinate_x,
-                                   coordinates[3] + window_x + start_coordinate_y,
-                                   start=arc_start_angle,
-                                   extent=arc_extent_angle,
-                                   style=tk.ARC,
-                                   tags=tag + 'rotated',
-                                   width=self.line_width,
-                                   outline=self.line_colour,
-                                   fill=self.fill_colour
-                                   )
+            if angle == 0 or angle == 'R0':
+                self.canvas.create_arc(coordinates[0] - window_y + start_coordinate_x,
+                                       coordinates[1] + window_x + start_coordinate_y,
+                                       coordinates[2] - window_y + start_coordinate_x,
+                                       coordinates[3] + window_x + start_coordinate_y,
+                                       start=start_angle,
+                                       extent=extent_angle,
+                                       style=tk.ARC,
+                                       tags=tag + 'rotated',
+                                       width=self.line_width,
+                                       outline=self.line_colour,
+                                       fill=self.fill_colour
+                                       )
+            else:
+                self.canvas.create_arc(coordinates[0] - window_y - start_coordinate_y,
+                                       coordinates[1] + window_x + start_coordinate_x,
+                                       coordinates[2] - window_y - start_coordinate_y,
+                                       coordinates[3] + window_x + start_coordinate_x,
+                                       start=start_angle,
+                                       extent=extent_angle,
+                                       style=tk.ARC,
+                                       tags=tag + 'rotated',
+                                       width=self.line_width,
+                                       outline=self.line_colour,
+                                       fill=self.fill_colour
+                                       )
+
 
     # ------------------------------------------------------------------------------------------------------------------
     # -------------------------------------- Store or Sketch Component -------------------------------------------------
@@ -708,10 +705,10 @@ class NewComponents:
         self.canvas.delete('all')
 
     @staticmethod
-    def filter_components(components, adjustment):
+    def filter_components(components, adjustment=0):
         """Function used to extract coordinates of components from LTSpice file
 
-            Parameter `components` is a list of strings all components.
+            Parameter `components` is a list of strings fo all components.
             `adjustment` is an integer or a float
 
 
@@ -720,8 +717,8 @@ class NewComponents:
             components : list(str)
                 The component to extract coordinates from
             adjustment : int
-                The addition to move the component coordinates, this is done because any coordinates in the
-                negative side are not shown at all by the canvas
+                The addition to move the component coordinates, this was done previously before canvas was scrollable as
+                components were not visible at the time
 
             Returns
             -----------------------
@@ -795,7 +792,7 @@ class NewComponents:
         return list(dict.fromkeys(self.symbols_not_found_list))
 
     # This is a fixed a variable and should not be changed once assigned the first time at the beginning of the class
-    # it is used to change the default_path variable back to its original path if it has been changed before by the
+    # it is used to change the default_exe_path variable back to its original path if it has been changed before by the
     # set default path method outside the class
     @staticmethod
     def get_fixed_default_exe_path():

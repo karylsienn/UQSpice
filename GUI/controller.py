@@ -120,69 +120,6 @@ entering_parameters_window = None
 # column_1 = customtkinter.CTkOptionMenu(master=graphs,
 #                                        variable=param1_prefix_selected)
 
-
-# ----------------------------------------------------------------------------------------------------------------------
-# ------------------------------------------------ Menu Bar ------------------------------------------------------------
-# ----------------------------------------------------------------------------------------------------------------------
-menu = tkmod.CTkMenu(schematic_analysis)
-
-schematic_analysis.config(menu=menu)
-
-# File menu
-fileMenu = tkmod.CTkMenu(menu)
-fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
-                     command=lambda: guievents.get_file_path(component_parameters_frame_scroll.scrollable_frame,
-                                                             variable_component_parameters,
-                                                             constant_component_parameters,
-                                                             canvas,
-                                                             schematic_analysis,
-                                                             enter_parameters_button,
-                                                             entering_parameters_window,
-                                                             delete_all_constants_button,
-                                                             root,
-                                                             tabControl))
-
-fileMenu.add_command(label="Add a new component", font=FONT_SIZE,
-                     command=lambda: guievents.open_new_components(root))
-fileMenu.add_separator()
-fileMenu.add_command(label="Exit",
-                     font=FONT_SIZE,
-                     command=lambda: root.destroy())
-
-menu.add_cascade(label="File",
-                 font=FONT_SIZE,
-                 menu=fileMenu)
-
-# Edit Menu
-editMenu = tkmod.CTkMenu(menu)
-editMenu.add_command(label="Undo", font=FONT_SIZE)
-editMenu.add_command(label="Redo", font=FONT_SIZE)
-Preferences_submenu = tkmod.CTkMenu(editMenu)
-Preferences_submenu.add_command(label='Paths and drawing',
-                                font=FONT_SIZE, command=lambda: guievents.set_preferences(root, schematic_analysis))
-Preferences_submenu.add_command(label="Dark Theme",
-                                font=FONT_SIZE, command=lambda: guievents.dark_theme_set(root, canvas))
-Preferences_submenu.add_command(label="Light Theme",
-                                font=FONT_SIZE, command=lambda: guievents.light_theme_set(root, canvas))
-editMenu.add_cascade(label='Preferences', menu=Preferences_submenu)
-editMenu.config(font=FONT_SIZE)
-menu.add_cascade(label="Edit", font=FONT_SIZE, menu=editMenu)
-
-# Tools Menu
-toolsMenu = tkmod.CTkMenu(menu)
-toolsMenu.add_command(label='Tool 1', font=FONT_SIZE)
-toolsMenu.add_command(label='Tool 2', font=FONT_SIZE)
-toolsMenu.add_command(label='Tool 3', font=FONT_SIZE)
-toolsMenu.add_command(label='Tool 4', font=FONT_SIZE)
-toolsMenu.add_command(label='Tool 5', font=FONT_SIZE)
-menu.add_cascade(label="Tools", font=FONT_SIZE, menu=toolsMenu)
-
-# Help Menu
-helpMenu = tkmod.CTkMenu(menu)
-helpMenu.add_command(label='Setup', font=FONT_SIZE)
-helpMenu.add_command(label='Version', font=FONT_SIZE)
-menu.add_cascade(label="Help", font=FONT_SIZE, menu=helpMenu)
-
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -190,15 +127,16 @@ menu.add_cascade(label="Help", font=FONT_SIZE, menu=helpMenu)
 # --------------------------------------- Schematic Analysis Tab -------------------------------------------------------
 # Button for entering the parameters of the circuit
 enter_parameters_button = customtkinter.CTkButton(schematic_analysis,
-                                                  text='Enter All Parameters',
+                                                  text='Enter parameter values',
                                                   command=lambda: guievents.error_select_schematic(canvas)
                                                   )
 
-delete_all_constants_button = customtkinter.CTkButton(component_parameters_frame,
-                                                      text='Delete constants')
+
+simulation_preferences_button = customtkinter.CTkButton(component_parameters_frame,
+                                                        text='Simulation Preferences')
 
 run_simulation_button = customtkinter.CTkButton(component_parameters_frame,
-                                                text='Simulation Preferences')
+                                                text='Run simulation')
 # Select a schematic using a button
 openfile_button = customtkinter.CTkButton(schematic_analysis,
                                           text='Open a Schematic',
@@ -210,7 +148,7 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
                                                                   schematic_analysis,
                                                                   enter_parameters_button,
                                                                   entering_parameters_window,
-                                                                  delete_all_constants_button,
+                                                                  simulation_preferences_button,
                                                                   run_simulation_button,
                                                                   root,
                                                                   tabControl)
@@ -300,6 +238,140 @@ check_var = tk.StringVar()
 new_subplot = customtkinter.CTkCheckBox(master=toolbar, text="New Subplot",
                                         variable=check_var, onvalue="on", offvalue="off",
                                         text_color='black')
+# ----------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------ Menu Bar ------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+menu = tkmod.CTkMenu(schematic_analysis)
+
+schematic_analysis.config(menu=menu)
+
+# File menu
+fileMenu = tkmod.CTkMenu(menu)
+fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
+                     accelerator='Ctrl+O',
+                     command=lambda: guievents.get_file_path(component_parameters_frame_scroll.scrollable_frame,
+                                                             variable_component_parameters,
+                                                             constant_component_parameters,
+                                                             canvas,
+                                                             schematic_analysis,
+                                                             enter_parameters_button,
+                                                             entering_parameters_window,
+                                                             simulation_preferences_button,
+                                                             run_simulation_button,
+                                                             root,
+                                                             tabControl))
+
+schematic_analysis.bind_all("<Control-o>", lambda event: guievents.get_file_path(
+                                                             component_parameters_frame_scroll.scrollable_frame,
+                                                             variable_component_parameters,
+                                                             constant_component_parameters,
+                                                             canvas,
+                                                             schematic_analysis,
+                                                             enter_parameters_button,
+                                                             entering_parameters_window,
+                                                             simulation_preferences_button,
+                                                             run_simulation_button,
+                                                             root,
+                                                             tabControl))
+
+schematic_analysis.bind_all("<Control-O>", lambda event: guievents.get_file_path(
+                                                             component_parameters_frame_scroll.scrollable_frame,
+                                                             variable_component_parameters,
+                                                             constant_component_parameters,
+                                                             canvas,
+                                                             schematic_analysis,
+                                                             enter_parameters_button,
+                                                             entering_parameters_window,
+                                                             simulation_preferences_button,
+                                                             run_simulation_button,
+                                                             root,
+                                                             tabControl))
+
+fileMenu.add_command(label="Open a Raw File", font=FONT_SIZE,
+                     accelerator='Ctrl+R',
+                     command=lambda: guievents.open_raw_file(root, schematic_analysis,
+                                                             tabControl.select(1),
+                                                             graphs, data_table,
+                                                             column_to_plot_1,
+                                                             column_to_plot_2,
+                                                             figure,
+                                                             ax, lines_array,
+                                                             toolbar,
+                                                             new_subplot, subplot_number,
+                                                             subplots,
+                                                             schematic_analysis_open=False))
+
+schematic_analysis.bind_all("<Control-R>", lambda event: guievents.open_raw_file(root, schematic_analysis,
+                                                                                 tabControl.select(1),
+                                                                                 graphs, data_table,
+                                                                                 column_to_plot_1,
+                                                                                 column_to_plot_2,
+                                                                                 figure,
+                                                                                 ax, lines_array,
+                                                                                 toolbar,
+                                                                                 new_subplot, subplot_number,
+                                                                                 subplots,
+                                                                                 schematic_analysis_open=False))
+
+schematic_analysis.bind_all("<Control-r>", lambda event: guievents.open_raw_file(root, schematic_analysis,
+                                                                                 tabControl.select(1),
+                                                                                 graphs, data_table,
+                                                                                 column_to_plot_1,
+                                                                                 column_to_plot_2,
+                                                                                 figure,
+                                                                                 ax, lines_array,
+                                                                                 toolbar,
+                                                                                 new_subplot, subplot_number,
+                                                                                 subplots,
+                                                                                 schematic_analysis_open=False))
+
+fileMenu.add_command(label="Add a new component", font=FONT_SIZE, accelerator='Ctrl+A',
+                     command=lambda: guievents.open_new_components(root, show_master_window=False))
+
+schematic_analysis.bind("<Control-a>", lambda event: guievents.open_new_components(root, show_master_window=False))
+schematic_analysis.bind("<Control-A>", lambda event: guievents.open_new_components(root, show_master_window=False))
+
+fileMenu.add_separator()
+fileMenu.add_command(label="Exit",
+                     font=FONT_SIZE,
+                     command=lambda: root.destroy())
+
+menu.add_cascade(label="File",
+                 font=FONT_SIZE,
+                 menu=fileMenu)
+
+# Edit Menu
+editMenu = tkmod.CTkMenu(menu)
+editMenu.add_command(label="Undo", font=FONT_SIZE)
+editMenu.add_command(label="Redo", font=FONT_SIZE)
+Preferences_submenu = tkmod.CTkMenu(editMenu)
+Preferences_submenu.add_command(label='Paths and drawing', accelerator='Ctrl+P',
+                                font=FONT_SIZE, command=lambda: guievents.set_preferences(root, schematic_analysis))
+schematic_analysis.bind("<Control-p>", lambda event: guievents.set_preferences(root, schematic_analysis))
+schematic_analysis.bind("<Control-P>", lambda event: guievents.set_preferences(root, schematic_analysis))
+
+Preferences_submenu.add_command(label="Dark Theme",
+                                font=FONT_SIZE, command=lambda: guievents.dark_theme_set(root, canvas))
+Preferences_submenu.add_command(label="Light Theme",
+                                font=FONT_SIZE, command=lambda: guievents.light_theme_set(root, canvas))
+editMenu.add_cascade(label='Preferences', menu=Preferences_submenu)
+editMenu.config(font=FONT_SIZE)
+menu.add_cascade(label="Edit", font=FONT_SIZE, menu=editMenu)
+
+# Tools Menu
+toolsMenu = tkmod.CTkMenu(menu)
+toolsMenu.add_command(label='Tool 1', font=FONT_SIZE)
+toolsMenu.add_command(label='Tool 2', font=FONT_SIZE)
+toolsMenu.add_command(label='Tool 3', font=FONT_SIZE)
+toolsMenu.add_command(label='Tool 4', font=FONT_SIZE)
+toolsMenu.add_command(label='Tool 5', font=FONT_SIZE)
+menu.add_cascade(label="Tools", font=FONT_SIZE, menu=toolsMenu)
+
+# Help Menu
+helpMenu = tkmod.CTkMenu(menu)
+helpMenu.add_command(label='Setup', font=FONT_SIZE)
+helpMenu.add_command(label='Version', font=FONT_SIZE)
+menu.add_cascade(label="Help", font=FONT_SIZE, menu=helpMenu)
 
 # ------------------------------------------- Root Window  -------------------------------------------------------------
 graph_value = 0
@@ -316,7 +388,9 @@ open_asc_file_button = customtkinter.CTkButton(root_frame,
 
 add_new_component_button = customtkinter.CTkButton(root_frame,
                                                    text='Add new component',
-                                                   command=lambda: guievents.open_new_components(root))
+                                                   command=lambda:
+                                                   guievents.open_new_components(root,
+                                                                                 show_master_window=True))
 
 open_raw_file_button = customtkinter.CTkButton(root_frame,
                                                text='Open LTspice Waveform .raw file',
@@ -347,7 +421,6 @@ root_frame.pack(expand=True, fill=tk.BOTH)
 tabControl.pack(expand=True, fill=tk.BOTH)
 chart_type.get_tk_widget().pack(side='top', fill='both')
 # schematic params frame children
-# delete_all_constants_button.pack(anchor=tk.SW, side=tk.BOTTOM)
 component_parameters_frame_scroll.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 component_parameters_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
 clear_canvas_button.pack(padx=2, side=tk.BOTTOM, anchor=tk.SW)

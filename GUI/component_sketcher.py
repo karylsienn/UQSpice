@@ -2,7 +2,7 @@
 # -------------------------------------------- Component Drawings ------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 import tkinter as tk
-
+import tkinter_modification as tkmod
 
 class ComponentSketcher:
     BACKGROUND_COLOUR = '#F0F0F0'
@@ -309,7 +309,12 @@ class ComponentSketcher:
                                                                      outline='black',
                                                                      tags='power_flag')
 
-        # self.canvas_to_draw_in.create_text(start_coordinate_x + 35, start_coordinate_y, text=power_flag, fill="black")
+        self.canvas_to_draw_in.create_text(start_coordinate_x + 35,
+                                           start_coordinate_y,
+                                           text=power_flag_name,
+                                           font=tkmod.ResizingCanvas.get_font_type(self.canvas_to_draw_in),
+                                           tags='power_flag_text',
+                                           fill="black")
 
     def rotate(self,
                coordinates, start_coordinate_x, start_coordinate_y, angle,
