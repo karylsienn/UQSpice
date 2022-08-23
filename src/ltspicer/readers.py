@@ -1,12 +1,59 @@
-import numpy as np
-import re, mmap, warnings, os
-from datetime import datetime
 import argparse
+import mmap
+import os
+import re
+import warnings
+from datetime import datetime
+from typing import List, Tuple
+
+import numpy as np
 import pandas as pd
-from typing import List
 
 ENC_UTF16LE = 'utf-16 le'
 ENC_UTF8 = 'utf8'
+
+
+def complex_to_re_im(column: pd.Series) -> pd.DataFrame:
+    """
+    Cast complex column to its real and imaginary part.
+    Example usage:
+
+    `df = raw_reader.get_pandas()`
+
+    `complex_to_re_im(df['V(n003)'])`
+
+    Parameters
+    ----------
+    * column : pandas.Series
+            the complex column to extract real and imaginary parts
+
+    Returns
+    -------
+    pandas.DataFrame
+        a dataframe with two columns containing real and imaginary parts
+
+    """
+    column_name = column.name
+    return pd.DataFrame({
+        "Re(" + column_name + ")": np.real(column),
+        "Im(" + column_name + ")": np.imag(column)
+    })
+
+
+def complex_to_abs_rad(column: pd.Series) -> pd.DataFrame:
+    column_name = column.name
+    return pd.DataFrame({
+        "Abs(" + column_name + ")": np.abs(column),
+        "Rad(" + column_name + ")": np.angle(column, deg=False)
+    })
+
+
+def complex_to_log10_deg(column: pd.Series) -> pd.DataFrame:
+    column_name = column.name
+    return pd.DataFrame({
+        "Abs(" + column_name + ")": np.log10(np.abs(column)),
+        "Deg(" + column_name + ")": np.angle(column, deg=True)
+    })
 
 
 class InputReader:
@@ -21,6 +68,7 @@ class InputReader:
 
 class NetlistReader(InputReader):
     """Reads the netlist file and returns its content as a list of strings"""
+
     @staticmethod
     def read(netlist_path: str) -> List[str]:
         # Assert the file exists.
@@ -51,13 +99,15 @@ class NetlistReader(InputReader):
                 encoding = ENC_UTF8
             else:
                 raise UnicodeDecodeError(
-                    f"Unknown encoding. Make sure the files are either in {ENC_UTF16LE} or {ENC_UTF8}")
+                    f"Unknown encoding. "
+                    f"Make sure the files are either in {ENC_UTF16LE} or {ENC_UTF8}")
         netlist.close()
         return encoding
 
 
 class CircuitReader(InputReader):
     """Reads the circuit file and returns its content as a list of strings"""
+
     @staticmethod
     def read(circuit_path: str) -> List[str]:
         # Assert the file exists.
@@ -137,10 +187,14 @@ class RawReader(LTSpiceReader):
             # TODO: maybe find operating point.
             self._parse_header()
             self._parse_rawfile()
-        else: # For unit testing purposes
+        else:  # For unit testing purposes
             self.raw_path = None
 
-    def get_pandas(self, columns='all', steps='all', interpolated=False, **kwargs) -> pd.DataFrame:
+    def get_pandas(self,
+                   columns: Tuple[str] | str = 'all',
+                   steps: Tuple[int] | int | str = 'all',
+                   interpolated: bool = False,
+                   **kwargs) -> pd.DataFrame:
         """Returns a copy of the raw data as `pandas.DataFrame`.
 
         Parameter `columns` can be either a list of column names or 'all'.
@@ -152,7 +206,7 @@ class RawReader(LTSpiceReader):
 
         For .tran analysis interpolation may be required. If `interpolated` is set to `True`
         the returned data frame will be interpolated for evenly-spaced points. The interpolation
-        parameters can be set as keyword arguments. By default a minimal time span across all steps
+        parameters can be set as keyword arguments. By default, a minimal time span across all steps
         is taken and maximum number of points is computed.
         
         Parameters
@@ -183,17 +237,25 @@ class RawReader(LTSpiceReader):
         Raises
         -------
         NotImplementedError
-            if a interpolation is performed for data coming from not transient (.tran) analysis
+            if an interpolation is performed for data coming from not transient (.tran) analysis
 
 
         """
         try:
-            xvar, data, stepnp, colnames = self._get_data_array(columns, steps, interpolated, **kwargs)
+            xvar, data, stepnp, colnames = self._get_data_array(columns,
+                                                                steps,
+                                                                interpolated,
+                                                                **kwargs)
             xname = 'time' if self.get_analysis_type() == 'transient' else 'frequency'
-            return pd.DataFrame(
-                np.hstack( (xvar.reshape((-1, 1)), stepnp.reshape((-1, 1)), data) ),
-                columns=[xname, 'step'] + list(colnames)
-            )
+            df = pd.DataFrame(
+                np.hstack((xvar.reshape((-1, 1)), stepnp.reshape((-1, 1)), data)),
+                columns=[xname, 'step'] + list(colnames))
+            if df[xname].dtype == 'complex':  # AC analysis
+                df[xname] = np.real(df[xname])  # Cast frequency to float
+                df['step'] = np.real(df['step']).astype(int)  # Cast `step` to integer
+            else:  # A transient analysis.
+                df['step'] = df['step'].astype(int)  # Cast step to integer
+            return df
         except NotImplementedError as e:
             raise e
 
@@ -240,13 +302,13 @@ class RawReader(LTSpiceReader):
         Raises
         -------
         NotImplementedError
-            if a interpolation is performed for data coming from not transient (.tran) analysis
+            if an interpolation is performed for data coming from not transient (.tran) analysis
 
 
         """
         try:
             xvar, data, stepnp, _ = self._get_data_array(columns, steps, interpolated, **kwargs)
-            return np.hstack( (xvar.reshape((-1, 1)), stepnp.reshape((-1, 1)), data) )
+            return np.hstack((xvar.reshape((-1, 1)), stepnp.reshape((-1, 1)), data))
         except NotImplementedError as e:
             raise e
 
@@ -321,27 +383,27 @@ class RawReader(LTSpiceReader):
 
         # TODO: Check if the length of the file is okay.
         # How many bytes are there per row of data?
-        bytesperrow = xnbytes + (nvars-1)*datanbytes
+        bytesperrow = xnbytes + (nvars - 1) * datanbytes
         endbyte = len(binary)
         while endbyte % xnbytes != 0:
             endbyte -= 1
 
         # We are setting the view using `as_strided`, which is generally not recommended
-        xvar_uncompressed = np.lib.stride_tricks.as_strided( # Thanks to Pete Lonsdale.
+        xvar_uncompressed = np.lib.stride_tricks.as_strided(  # Thanks to Pete Lonsdale.
             np.frombuffer(binary[:endbyte], dtype=xtype),
             shape=(npoints,),
             strides=(bytesperrow,))
-        
-        xvar = np.abs(xvar_uncompressed) # To prevent imposing abs on the rest of the data
-        
+
+        xvar = np.abs(xvar_uncompressed)  # To prevent imposing abs on the rest of the data
+
         # Get the rest of the columns
         data = np.lib.stride_tricks.as_strided(
-            np.frombuffer(binary[xnbytes:], dtype=datatype), # Read from the rest of the file
-            shape=(npoints, nvars-1),
+            np.frombuffer(binary[xnbytes:], dtype=datatype),  # Read from the rest of the file
+            shape=(npoints, nvars - 1),
             strides=(bytesperrow, datanbytes))
-        
+
         # Append the data in self field
-        self._step_indices = self._compute_step_indices(xvar) # Create a dictonary of steps or at least steps offsets
+        self._step_indices = self._compute_step_indices(xvar)  # Create a dictonary of steps or at least steps offsets
         self._data = data
         self._xvar = xvar
 
@@ -364,7 +426,7 @@ class RawReader(LTSpiceReader):
             mm.close()
             # Create the header from the first part of the file
             headerlines = rawfile.read(offset)
-            header = headerlines.decode(encoding).replace("\r", "\n").split("\n") # Useful for windows
+            header = headerlines.decode(encoding).replace("\r", "\n").split("\n")  # Useful for windows
             offset += 16 if encoding == ENC_UTF16LE else 8
             self.header = RawReader._header_to_dict(header, offset, encoding)
 
@@ -372,7 +434,7 @@ class RawReader(LTSpiceReader):
         if self._is_stepped():
             start_indices = np.insert(np.flatnonzero(np.diff(xvar) < 0) + 1, 0, 0)
             lengths = np.append(start_indices[1:], len(xvar)) - start_indices
-            steps = range(1, len(start_indices)+1)
+            steps = range(1, len(start_indices) + 1)
             return {
                 f"step{step}": {
                     'start': start_indices[i],
@@ -390,8 +452,8 @@ class RawReader(LTSpiceReader):
     @staticmethod
     def _steps_dict_to_numpy_array(steps_dict):
         reps = [(
-            int(re.match('step([0-9]+)', k).group(1)), # take the step number
-            v['n'] # compute the number of repetitions
+            int(re.match('step([0-9]+)', k).group(1)),  # take the step number
+            v['n']  # compute the number of repetitions
         ) for k, v in steps_dict.items()]
         reps = list(zip(*reps))
         return np.repeat(reps[0], reps[1])
@@ -403,7 +465,7 @@ class RawReader(LTSpiceReader):
         header_dict = {}
         variables_idx = None
         for idx, line in enumerate(headerlist):
-            searched = re.search(r'([A-Za-z\. ]+):(.*)$', line)
+            searched = re.search(r'([A-Za-z. ]+):(.*)$', line)
             key, value = searched.group(1).strip(), searched.group(2).strip()
             # Some values are numerical, such no. points, no. variables etc.
             if re.match(r'Offset', key, re.IGNORECASE):
@@ -420,7 +482,7 @@ class RawReader(LTSpiceReader):
                 value = value.split(" ")
             elif re.match(r'^Variable', key, re.IGNORECASE):
                 # The rest until `Data` flag should be the variable description
-                variables_idx = idx+1
+                variables_idx = idx + 1
                 break
             # Append the dictionary
             header_dict[key] = value
@@ -430,55 +492,53 @@ class RawReader(LTSpiceReader):
             # and `Data` flag is the last thing in `header_lines`
             # `key` should be 'variables'
             header_dict[key] = {}
-            for i, line in enumerate(headerlist[variables_idx:(len(headerlist)-1)]):
+            for i, line in enumerate(headerlist[variables_idx:(len(headerlist) - 1)]):
                 ls = line.strip().split('\t')[1:]
                 colname = ls[0]
                 header_dict[key][colname] = {
                     'Index': i,
                     'Description': ls[1]
                 }
-            header_dict["Binary_offset"] = offset # Append the number of lines at which "Data" or "Binary" appears
+            header_dict["Binary_offset"] = offset  # Append the number of lines at which "Data" or "Binary" appears
             header_dict["Encoding"] = encoding
         return header_dict
 
     def _get_data_array(self, columns='all', steps='all', interpolated=False, **kwargs):
-        try: # First get the columns
+        try:  # First get the columns
             cols = self._check_get_selected_columns(selection=columns)
             cols, idxs = list(zip(*cols))
         except ValueError as e:
             raise e
 
-        try: # Get the steps
+        try:  # Get the steps
             step_dict = self._check_get_selected_steps(steps)
         except ValueError as e:
             warnings.warn("%s Returning empty array.".format(str(e)))
             return np.array([]), np.array([]), np.array([]), cols
-        
-        if len(cols) == len(self._get_all_column_names())\
-             and len(step_dict) == len(self._get_all_steps()) and not interpolated: 
+
+        if len(cols) == len(self._get_all_column_names()) \
+                and len(step_dict) == len(self._get_all_steps()) and not interpolated:
             # Return a copy of the whole data 
             return self._xvar.copy(), self._data.copy(), self._steps_dict_to_numpy_array(step_dict), cols
-
 
         if not interpolated:
             arrlist, xvar = [], np.array([], dtype=self._xvar.dtype)
             for _, sv in step_dict.items():
                 start, numpoints = sv['start'], sv['n']
-                arrpart = self._data[start:(start+numpoints), idxs].copy()
+                arrpart = self._data[start:(start + numpoints), idxs].copy()
                 arrpart = arrpart.reshape((numpoints), len(cols))
                 arrlist.append(arrpart)
-                xvar = np.concatenate([xvar, self._xvar[start:(start+numpoints)].copy()])
+                xvar = np.concatenate([xvar, self._xvar[start:(start + numpoints)].copy()])
             return xvar, np.concatenate(arrlist), self._steps_dict_to_numpy_array(step_dict), cols
-            
-
         else:
             if self.get_analysis_type() != 'transient':
-                raise NotImplementedError("Only linear interpolation provided. Recommended to use only with transient analysis.")
+                raise NotImplementedError("Only linear interpolation provided. "
+                                          "Recommended to use only with transient analysis.")
 
-            defaults = { # Default values if keywords are not present
+            defaults = {  # Default values if keywords are not present
                 'n': max([v['n'] for v in step_dict.values()]),
-                'tmin': max([self._xvar[v['start']] for  v in step_dict.values()]),
-                'tmax': min([self._xvar[v['start']+v['n']-1] for v in step_dict.values()])
+                'tmin': max([self._xvar[v['start']] for v in step_dict.values()]),
+                'tmax': min([self._xvar[v['start'] + v['n'] - 1] for v in step_dict.values()])
             }
             n = kwargs.get("n", defaults['n'])
             tmin = kwargs.get("tmin", defaults['tmin'])
@@ -486,49 +546,51 @@ class RawReader(LTSpiceReader):
             # Preallocate the array for holding the interpolated version of the data.
             nsteps, ncol = len(step_dict), len(cols)
             tt = np.linspace(tmin, tmax, n, dtype=self._data.dtype)
-            interp_xvar = np.tile(tt, nsteps) 
-            interp_data = np.zeros(shape=(nsteps*n, ncol), dtype=self._data.dtype)
+            interp_xvar = np.tile(tt, nsteps)
+            interp_data = np.zeros(shape=(nsteps * n, ncol), dtype=self._data.dtype)
             for i, v in enumerate(step_dict.values()):
                 # apply along rows axis-0 - returns new array so can be used with strided view
-                stepidx = slice(v['start'],v['start']+v['n'])
-                interp_data[slice(i*n, (i+1)*n), idxs] = np.apply_along_axis(func1d=lambda y: np.interp(tt, self._xvar[stepidx], y), \
-                                                            axis=0, arr=self._data[stepidx, idxs])
+                stepidx = slice(v['start'], v['start'] + v['n'])
+                interp_data[slice(i * n, (i + 1) * n), idxs] = np.apply_along_axis(
+                    func1d=lambda y: np.interp(tt, self._xvar[stepidx], y), \
+                    axis=0, arr=self._data[stepidx, idxs])
             return interp_xvar, interp_data, self._steps_dict_to_numpy_array({
-                        k: {'start': i*n, 'n': n} for i, k in enumerate(step_dict.keys())
-                    }), cols
+                k: {'start': i * n, 'n': n} for i, k in enumerate(step_dict.keys())
+            }), cols
 
     def _check_get_selected_columns(self, selection):
         # Sort columns names with respect to the index -- get rid of the first name
-        available_columns = sorted([(k, v['Index']-1) for k, v in self.header['Variables'].items()],
+        available_columns = sorted([(k, v['Index'] - 1) for k, v in self.header['Variables'].items()],
                                    key=lambda x: x[1])
-        _ = available_columns.pop(0) # pop x-axis column
+        _ = available_columns.pop(0)  # pop x-axis column
         if isinstance(selection, str) and re.match('all', selection, re.IGNORECASE):
-            return available_columns    
+            return available_columns
 
-        if type(selection) is str: 
-            selection = [selection] 
+        if type(selection) is str:
+            selection = [selection]
 
-        unknown_cols = [] # Check selected columns exist in the data.
+        unknown_cols = []  # Check selected columns exist in the data.
         acolnms = [acol for acol, _ in available_columns]
         n = len(selection)
         for _ in range(n):
             if selection[-1] not in acolnms:
                 unknown_cols.append(selection.pop())
-        
-        if len(selection) == 0: # Is there anything left?
+
+        if len(selection) == 0:  # Is there anything left?
             raise ValueError("No columns could be selected.")
 
         if len(unknown_cols) > 0:
-            warnings.warn(f"Columns: {','.join(reversed(unknown_cols)) if len(unknown_cols) > 1 else unknown_cols[0]} are not present in the data. Proceeding with the remaining columns.")
+            warnings.warn(
+                f"Columns: {','.join(reversed(unknown_cols)) if len(unknown_cols) > 1 else unknown_cols[0]} are not present in the data. Proceeding with the remaining columns.")
         # All checks passed - iterate through `available_columns` to return sorted version.
         # Update: return columns in the order of appearance
         available_columns_dict = {col: idx for col, idx in available_columns}
         return [(col, available_columns_dict[col]) for col in selection]
 
-    def _check_get_selected_steps(self, selection): 
+    def _check_get_selected_steps(self, selection):
         # Quietly assuming (for now) that we have either string or list-like flat object
         if isinstance(selection, str) and re.match('all', selection, re.IGNORECASE):
-            return self._step_indices.copy() 
+            return self._step_indices.copy()
         elif isinstance(selection, str):
             raise ValueError("`selection` can be 'all' or a list of ints")
         else:
@@ -541,14 +603,15 @@ class RawReader(LTSpiceReader):
                 else:
                     unselected.append(s)
             if len(unselected) > 0:
-                warnings.warn(f"Steps: {','.join([str(u) for u in unselected]) if len(unselected) > 1 else unselected[0]} are not present in the dataset and will be omitted")
+                warnings.warn(
+                    f"Steps: {','.join([str(u) for u in unselected]) if len(unselected) > 1 else unselected[0]} are not present in the dataset and will be omitted")
             if len(selected) == 0:
                 raise ValueError("There are no valid steps in the data!")
             return selected
 
     def _get_all_column_names(self):
         return list(self.header['Variables'].keys())[1:]
-    
+
     def _get_xname(self):
         return list(self.header['Variables'].keys())[0]
 
@@ -558,6 +621,7 @@ class RawReader(LTSpiceReader):
     """
     Several checks mostly going through Flags in the header.
     """
+
     def _is_stepped(self):
         return any(re.match('stepped', line, re.IGNORECASE) for line in self.header['Flags'])
 
@@ -565,49 +629,51 @@ class RawReader(LTSpiceReader):
         return any(re.match('real', line, re.IGNORECASE) for line in self.header['Flags'])
 
     def _is_complex(self):
-        return any(re.match('complex', line, re.IGNORECASE ) for line in self.header['Flags'])
+        return any(re.match('complex', line, re.IGNORECASE) for line in self.header['Flags'])
+
 
 class LogReader(LTSpiceReader):
-    
+
     def __init__(self, log_path) -> None:
         self.log_path = log_path
+
 
 class MeasurementReader(LogReader):
 
     def __init__(self, log_path) -> None:
         self.super().__init__(log_path)
-    
-    def get_pandas():
+
+    def get_pandas(self):
         pass
+
 
 class FourierAnalysisReader(LogReader):
 
     def __init__(self, log_path) -> None:
         self.super().__init__(log_path)
 
-    def get_pandas():
+    def get_pandas(self):
         pass
 
 
 def parse_and_save(
-    objstr: str,
-    infile: str,
-    outfile: str, 
-    **kwargs):
+        objstr: str,
+        infile: str,
+        outfile: str,
+        **kwargs):
     """The main function. Reads the file and saves the results to a csv file."""
-    import pandas as pd
 
-    if objstr == "RawReader" and re.search (r"\.raw$", infile):
-        
+    if objstr == "RawReader" and re.search(r"\.raw$", infile):
+
         # Create an instance of a reader
         reader = RawReader(infile)
-        
+
         # Parse the keyword arguments
         columns = kwargs.get("columns", 'all')
         steps = kwargs.get("steps", 'all')
         interpolated = kwargs.get("interpolated", False)
         rest = {k: v for k, v in kwargs.items() if k not in ('columns', 'steps', 'interpolated')}
-        
+
         # Get the resulting dataframe.
         data = reader.get_pandas(columns=columns, steps=steps, interpolated=interpolated, **rest)
 
@@ -626,8 +692,7 @@ def parse_and_save(
                             Make sure that the .log and .raw files match the reader.""")
 
 
-if __name__=="__main__":
-
+if __name__ == "__main__":
     parser = argparse.ArgumentParser("Read a file using the LTSpiceReader and return pandas or numpy.")
     # TODO: Maybe it will be better with subcommands?
     # subparsers = parser.add_subparsers()
@@ -639,7 +704,7 @@ if __name__=="__main__":
                         choices=("RawReader", "MeasurementReader", "FourierAnalysisReader"),
                         help="""A name of the class to read the file. 
                         This should be either RawReader, MeasurementReader or FourierAnalysisReader.""")
-    parser.add_argument("-f","--file",
+    parser.add_argument("-f", "--file",
                         required=True,
                         type=str,
                         help="The file you want to read.")
@@ -657,25 +722,25 @@ if __name__=="__main__":
     # Further arguments for RawReader
     raw_group = parser.add_argument_group("Raw")
     raw_group.add_argument("--columns", "-col",
-                            required=False,
-                            nargs='*',
-                            default='all')
+                           required=False,
+                           nargs='*',
+                           default='all')
     raw_group.add_argument("--steps", "-s",
-                            required=False,
-                            nargs="*",
-                            default='all')
+                           required=False,
+                           nargs="*",
+                           default='all')
     raw_group.add_argument("--interpolated", "-i",
-                            required=False,
-                            action='store_true')
+                           required=False,
+                           action='store_true')
     raw_group.add_argument("--tmin",
-                            required=False,
-                            type=float)
+                           required=False,
+                           type=float)
     raw_group.add_argument("--tmax",
-                            required=False,
-                            type=float)
+                           required=False,
+                           type=float)
     raw_group.add_argument("--n",
-                            required=False,
-                            type=int)
+                           required=False,
+                           type=int)
 
     # Parse the arguments
     args = parser.parse_args()
@@ -693,4 +758,3 @@ if __name__=="__main__":
         infile=infile,
         outfile=outfile,
         **rest)
-
