@@ -235,6 +235,23 @@ class EditableListbox(tk.Listbox):
         event.widget.destroy()
 
 
+class CheckboxList(customtkinter.CTkCheckBox):
+    """A list with checkboxes"""
+    def __init__(self, master, checkbox_list, checkbox_label, list_background, **kwargs):
+        super().__init__(master, **kwargs)
+        self.check_box_list = checkbox_list
+        self.check_box_frame = customtkinter.CTkFrame(master=master, bg_color=list_background, fg_color='#4D4D4D',
+                                                      width=12)
+        self.check_box_label = customtkinter.CTkLabel(master=self.check_box_frame, text=checkbox_label, width=10)
+        self.check_box_label.grid(row=0, column=0)
+        for elements in self.check_box_list:
+            check_box = customtkinter.CTkCheckBox(master=self.check_box_frame, text=elements)
+            self.width = check_box.winfo_width()
+            check_box.grid(sticky=tk.E, pady=1)
+        self.check_box_frame.configure(width=self.width*2)
+        self.check_box_frame.grid(row=1, column=1, ipadx=2, ipady=2, padx=2, pady=2)
+
+
 class ScrollableFrame(tk.Frame):
     # @staticmethod
     # def handle_resize(event):
