@@ -178,7 +178,7 @@ raw_file_button_table = customtkinter.CTkButton(spice_data,
                                                                                         ax, lines_array,
                                                                                         toolbar,
                                                                                         new_subplot, subplot_number,
-                                                                                        subplots,
+                                                                                        subplots, plot_values_button,
                                                                                         schematic_analysis_open=True))
 
 raw_file_button_table.pack(padx=240, pady=10, ipadx=20, side=tk.RIGHT)
@@ -225,6 +225,7 @@ y_axis = customtkinter.CTkLabel(toolbar,
 column_to_plot_2 = customtkinter.CTkOptionMenu(toolbar,
                                                values=[''])
 
+plot_values_button = customtkinter.CTkButton(toolbar, text='Plot settings')
 
 plot_number = tk.StringVar(toolbar)
 subplots = ['1']
@@ -298,7 +299,7 @@ fileMenu.add_command(label="Open a Raw File", font=FONT_SIZE,
                                                              ax, lines_array,
                                                              toolbar,
                                                              new_subplot, subplot_number,
-                                                             subplots,
+                                                             subplots, plot_values_button,
                                                              schematic_analysis_open=False))
 
 schematic_analysis.bind_all("<Control-R>", lambda event: guievents.open_raw_file(root, schematic_analysis,
@@ -310,7 +311,7 @@ schematic_analysis.bind_all("<Control-R>", lambda event: guievents.open_raw_file
                                                                                  ax, lines_array,
                                                                                  toolbar,
                                                                                  new_subplot, subplot_number,
-                                                                                 subplots,
+                                                                                 subplots, plot_values_button,
                                                                                  schematic_analysis_open=False))
 
 schematic_analysis.bind_all("<Control-r>", lambda event: guievents.open_raw_file(root, schematic_analysis,
@@ -322,7 +323,7 @@ schematic_analysis.bind_all("<Control-r>", lambda event: guievents.open_raw_file
                                                                                  ax, lines_array,
                                                                                  toolbar,
                                                                                  new_subplot, subplot_number,
-                                                                                 subplots,
+                                                                                 subplots, plot_values_button,
                                                                                  schematic_analysis_open=False))
 
 fileMenu.add_command(label="Add a new component", font=FONT_SIZE, accelerator='Ctrl+A',
@@ -403,7 +404,7 @@ open_raw_file_button = customtkinter.CTkButton(root_frame,
                                                                                        ax, lines_array,
                                                                                        toolbar,
                                                                                        new_subplot, subplot_number,
-                                                                                       subplots,
+                                                                                       subplots, plot_values_button,
                                                                                        schematic_analysis_open=False))
 
 exit_app_button = customtkinter.CTkButton(root_frame,

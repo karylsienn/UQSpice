@@ -197,10 +197,16 @@ class CustomToolbar(NavigationToolbar2Tk):
 
 class EditableListbox(tk.Listbox):
     """A listbox where you can directly edit an item via double-click"""
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, delete_bind=False, **kwargs):
         super().__init__(master, **kwargs)
         self.edit_item = None
         self.bind("<Double-1>", self._start_edit)
+        if delete_bind:
+            self.bind('<BackSpace>', self._delete_selected_step)
+            self.bind('<Delete>', self._delete_selected_step)
+
+    def _delete_selected_step(self, event):
+        self.delete(self.curselection())
 
     def _start_edit(self, event):
         index = self.index(f"@{event.x},{event.y}")
@@ -247,7 +253,7 @@ class CheckboxList(customtkinter.CTkCheckBox):
         for elements in self.check_box_list:
             check_box = customtkinter.CTkCheckBox(master=self.check_box_frame, text=elements)
             self.width = check_box.winfo_width()
-            check_box.grid(sticky=tk.E, pady=1)
+            check_box.grid(sticky=tk.W, pady=1)
         self.check_box_frame.configure(width=self.width*2)
         self.check_box_frame.grid(row=1, column=1, ipadx=2, ipady=2, padx=2, pady=2)
 
