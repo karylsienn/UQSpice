@@ -702,7 +702,7 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
             # plt.show()
 
             # Store data columns and headers
-            data_as_list = data.values.tolist()
+            data_as_list = list(data.itertuples(index=False, name=None))
             data_headers = list(data.columns.values)
             data_table.headers(data_headers)
             data_table.set_sheet_data(data_as_list)
@@ -786,7 +786,8 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
 def sketch_graphs(data, grouped_data, frame_to_display,
                   column_headings, column1, column2, figure, ax, lines_array, toolbar,
                   new_subplot, plot_index, subplots, previous_drawn_columns):
-    selected_steps_to_show = [1+0j, 2+0j, 3+0j, 5+0j]
+    # selected_steps_to_show = [1+0j, 2+0j, 3+0j, 5+0j]
+    selected_steps_to_show = [1, 2, 3, 5]
     if new_subplot.get() == 'off':
         plot_number = int(plot_index.get()) - 1
         ax[plot_number].clear()
@@ -809,19 +810,21 @@ def sketch_graphs(data, grouped_data, frame_to_display,
         legend_array.remove(None)
 
         # User selected steps from plot preferences
-        selected_steps_to_show = [1+0j, 2+0j, 3+0j, 5+0j]
+        # selected_steps_to_show = [1+0j, 2+0j, 3+0j, 5+0j]
+        selected_steps_to_show = [1, 2, 3, 5]
         for steps in selected_steps_to_show:
             # Example for accessing a step
             # data.loc[grouped_data.groups[step], (x-axis, y-axis)]
             # step is any value from available steps for example like 1+0j or 2+0j
-            plotting_data = data.loc[grouped_data.groups[steps], (column_headings[previous_drawn_columns[plot_number][0]],
-                                                                  column_headings[previous_drawn_columns[plot_number][1]])]
-            # plotting data is 3 columns:
-            # column 1 is row numbers, x-axis is column 2, y-axis is column 3.
-            lines_array[plot_number], = ax[plot_number].plot(plotting_data[column_headings[column1]],
-                                                             plotting_data[column_headings[column2]],
-                                                             label=steps)
-            mplcursors.cursor(lines_array[plot_number], hover=mplcursors.HoverMode.Transient)
+            if steps in grouped_data.groups:
+                plotting_data = data.loc[grouped_data.groups[steps], (column_headings[previous_drawn_columns[plot_number][0]],
+                                                                      column_headings[previous_drawn_columns[plot_number][1]])]
+                # plotting data is 3 columns:
+                # column 1 is row numbers, x-axis is column 2, y-axis is column 3.
+                lines_array[plot_number], = ax[plot_number].plot(plotting_data[column_headings[column1]],
+                                                                 plotting_data[column_headings[column2]],
+                                                                 label=steps)
+                mplcursors.cursor(lines_array[plot_number], hover=mplcursors.HoverMode.Transient)
         ax[plot_number].legend()
 
         # print(lines_array[plot_number])
