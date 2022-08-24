@@ -1,8 +1,7 @@
 import openturns as ot
 import pandas as pd
 import numpy as np
-from typing import List
-
+from typing import Tuple, Dict
 
 DISTR_KEY = 'distribution'
 PARAM_KEY = 'parameters'
@@ -14,6 +13,7 @@ class ExperimentalDesigner:
     def __init__(self, variables: dict):
         self.variables = {k: self._recognize_distributions(v) for k, v in variables.items()}
         self.distribution = ot.ComposedDistribution([v for v in self.variables.values()])
+        self.distribution.setDescription([k for k in self.variables.keys()])
         self.input_dimension = self.distribution.getDimension()
 
     def get_lhs_design_numpy(self, sample_size: int):
@@ -68,7 +68,7 @@ class PCArchitect:
             poly_coll, enumerate_function
         )
 
-    def get_mean(self, pc_expansion: List[ot.metamodel.FunctionalChaosResult] = None) -> pd.DataFrame:
+    def get_mean(self, pc_expansion: Tuple[ot.metamodel.FunctionalChaosResult] = None) -> pd.DataFrame:
         if not pc_expansion and not self.pc_expansion:
             raise ValueError("There is not Polynomial Chaos Expansion to compute the mean.")
         elif pc_expansion:
@@ -83,8 +83,8 @@ class PCArchitect:
         return means_pd
 
     def get_confidence_interval(self,
-                                level='95',
-                                pc_expansion: List[ot.metamodel.FunctionalChaosResult] = None):
+                                level: str | int | float = '95',
+                                pc_expansion: Tuple[ot.metamodel.FunctionalChaosResult] | None = None):
         if not pc_expansion and not self.pc_expansion:
             raise ValueError("There is no Polynomial Chaos expansion to computer the confidence intervals.")
         elif pc_expansion:
@@ -93,9 +93,8 @@ class PCArchitect:
             return PCArchitect._get_confidence_interval(self.pc_expansion, float(level))
 
     @staticmethod
-    def _get_confidence_interval(pc_expansion: List[ot.metamodel.FunctionalChaosResult],
-                                 level=95.0):
-        level = float(level)
+    def _get_confidence_interval(pc_expansion: Tuple[ot.metamodel.FunctionalChaosResult],
+                                 level: float = 95.0) -> Dict[str, pd.DataFrame]:
         assert level in (68.0, 95.0, 99.7)
         if level == 68.0:
             scaling = 1
@@ -107,17 +106,33 @@ class PCArchitect:
         sds = [np.sqrt(np.sum(pc[1:] ** 2)) for pc in pc_expansion]
         metamodel = pc_expansion[0].getMetaModel()
         output_description = [metamodel.getOutputDescription().at(i) for i in range(metamodel.getOutputDimension())]
-        lower = pd.DataFrame(np.asarray([mu - scaling*sd for mu, sd in zip(means, sds)]),
+        lower = pd.DataFrame(np.asarray([mu - scaling * sd for mu, sd in zip(means, sds)]),
                              columns=output_description)
-        upper = pd.DataFrame(np.asarray([mu + scaling*sd for mu, sd in zip(means, sds)]),
+        upper = pd.DataFrame(np.asarray([mu + scaling * sd for mu, sd in zip(means, sds)]),
                              columns=output_description)
-        return lower, upper
+        return {
+            "lower": lower, "upper": upper
+        }
 
-    def get_total_sobol_indices(self, pc_expansion: List[ot.metamodel.FunctionalChaosResult] = None) -> pd.DataFrame:
+    def get_total_sobol_indices(self,
+                                pc_expansion: Tuple[ot.metamodel.FunctionalChaosResult] | None = None
+                                ) -> Dict[str, pd.DataFrame]:
         """
-        frequency_or_time UQ_something UQ_new UQ_C
-        1                   0.4         0.5
-        2
+        Creates and returns the total sobol indices for the Polynomial Chaos Expansion.
+
+        Parameters
+        ----------
+        pc_expansion : Tuple[openturns.FunctionalChaosResult]
+            the tuple of polynomial chaos expansions as returned by `compute_pc_expansion`
+
+        Returns
+        -------
+        Dict[pandas.DataFrame]
+            a dictionary of dataframes consisting the total sobol indices
+
+        In case the pc_expansion is not given, the function uses internal pc_expansion of the PCArchitect instance.
+        The format of the returning dictionary is as follows: `{input_var1: DataFrame, input_var2: DataFrame etc.}`
+        The rows of the single dataframes correspond to the x-axis and the columns represent the output variables.
         """
         if not pc_expansion and not self.pc_expansion:
             raise ValueError("There is no Polynomial Chaos expansions to compute the Sobol indices.")
@@ -125,16 +140,29 @@ class PCArchitect:
             sobol_indices = [ot.FunctionalChaosSobolIndices(pc) for pc in pc_expansion]
         else:
             sobol_indices = [ot.FunctionalChaosSobolIndices(pc) for pc in self.pc_expansion]
+        metamodel_0 = sobol_indices[0].getFunctionalChaosResult().getMetaModel()
+        # Get the dimensions
+        input_dimension = metamodel_0.getInputDimension()
+        output_dimension = metamodel_0.getOutputDimension()
+        # Get the names
+        input_description = tuple(str(name) for name in metamodel_0.getInputDescription())
+        output_description = tuple(str(name) for name in metamodel_0.getOutputDescription())
         # Get the total Sobol indices.
-        total_sobol_indices = [
-            [s.getSobolTotalIndex(m) for m in range(len(self.experimental_designer.variables))
-             ] for s in sobol_indices]
-        return sobol_indices
+        total_sobol_indices = np.asarray([
+            [[s.getSobolTotalIndex(var_no, marginal_no) for marginal_no in range(output_dimension)]
+             for s in sobol_indices]
+            for var_no in range(input_dimension)])
+        return {
+            k: pd.DataFrame(total_sobol_indices[i],
+                            columns=output_description) for k, i in zip(
+                input_description, range(input_dimension))
+        }
 
     def compute_pc_expansion(self,
                              input_samples: pd.DataFrame,
                              output_samples: pd.DataFrame,
-                             max_total_degree=3):
+                             max_total_degree=3
+                             ) -> Tuple[ot.metamodel.FunctionalChaosResult]:
         """
         Computes the (default) Polynomial Chaos Expansion.
 
@@ -176,18 +204,22 @@ class PCArchitect:
                 part_df = np.asarray(output_samples.loc[t])
                 pc_expansion = self._compute_pc_expansion(input_samples=np.asarray(input_samples),
                                                           output_samples=np.asarray(part_df),
+                                                          output_description=tuple(output_columns),
                                                           max_total_degree=max_total_degree)
                 pc_list[i] = pc_expansion
-            self.pc_expansion = pc_list
-            return pc_list
+
+            self.pc_expansion = tuple(pc_list)
+            return tuple(pc_list)
         else:
             # TODO: Implement PC in case of .meas statements.
             pass
 
     def _compute_pc_expansion(self,
-                              input_samples,
-                              output_samples,
-                              max_total_degree=3):
+                              input_samples: np.array,
+                              output_samples: np.array,
+                              output_description: Tuple[str],
+                              max_total_degree: int
+                              ) -> ot.FunctionalChaosResult:
         selection_algorithm = ot.LeastSquaresMetaModelSelectionFactory()
         least_squares = ot.LeastSquaresStrategy(input_samples,
                                                 output_samples,
@@ -202,6 +234,7 @@ class PCArchitect:
                                               least_squares)
         pc_algo.run()
         pc_expansion = pc_algo.getResult()
+        pc_expansion.getMetaModel().setOutputDescription(output_description)
+        pc_expansion.getMetaModel().setInputDescription(
+            self.experimental_designer.distribution.getDescription())
         return pc_expansion
-
-
