@@ -8,10 +8,8 @@ import ntpath  # used for just retrieving the file name from a file path
 import os.path  # checking if file path exists, directory exists, etc for default symbols and exe path
 import re  # used for substituting for matches
 import threading  # running netlist generation and sketching components when .asc file has been selected
-import pandas as pd
-# Created Files and classes
-from matplotlib import pyplot as plt
 
+# Created Files and classes
 import ltspicer.sweepers as sweepers
 import ltspicer.readers as read
 import pystatemc.pcarchitects as pcarchitects
@@ -28,6 +26,7 @@ constant_component_parameters = {}
 entering_parameters_window = None
 preferences_window = None
 run_simulation_window = None
+plot_value_selection_window = None
 # Canvas preferences
 line_width = 1
 outline_colour = 'black'
@@ -721,6 +720,13 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
 
             previous_sketched_columns = [[], []]
             previous_sketched_columns.pop()
+            steps = []
+            steps = list(dict.fromkeys(data.iloc[:, 1]))
+            print(steps)
+            plot_values_button = customtkinter.CTkButton(toolbar, text='Select Plot Values',
+                                                         command=lambda: open_plot_preferences_window(schematic_analysis,
+                                                                                                      steps))
+            plot_values_button.pack(side=tk.LEFT)
             # sketch command for when either the x or y axes are changed.
             column_1_dropdown_list.configure(command=lambda arg:
                                              sketch_graphs(data, grouped_data, graphs, data_headers,
@@ -735,7 +741,8 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
                                                            data_headers.index(column_2_dropdown_list.get()),
                                                            figure, ax, lines_array, toolbar, new_subplot,
                                                            subplot_number, subplots, previous_sketched_columns))
-            # print(data.iloc[:, 2])
+
+
             if schematic_analysis_open is False:
                 root.withdraw()
                 schematic_analysis_width = 1100  # width for the Tk schematic_analysis
@@ -915,6 +922,39 @@ def sketch_graphs(data, grouped_data, frame_to_display,
         figure.canvas.flush_events()
         toolbar.update()
         plot_index.pack(side=tk.LEFT)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------- Function for opening plot preferences ---------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def open_plot_preferences_window(schematic_analysis_window, steps):
+    global plot_value_selection_window
+
+    if plot_value_selection_window is not None and plot_value_selection_window.winfo_exists():
+        plot_value_selection_window.lift(schematic_analysis_window)
+        plot_value_selection_window.wm_transient(schematic_analysis_window)
+    # if FALSE: Create a new plot value window
+    else:
+        plot_value_selection_window = customtkinter.CTkToplevel(schematic_analysis_window)
+
+    # sets the title of the new window
+    plot_value_selection_window.title("Plotting Preferences")
+
+    # Find the location of the main schematic analysis window
+    schematic_x = schematic_analysis_window.winfo_x()
+    schematic_y = schematic_analysis_window.winfo_y()
+    # set the size and location of the new window created
+    # plot_value_selection_window.geometry("500x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
+    print(plot_value_selection_window.winfo_width())
+    # make window on top of the main schematic analysis window
+    plot_value_selection_window.wm_transient(schematic_analysis_window)
+
+    plot_values_frame = customtkinter.CTkFrame(plot_value_selection_window)
+    # Create a list containing all steps
+    steps_selection_list = tkmod.CheckboxList(plot_values_frame, width=120, list_background='white',
+                                              checkbox_list=tuple(steps), checkbox_label='Steps')
+    plot_values_frame.pack(expand=True, fill=tk.BOTH)
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
