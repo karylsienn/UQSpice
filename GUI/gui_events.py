@@ -10,9 +10,15 @@ import re  # used for substituting for matches
 import threading  # running netlist generation and sketching components when .asc file has been selected
 
 # Created Files and classes
+import ltspicer.readers
 import ltspicer.sweepers as sweepers
 import ltspicer.readers as read
+import ltspicer.runners as runners
+import pandas as pd
 import pystatemc.pcarchitects as pcarchitects
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 import component_sketcher as comp
 import tkinter_modification as tkmod
 import new_components as new_comp
@@ -27,7 +33,7 @@ entering_parameters_window = None
 preferences_window = None
 run_simulation_window = None
 plot_value_selection_window = None
-# Canvas preferences
+# Canvas default preferences
 line_width = 1
 outline_colour = 'black'
 fill_colour = ''
@@ -662,12 +668,11 @@ def clear_table(table):
 def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
                   column_1_dropdown_list, column_2_dropdown_list,
                   figure, ax, lines_array, toolbar, new_subplot, subplot_number, subplots, plot_values_button,
-                  schematic_analysis_open=False):
+                  chart_type, schematic_analysis_open=False):
     """
     Event Function used when the button to open a .raw file is clicked.
 
-    Allows user to select the file, the .raw file is converted to a .csv file and stored with same name
-    or new name if a file name is given
+    Allows user to select a .raw file which is displayed in tables tab
     """
 
     # lines_array = [None]
@@ -699,7 +704,9 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
             data = raw_reader.get_pandas()
             grouped_data = data.groupby('step')
 
-            # print(grouped_data.iloc[:, 1])
+            # Accessing a certain pandas element
+            # Data_Frame_Name[Column name].iloc[element number]
+            # print(data['frequency'].iloc[0])
             # for elements in grouped_data.idxmax():
             #     grouped_data[[elements]].plot(ax=axis, label=elements)
             # plt.legend()
@@ -745,7 +752,7 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
                                                            data_headers.index(column_2_dropdown_list.get()),
                                                            figure, ax, lines_array, toolbar, new_subplot,
                                                            subplot_number, subplots, previous_sketched_columns,
-                                                           tuple(steps_to_display)))
+                                                           tuple(steps_to_display), chart_type=chart_type))
 
             column_2_dropdown_list.configure(command=lambda arg:
                                              sketch_graphs(data, grouped_data, graphs, data_headers,
@@ -753,7 +760,9 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
                                                            data_headers.index(column_2_dropdown_list.get()),
                                                            figure, ax, lines_array, toolbar, new_subplot,
                                                            subplot_number, subplots, previous_sketched_columns,
-                                                           tuple(steps_to_display)))
+                                                           tuple(steps_to_display), chart_type=chart_type))
+
+            table_tab.select(1)
 
             if schematic_analysis_open is False:
                 root.withdraw()
@@ -780,6 +789,7 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
                 # make the entering parameters window on top of the main schematic analysis window and showing it
                 # schematic_analysis.wm_transient(root)
                 schematic_analysis.deiconify()
+                table_tab.select(1)
 
     except FileNotFoundError:
         pass
@@ -795,11 +805,26 @@ def open_raw_file(root, schematic_analysis, table_tab, graphs, data_table,
 # ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Function for sketching graphs on tab 2 ----------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+def on_pick(event, fig, lined):
+    print('here')
+    # On the pick event, find the original line corresponding to the legend
+    # proxy line, and toggle its visibility.
+    legline = event.artist
+    origline = lined[legline]
+    visible = not origline.get_visible()
+    origline.set_visible(visible)
+    # Change the alpha on the line in the legend so we can see what lines
+    # have been toggled.
+    legline.set_alpha(1.0 if visible else 0.2)
+    fig.canvas.draw()
+
+
 def sketch_graphs(data, grouped_data, frame_to_display,
                   column_headings, column1, column2, figure, ax, lines_array, toolbar,
-                  new_subplot, plot_index, subplots, previous_drawn_columns, selected_steps_to_show,
+                  new_subplot, plot_index, subplots, previous_drawn_columns, selected_steps_to_show, chart_type=None,
                   clear_line_array=False):
     print(column1, column2)
+
     if clear_line_array:
         lines_array = [None]
     if new_subplot.get() == 'off':
@@ -823,12 +848,15 @@ def sketch_graphs(data, grouped_data, frame_to_display,
         print(legend_array)
         legend_array.remove(None)
 
+
+
         # User selected steps from plot preferences
-        # selected_steps_to_show = [1+0j, 2+0j, 3+0j, 5+0j]
+        # selected_steps_to_show = [1, 2, 3, 5]
         for steps in selected_steps_to_show:
             # Example for accessing a step
             # data.loc[grouped_data.groups[step], (x-axis, y-axis)]
-            # step is any value from available steps for example like 1+0j or 2+0j
+            # grouped_data.groups[] calls a group from groups, group name is inserted in brackets, NOT group index.
+            # step is any value from available steps for example like 1 or 2
             if steps in grouped_data.groups:
                 plotting_data = data.loc[grouped_data.groups[steps], (column_headings[previous_drawn_columns[plot_number][0]],
                                                                       column_headings[previous_drawn_columns[plot_number][1]])]
@@ -838,7 +866,17 @@ def sketch_graphs(data, grouped_data, frame_to_display,
                                                                  plotting_data[column_headings[column2]],
                                                                  label=steps)
                 mplcursors.cursor(lines_array[plot_number], hover=mplcursors.HoverMode.Transient)
-        ax[plot_number].legend()
+        ax[plot_number].legend(fancybox=True, shadow=True)
+
+        # Implementation of clicking on legend to hide line in progress
+        # if chart_type is not None:
+        #     lined = {}
+        #     lines = [lines_array[plot_number]]
+        #     for legline, origline in zip(ax[plot_number].get_lines(), lines):
+        #         legline.set_picker(True)  # Enable picking on the legend line.
+        #         lined[legline] = origline
+        #
+        #     chart_type.mpl_connect('pick_event', lambda arg: on_pick(arg, figure, lined))
 
         # print(lines_array[plot_number])
         # lines_array[plot_number] = ax[plot_number].plot(data.iloc[:, column1], data.iloc[:, column2])
@@ -990,77 +1028,79 @@ def open_plot_preferences_window(schematic_analysis_window, all_steps, plotted_s
     # if FALSE: Create a new plot value window
     else:
         plot_value_selection_window = customtkinter.CTkToplevel(schematic_analysis_window)
+        # sets the title of the new window
+        plot_value_selection_window.title("Plotting Preferences")
 
-    # sets the title of the new window
-    plot_value_selection_window.title("Plotting Preferences")
+        # Find the location of the main schematic analysis window
+        schematic_x = schematic_analysis_window.winfo_x()
+        schematic_y = schematic_analysis_window.winfo_y()
+        # set the size and location of the new window created
+        # plot_value_selection_window.geometry("500x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
+        print(plot_value_selection_window.winfo_width())
+        # make window on top of the main schematic analysis window
+        plot_value_selection_window.wm_transient(schematic_analysis_window)
 
-    # Find the location of the main schematic analysis window
-    schematic_x = schematic_analysis_window.winfo_x()
-    schematic_y = schematic_analysis_window.winfo_y()
-    # set the size and location of the new window created
-    # plot_value_selection_window.geometry("500x210+%d+%d" % (schematic_x + 40, schematic_y + 100))
-    print(plot_value_selection_window.winfo_width())
-    # make window on top of the main schematic analysis window
-    plot_value_selection_window.wm_transient(schematic_analysis_window)
+        plot_values_frame = customtkinter.CTkFrame(plot_value_selection_window)
+        # Create a checkbox list containing all steps
+        # steps_selection_list = tkmod.CheckboxList(plot_values_frame, width=120, list_background='white',
+        #
+        #                                           checkbox_list=tuple(steps), checkbox_label='Steps to plot')
+        steps_option_tk_var = tk.StringVar(plot_values_frame)
+        steps_option_tk_var.set(str(all_steps[0]))
+        print(steps_option_tk_var.get())
+        steps_strings_list = [str(x) for x in all_steps]
+        max_width = len(max(steps_strings_list, key=len))
 
-    plot_values_frame = customtkinter.CTkFrame(plot_value_selection_window)
-    # Create a checkbox list containing all steps
-    # steps_selection_list = tkmod.CheckboxList(plot_values_frame, width=120, list_background='white',
-    #
-    #                                           checkbox_list=tuple(steps), checkbox_label='Steps to plot')
-    steps_option_tk_var = tk.StringVar(plot_values_frame)
-    steps_option_tk_var.set(str(all_steps[0]))
-    print(steps_option_tk_var.get())
-    steps_strings_list = [str(x) for x in all_steps]
-    max_width = len(max(steps_strings_list, key=len))
+        step_selection_label = customtkinter.CTkLabel(master=plot_values_frame, text='Select Steps:')
+        steps_option_list = customtkinter.CTkOptionMenu(master=plot_values_frame,
+                                                        variable=steps_option_tk_var,
+                                                        values=steps_strings_list,
+                                                        width=max_width)
 
-    step_selection_label = customtkinter.CTkLabel(master=plot_values_frame, text='Select Steps:')
-    steps_option_list = customtkinter.CTkOptionMenu(master=plot_values_frame,
-                                                    variable=steps_option_tk_var,
-                                                    values=steps_strings_list,
-                                                    width=max_width)
+        listbox_label = customtkinter.CTkLabel(master=plot_values_frame, text='Selected steps to plot:')
 
-    listbox_label = customtkinter.CTkLabel(master=plot_values_frame, text='Selected steps to plot:')
+        steps_list_tk_var = tk.StringVar(value=tuple(plotted_steps))
+        steps_selection_list = tkmod.EditableListbox(master=plot_values_frame, listvariable=steps_list_tk_var,
+                                                     width=max_width + 20)
 
-    steps_list_tk_var = tk.StringVar(value=tuple(plotted_steps))
-    steps_selection_list = tkmod.EditableListbox(master=plot_values_frame, listvariable=steps_list_tk_var,
-                                                 width=max_width + 20)
+        steps_selection_list.bind('<Delete>', lambda arg: delete_steps_from_list(plotted_steps,
+                                                                                 steps_selection_list, data,
+                                                                                 grouped_data,
+                                                                                 graphs, data_headers, column1, column2,
+                                                                                 figure, ax, lines_array,
+                                                                                 toolbar, new_subplot,
+                                                                                 subplot_number, subplots,
+                                                                                 previous_sketched_columns))
 
-    steps_selection_list.bind('<Delete>', lambda arg: delete_steps_from_list(plotted_steps,
-                                                                             steps_selection_list, data, grouped_data,
-                                                                             graphs, data_headers, column1, column2,
-                                                                             figure, ax, lines_array,
-                                                                             toolbar, new_subplot,
-                                                                             subplot_number, subplots,
-                                                                             previous_sketched_columns))
+        delete_step_from_plot_button = customtkinter.CTkButton(master=plot_values_frame, text='Delete step', width=10,
+                                                               command=lambda:
+                                                               delete_steps_from_list(plotted_steps,
+                                                                                      steps_selection_list, data,
+                                                                                      grouped_data, graphs,
+                                                                                      data_headers,
+                                                                                      column1, column2, figure, ax,
+                                                                                      lines_array, toolbar, new_subplot,
+                                                                                      subplot_number, subplots,
+                                                                                      previous_sketched_columns))
 
-    delete_step_from_plot_button = customtkinter.CTkButton(master=plot_values_frame, text='Delete step', width=10,
-                                                           command=lambda:
-                                                           delete_steps_from_list(plotted_steps,
-                                                                                  steps_selection_list, data,
-                                                                                  grouped_data, graphs, data_headers,
-                                                                                  column1, column2, figure, ax,
-                                                                                  lines_array, toolbar, new_subplot,
-                                                                                  subplot_number, subplots,
-                                                                                  previous_sketched_columns))
-
-    add_step_to_plot_button = customtkinter.CTkButton(master=plot_values_frame, text='Add step', width=10,
-                                                      command=lambda: add_to_steps_list(steps_option_tk_var,
-                                                                                        plotted_steps,
-                                                                                        steps_selection_list,
-                                                                                        data, grouped_data, graphs,
-                                                                                        data_headers, column1, column2,
-                                                                                        figure, ax, lines_array,
-                                                                                        toolbar, new_subplot,
-                                                                                        subplot_number, subplots,
-                                                                                        previous_sketched_columns))
-    step_selection_label.grid(row=1, column=1)
-    steps_option_list.grid(row=1, column=2)
-    add_step_to_plot_button.grid(row=1, column=3, padx=10)
-    listbox_label.grid(row=2, column=1, columnspan=3)
-    steps_selection_list.grid(row=3, column=1, columnspan=3)
-    delete_step_from_plot_button.grid(row=4, column=1, columnspan=3, pady=10)
-    plot_values_frame.pack(expand=True, fill=tk.BOTH)
+        add_step_to_plot_button = customtkinter.CTkButton(master=plot_values_frame, text='Add step', width=10,
+                                                          command=lambda: add_to_steps_list(steps_option_tk_var,
+                                                                                            plotted_steps,
+                                                                                            steps_selection_list,
+                                                                                            data, grouped_data, graphs,
+                                                                                            data_headers, column1,
+                                                                                            column2,
+                                                                                            figure, ax, lines_array,
+                                                                                            toolbar, new_subplot,
+                                                                                            subplot_number, subplots,
+                                                                                            previous_sketched_columns))
+        step_selection_label.grid(row=1, column=1)
+        steps_option_list.grid(row=1, column=2)
+        add_step_to_plot_button.grid(row=1, column=3, padx=10)
+        listbox_label.grid(row=2, column=1, columnspan=3)
+        steps_selection_list.grid(row=3, column=1, columnspan=3)
+        delete_step_from_plot_button.grid(row=4, column=1, columnspan=3, pady=10)
+        plot_values_frame.pack(expand=True, fill=tk.BOTH)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1216,7 +1256,7 @@ def component_name_and_value_to_dict(component_name_and_values, components_with_
             if 'Value' in component_name_and_values[value]:
                 elements_to_skip = component_name_and_values[value].replace('SYMATTR ', '')
                 elements_to_skip = elements_to_skip[0:6].replace('Value', '')
-                elements_to_skip = int(elements_to_skip) + 1
+                elements_to_skip = int(elements_to_skip)
                 value += elements_to_skip
             # If a component already has a value from LTSpice then skip those values
             if components_with_values:
@@ -1396,7 +1436,8 @@ def get_file_path(component_parameters_frame,
                                                 run_simulation_button,
                                                 entering_parameters_window,
                                                 root,
-                                                encoding)).start(),
+                                                encoding,
+                                                tabs)).start(),
 
                          threading.Thread(target=sweepers.NetlistCreator.create,
                                           args=(fpath,
@@ -1428,7 +1469,8 @@ def sketch_schematic_asc(fpath,
                          run_simulation_button,
                          entering_parameters_window,
                          root,
-                         encoding):
+                         encoding,
+                         tabs):
     """
     Sketches the LTSpice schematic provided from a given file path.
 
@@ -1517,9 +1559,12 @@ def sketch_schematic_asc(fpath,
         for values in range(len(schematic)):
 
             if 'SYMATTR Value' in schematic[values]:
-
-                components_with_values += schematic[values - 1].replace("SYMATTR InstName ", '')
-                component_have_no_values = False
+                if "SYMATTR InstName " in schematic[values - 1]:
+                    components_with_values += schematic[values - 1].replace("SYMATTR InstName ", '')
+                    component_have_no_values = False
+                elif "SYMATTR InstName " in schematic[values - 2]:
+                    components_with_values += schematic[values - 2].replace("SYMATTR InstName ", '')
+                    component_have_no_values = False
             # If the circuit does not contain values predefined in LTSpice,
             # then later on in the code just assign zeros to those components
             else:
@@ -1575,6 +1620,7 @@ def sketch_schematic_asc(fpath,
             circuit_symbols_list[element + 2] = int(circuit_symbols_list[element + 2])
             # circuit_symbols_list[element + 3] = int(circuit_symbols_list[element + 3].replace('R', ''))
 
+        flag_error = 'Error when making dictionary of values and components'
         # Filter out the component name with their values and store in a dictionary like:
         # {Component_1: Value_1, Component_2: {Value_2, Value_3}}
         components_name_and_values_dictionary = component_name_and_value_to_dict(component_name_and_values,
@@ -1626,7 +1672,8 @@ def sketch_schematic_asc(fpath,
                                                                        run_simulation_button,
                                                                        canvas,
                                                                        components_name_and_values_dictionary,
-                                                                       symbols_and_name_dictionary))
+                                                                       symbols_and_name_dictionary,
+                                                                       tabs=tabs))
         # Store all component names in a list after removing new lines
         components = components.split('\n')
         # Remove last element which is empty
@@ -1852,6 +1899,79 @@ def sketch_schematic_asc(fpath,
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------- Sobol indices Tab ------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+def sketch_sobol_indices(variable_values_for_simulation, output_samples, x_axis_selection, y_axis_selection):
+    print('sketching sobol indices', y_axis_selection)
+    random_vars_pc = pcarchitects.PCArchitect(variable_component_parameters)
+    print(f'Input samples:\n {variable_values_for_simulation}\n,'
+          f' output samples:\n{output_samples[[y_axis_selection]]}\n')
+    if isinstance(output_samples[y_axis_selection].iloc[1], complex):
+        data_samples = read.complex_to_re_im(output_samples[y_axis_selection])
+    else:
+        data_samples = output_samples[[y_axis_selection]]
+    data_samples[x_axis_selection] = output_samples[[x_axis_selection]]
+    print(data_samples)
+    sobol_parameters = random_vars_pc.compute_pc_expansion(variable_values_for_simulation, data_samples)
+    total_sobol_indices = random_vars_pc.get_total_sobol_indices(sobol_parameters)
+    print(f'total sobol indices:\n {total_sobol_indices}')
+
+
+def add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation):
+    output_raw_data = read.RawReader(file_path_no_extension + '.raw')
+    output_samples = output_raw_data.get_pandas()
+    sobol_indices_frame = tk.Frame(tabs)
+    tabs.add(sobol_indices_frame, text='Sobol indices')
+    figure = plt.Figure(figsize=(8, 6), dpi=100)
+    figure.tight_layout()
+    chart_type = FigureCanvasTkAgg(figure, master=sobol_indices_frame)
+    ax = [figure.add_subplot(111)]
+    chart_type.get_tk_widget().pack(side='top', fill='both')
+
+    sobol_indices_plot_toolbar = tkmod.CustomToolbar(chart_type, sobol_indices_frame, ax, figure)
+    sobol_indices_plot_toolbar.set_toolbar_colour('white')
+    sobol_indices_plot_toolbar.update()
+    sobol_indices_plot_toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=1)
+    # Drop down list for selecting prefixes
+
+    x_axis_label = customtkinter.CTkLabel(sobol_indices_plot_toolbar,
+                                          text='  x axis:',
+                                          text_color='black',
+                                          width=15)
+
+    data_column_names = list(output_samples.columns.values)
+    frequency_or_time_columns = [data for data in data_column_names if data == 'frequency' or data == 'time']
+    y_axis_selection_values = data_column_names
+    x_axis_tk_var = tk.StringVar(sobol_indices_frame)
+    x_axis_tk_var.set(frequency_or_time_columns[0])
+    y_axis_tk_var = tk.StringVar(sobol_indices_frame)
+    y_axis_tk_var.set(y_axis_selection_values[0])
+    max_column_width = len(max(frequency_or_time_columns, key=len))
+    x_axis_option_selection = customtkinter.CTkOptionMenu(master=sobol_indices_plot_toolbar,
+                                                          variable=x_axis_tk_var,
+                                                          values=frequency_or_time_columns,
+                                                          width=max_column_width)
+
+    y_axis_label = customtkinter.CTkLabel(sobol_indices_plot_toolbar,
+                                          text='y axis:',
+                                          text_color='black',
+                                          width=15)
+
+    y_axis_option_selection = customtkinter.CTkOptionMenu(master=sobol_indices_plot_toolbar,
+                                                          variable=y_axis_tk_var,
+                                                          values=y_axis_selection_values,
+                                                          width=max_column_width,
+                                                          command=lambda arg:
+                                                          sketch_sobol_indices(variable_values_for_simulation,
+                                                                               output_samples,
+                                                                               x_axis_tk_var.get(), y_axis_tk_var.get()))
+    x_axis_label.pack(side=tk.LEFT)
+    x_axis_option_selection.pack(side=tk.LEFT, padx=10)
+    y_axis_label.pack(side=tk.LEFT)
+    y_axis_option_selection.pack(side=tk.LEFT, padx=10)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # -------------------------------------- Simulation Preferences Window -------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 def only_integers(current_entered_parameter, previous_entered_parameters):
@@ -1863,26 +1983,29 @@ def only_integers(current_entered_parameter, previous_entered_parameters):
 
 
 # Adding constant and random values to LTSpice netlist file
-def run_simulation(variables_in_schematic, entered_number_of_simulation, netlist_path, schematic_analysis_window):
+def run_simulation(variables_in_schematic, entered_number_of_simulation, asc_file_path,
+                   netlist_path, file_path_no_extension, schematic_analysis_window, tabs=None):
+    print('Running Simulation')
     variable_not_present = []
     # Check if all variables have been entered
     for variables in variables_in_schematic:
         if variables not in variable_component_parameters.keys():
             if variables not in constant_component_parameters.keys():
                 variable_not_present.append(variables)
-
+    print(f'variables: {variable_not_present}')
     # If all variables have been entered
     if not variable_not_present:
+        print('here')
         if variable_component_parameters:
             simulation_object = pcarchitects.ExperimentalDesigner(variable_component_parameters)
-            component_values_for_simulation = \
+            variable_values_for_simulation = \
                 simulation_object.get_lhs_design_pandas(entered_number_of_simulation)
-            print(component_values_for_simulation)
+            print(variable_values_for_simulation)
             perform_sweep = sweepers.Sweeper()
             # Clean the sweeps if there are any inside
             perform_sweep.clean(netlist_path=netlist_path)
             perform_sweep.add_sweep(netlist_path=netlist_path,
-                                    input_samples=component_values_for_simulation)
+                                    input_samples=variable_values_for_simulation)
 
         if constant_component_parameters:
             add_constants = sweepers.ConstAdd()
@@ -1890,6 +2013,16 @@ def run_simulation(variables_in_schematic, entered_number_of_simulation, netlist
             add_constants.clean(netlist_path=netlist_path)
             add_constants.add_constants(netlist_path=netlist_path,
                                         vars=constant_component_parameters)
+
+        # Run asc file to produce .raw file
+        # run_asc_file = runners.LTSpiceRunner()
+        # run_asc_file.run(file_to_run=asc_file_path)
+
+        # # Open raw file
+        # open_raw_file()
+
+        add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation)
+
     if variable_not_present:
         message = ''
         if len(variable_not_present) == 1:
@@ -1906,20 +2039,23 @@ def run_simulation(variables_in_schematic, entered_number_of_simulation, netlist
 
 
 # Setting the number of simulations
-def save_simulation_preferences(variables_in_schematic, number_of_simulations, netlist_path, run_simulation_button,
-                                schematic_analysis_window):
+def save_simulation_preferences(variables_in_schematic, number_of_simulations, asc_file_path, run_simulation_button,
+                                schematic_analysis_window, tabs=None):
     print('running simulation')
     MAXIMUM_SIMULATION_LIMIT = 200
-    netlist_path, ext = os.path.splitext(netlist_path)
-    netlist_path = netlist_path + '.net'
+    file_path_no_extension, ext = os.path.splitext(asc_file_path)
+    netlist_path = file_path_no_extension + '.net'
 
     entered_number_of_simulation = int(number_of_simulations.get())
     try:
         if entered_number_of_simulation <= MAXIMUM_SIMULATION_LIMIT:
             run_simulation_button.configure(command=lambda: run_simulation(variables_in_schematic,
                                                                            entered_number_of_simulation,
+                                                                           asc_file_path,
                                                                            netlist_path,
-                                                                           schematic_analysis_window))
+                                                                           file_path_no_extension,
+                                                                           schematic_analysis_window,
+                                                                           tabs=tabs))
             run_simulation_button.pack(side=tk.LEFT)
         elif entered_number_of_simulation > MAXIMUM_SIMULATION_LIMIT:
             raise ValueError
@@ -1930,7 +2066,8 @@ def save_simulation_preferences(variables_in_schematic, number_of_simulations, n
 
 
 # Simulation preferences window
-def simulation_preferences(variables_in_schematic, schematic_analysis_window, netlist_path, run_simulation_button):
+def simulation_preferences(variables_in_schematic, schematic_analysis_window, netlist_path, run_simulation_button,
+                           tabs=None):
     global variable_component_parameters
     global run_simulation_window
 
@@ -1972,7 +2109,8 @@ def simulation_preferences(variables_in_schematic, schematic_analysis_window, ne
                                                                             simulation_number_entry,
                                                                             netlist_path,
                                                                             run_simulation_button,
-                                                                            schematic_analysis_window))
+                                                                            schematic_analysis_window,
+                                                                            tabs=tabs))
     save_preferences_button.grid(row=4, column=2, padx=20, pady=15)
 
 
@@ -2509,7 +2647,8 @@ def open_enter_parameters_window(fpath,
                                  run_simulation_button,
                                  canvas,
                                  values_dictionary,
-                                 symbol_type_dictionary):
+                                 symbol_type_dictionary,
+                                 tabs=None):
 
     """Event function used to open enter parameter window when enter parameters button has been clicked
 
@@ -2713,7 +2852,8 @@ def open_enter_parameters_window(fpath,
             set_simulation_preferences_button.configure(command=lambda: simulation_preferences(variable_names,
                                                                                                schematic_analysis,
                                                                                                fpath,
-                                                                                               run_simulation_button))
+                                                                                               run_simulation_button,
+                                                                                               tabs=tabs))
 
             # Drop down list for selecting prefixes
             param1_prefix_drop_down_list = \

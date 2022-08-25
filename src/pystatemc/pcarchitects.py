@@ -204,7 +204,7 @@ class PCArchitect:
                 part_df = np.asarray(output_samples.loc[t])
                 pc_expansion = self._compute_pc_expansion(input_samples=np.asarray(input_samples),
                                                           output_samples=np.asarray(part_df),
-                                                          output_description=tuple(output_columns),
+                                                          output_description=tuple(x for x in output_columns if x != x_name),
                                                           max_total_degree=max_total_degree)
                 pc_list[i] = pc_expansion
 
@@ -234,7 +234,8 @@ class PCArchitect:
                                               least_squares)
         pc_algo.run()
         pc_expansion = pc_algo.getResult()
-        pc_expansion.getMetaModel().setOutputDescription(output_description)
-        pc_expansion.getMetaModel().setInputDescription(
-            self.experimental_designer.distribution.getDescription())
+        metamodel = pc_expansion.getMetaModel()
+        metamodel.setOutputDescription(output_description)
+        metamodel.setInputDescription(self.experimental_designer.distribution.getDescription())
+        pc_expansion.setMetaModel(metamodel)
         return pc_expansion

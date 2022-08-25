@@ -170,7 +170,7 @@ data_table.pack(expand=True, fill=tk.BOTH)
 raw_file_button_table = customtkinter.CTkButton(spice_data,
                                                 text='Open a raw file',
                                                 command=lambda: guievents.open_raw_file(root, schematic_analysis,
-                                                                                        tabControl.select(1),
+                                                                                        tabControl,
                                                                                         graphs, data_table,
                                                                                         column_to_plot_1,
                                                                                         column_to_plot_2,
@@ -179,6 +179,7 @@ raw_file_button_table = customtkinter.CTkButton(spice_data,
                                                                                         toolbar,
                                                                                         new_subplot, subplot_number,
                                                                                         subplots, plot_values_button,
+                                                                                        chart_type,
                                                                                         schematic_analysis_open=True))
 
 raw_file_button_table.pack(padx=240, pady=10, ipadx=20, side=tk.RIGHT)
@@ -291,7 +292,7 @@ schematic_analysis.bind_all("<Control-O>", lambda event: guievents.get_file_path
 fileMenu.add_command(label="Open a Raw File", font=FONT_SIZE,
                      accelerator='Ctrl+R',
                      command=lambda: guievents.open_raw_file(root, schematic_analysis,
-                                                             tabControl.select(1),
+                                                             tabControl,
                                                              graphs, data_table,
                                                              column_to_plot_1,
                                                              column_to_plot_2,
@@ -299,11 +300,11 @@ fileMenu.add_command(label="Open a Raw File", font=FONT_SIZE,
                                                              ax, lines_array,
                                                              toolbar,
                                                              new_subplot, subplot_number,
-                                                             subplots, plot_values_button,
+                                                             subplots, plot_values_button, chart_type,
                                                              schematic_analysis_open=False))
 
 schematic_analysis.bind_all("<Control-R>", lambda event: guievents.open_raw_file(root, schematic_analysis,
-                                                                                 tabControl.select(1),
+                                                                                 tabControl,
                                                                                  graphs, data_table,
                                                                                  column_to_plot_1,
                                                                                  column_to_plot_2,
@@ -312,10 +313,11 @@ schematic_analysis.bind_all("<Control-R>", lambda event: guievents.open_raw_file
                                                                                  toolbar,
                                                                                  new_subplot, subplot_number,
                                                                                  subplots, plot_values_button,
+                                                                                 chart_type,
                                                                                  schematic_analysis_open=False))
 
 schematic_analysis.bind_all("<Control-r>", lambda event: guievents.open_raw_file(root, schematic_analysis,
-                                                                                 tabControl.select(1),
+                                                                                 tabControl,
                                                                                  graphs, data_table,
                                                                                  column_to_plot_1,
                                                                                  column_to_plot_2,
@@ -324,6 +326,7 @@ schematic_analysis.bind_all("<Control-r>", lambda event: guievents.open_raw_file
                                                                                  toolbar,
                                                                                  new_subplot, subplot_number,
                                                                                  subplots, plot_values_button,
+                                                                                 chart_type,
                                                                                  schematic_analysis_open=False))
 
 fileMenu.add_command(label="Add a new component", font=FONT_SIZE, accelerator='Ctrl+A',
@@ -396,7 +399,7 @@ add_new_component_button = customtkinter.CTkButton(root_frame,
 open_raw_file_button = customtkinter.CTkButton(root_frame,
                                                text='Open LTspice Waveform .raw file',
                                                command=lambda: guievents.open_raw_file(root, schematic_analysis,
-                                                                                       tabControl.select(1),
+                                                                                       tabControl,
                                                                                        graphs, data_table,
                                                                                        column_to_plot_1,
                                                                                        column_to_plot_2,
@@ -405,6 +408,7 @@ open_raw_file_button = customtkinter.CTkButton(root_frame,
                                                                                        toolbar,
                                                                                        new_subplot, subplot_number,
                                                                                        subplots, plot_values_button,
+                                                                                       chart_type,
                                                                                        schematic_analysis_open=False))
 
 exit_app_button = customtkinter.CTkButton(root_frame,
