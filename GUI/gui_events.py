@@ -8,20 +8,20 @@ import ntpath  # used for just retrieving the file name from a file path
 import os.path  # checking if file path exists, directory exists, etc for default symbols and exe path
 import re  # used for substituting for matches
 import threading  # running netlist generation and sketching components when .asc file has been selected
+import numpy as np  # used when plotting sobol indices for creating arrays
+import pandas
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Created Files and classes
-import ltspicer.readers
-import ltspicer.sweepers as sweepers
+import ltspicer.sweepers as sweepers  # used for adding random and constant variables to LTSpice netlist
 import ltspicer.readers as read
 import ltspicer.runners as runners
 import pandas as pd
 import pystatemc.pcarchitects as pcarchitects
-from matplotlib import pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
-import component_sketcher as comp
-import tkinter_modification as tkmod
-import new_components as new_comp
+import component_sketcher as comp  # used for sketching power flags and grounds
+import tkinter_modification as tkmod  # used for making subclasses of tkinter widgets with specific enhancements
+import new_components as new_comp  # used for for dealing with any symbols (adding, deleting or saving symbols)
 
 
 BACKGROUND_COLOUR = '#F0F0F0'
@@ -1256,7 +1256,7 @@ def component_name_and_value_to_dict(component_name_and_values, components_with_
             if 'Value' in component_name_and_values[value]:
                 elements_to_skip = component_name_and_values[value].replace('SYMATTR ', '')
                 elements_to_skip = elements_to_skip[0:6].replace('Value', '')
-                elements_to_skip = int(elements_to_skip)
+                elements_to_skip = int(elements_to_skip) + 1
                 value += elements_to_skip
             # If a component already has a value from LTSpice then skip those values
             if components_with_values:
@@ -1308,7 +1308,6 @@ def find_uq_vars_from_dict(variable_to_filter, value_is_type_set=False):
     # Removing any operations and replacing them with spaces and then creating a list
     list_without_operations = []
     # If a component has two values it will be stored as a set so filter each element in the set first
-    # TODO: FIND BUG WHEN MOSFET IS 2N3904
     if value_is_type_set is True:
         list_without_operations = variable_to_filter.split()
         for loop_value in range(len(list_without_operations)):
@@ -1351,6 +1350,7 @@ def get_file_path(component_parameters_frame,
                   set_simulation_preferences_button,
                   run_simulation_button,
                   root,
+                  sobol_indices_frame,
                   tabs):
     """Obtains the file path selected from a dialog box, Event function for Open a schematic button.
 
@@ -1437,6 +1437,7 @@ def get_file_path(component_parameters_frame,
                                                 entering_parameters_window,
                                                 root,
                                                 encoding,
+                                                sobol_indices_frame,
                                                 tabs)).start(),
 
                          threading.Thread(target=sweepers.NetlistCreator.create,
@@ -1470,6 +1471,7 @@ def sketch_schematic_asc(fpath,
                          entering_parameters_window,
                          root,
                          encoding,
+                         sobol_indices_frame,
                          tabs):
     """
     Sketches the LTSpice schematic provided from a given file path.
@@ -1673,6 +1675,7 @@ def sketch_schematic_asc(fpath,
                                                                        canvas,
                                                                        components_name_and_values_dictionary,
                                                                        symbols_and_name_dictionary,
+                                                                       sobol_indices_frame,
                                                                        tabs=tabs))
         # Store all component names in a list after removing new lines
         components = components.split('\n')
@@ -1901,11 +1904,37 @@ def sketch_schematic_asc(fpath,
 # ----------------------------------------------------------------------------------------------------------------------
 # --------------------------------------------- Sobol indices Tab ------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def sketch_sobol_indices(variable_values_for_simulation, output_samples, x_axis_selection, y_axis_selection):
+# Function to plot a set of sobol indices for a particular output variable
+def plot_sobol(data, subfig, data_key, x_name):
+    column_names = tuple(col for col in data.columns if col != x_name)
+    no_vars = len(column_names)  # Subtract the frequency
+    x = data[x_name].values
+    y = np.array([0, 1])
+
+    axs = subfig.subplots(nrows=no_vars, ncols=1, sharex=True, sharey=True)
+    for i, ax in enumerate(axs):
+        Z = data[column_names[i]].values
+        Z = np.array([Z, Z])
+        pc = ax.pcolormesh(x, y, Z, cmap='plasma')
+        ax.set(yticklabels=[])
+        ax.tick_params(left=False)
+        ax.set_ylim([0, 1])
+        # ax.set_ylabel(column_names[i], rotation=0)
+        ax.text(-0.01, 0.5, column_names[i], va='center', ha='right', fontsize=10,
+                transform=ax.transAxes)
+        if i == (no_vars - 1):
+            ax.set_xlabel("Frequency")
+    subfig.suptitle(f"Sobol indices for: {data_key}")
+    return pc
+
+
+def sketch_sobol_indices(variable_values_for_simulation, output_samples,
+                         x_axis_selection, y_axis_selection,
+                         subfigs, figure, frequency_column):
     print('sketching sobol indices', y_axis_selection)
     random_vars_pc = pcarchitects.PCArchitect(variable_component_parameters)
     print(f'Input samples:\n {variable_values_for_simulation}\n,'
-          f' output samples:\n{output_samples[[y_axis_selection]]}\n')
+          f'\noutput samples:\n{output_samples[[y_axis_selection]]}\n')
     if isinstance(output_samples[y_axis_selection].iloc[1], complex):
         data_samples = read.complex_to_re_im(output_samples[y_axis_selection])
     else:
@@ -1914,21 +1943,36 @@ def sketch_sobol_indices(variable_values_for_simulation, output_samples, x_axis_
     print(data_samples)
     sobol_parameters = random_vars_pc.compute_pc_expansion(variable_values_for_simulation, data_samples)
     total_sobol_indices = random_vars_pc.get_total_sobol_indices(sobol_parameters)
+    for keys, values in total_sobol_indices.items():
+        total_sobol_indices[keys] = pandas.concat([total_sobol_indices[keys], frequency_column], axis='columns')
+
+    # add to dict
+    sobol_indices_keys = tuple(total_sobol_indices.keys())
     print(f'total sobol indices:\n {total_sobol_indices}')
+    figure.clear()
+    subfigs = figure.subfigures(2, 1, hspace=0.2)
+    for k in range(len(subfigs)):
+        pc = plot_sobol(data=total_sobol_indices[sobol_indices_keys[k]],
+                        subfig=subfigs[k],
+                        data_key=sobol_indices_keys[k],
+                        x_name=x_axis_selection)
+    cbar_ax = subfigs[1].add_axes([0.85, 0.6, 0.02, 0.7])
+    figure.colorbar(pc, cax=cbar_ax, orientation='vertical')
+    figure.subplots_adjust(right=0.8)
+    figure.canvas.draw()
+    figure.canvas.flush_events()
 
 
-def add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation):
+def add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation, sobol_indices_frame):
     output_raw_data = read.RawReader(file_path_no_extension + '.raw')
     output_samples = output_raw_data.get_pandas()
-    sobol_indices_frame = tk.Frame(tabs)
     tabs.add(sobol_indices_frame, text='Sobol indices')
-    figure = plt.Figure(figsize=(8, 6), dpi=100)
+    figure = plt.figure(figsize=(7, 4))
+    subfigs = figure.subfigures(2, 1, hspace=0.2)
     figure.tight_layout()
     chart_type = FigureCanvasTkAgg(figure, master=sobol_indices_frame)
-    ax = [figure.add_subplot(111)]
-    chart_type.get_tk_widget().pack(side='top', fill='both')
 
-    sobol_indices_plot_toolbar = tkmod.CustomToolbar(chart_type, sobol_indices_frame, ax, figure)
+    sobol_indices_plot_toolbar = tkmod.CustomToolbar(chart_type, sobol_indices_frame, figure)
     sobol_indices_plot_toolbar.set_toolbar_colour('white')
     sobol_indices_plot_toolbar.update()
     sobol_indices_plot_toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=1)
@@ -1957,6 +2001,8 @@ def add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simu
                                           text_color='black',
                                           width=15)
 
+    first_step_frequency_column = output_samples.loc[output_samples.groupby('step').groups[1], 'frequency']
+    print(first_step_frequency_column)
     y_axis_option_selection = customtkinter.CTkOptionMenu(master=sobol_indices_plot_toolbar,
                                                           variable=y_axis_tk_var,
                                                           values=y_axis_selection_values,
@@ -1964,11 +2010,16 @@ def add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simu
                                                           command=lambda arg:
                                                           sketch_sobol_indices(variable_values_for_simulation,
                                                                                output_samples,
-                                                                               x_axis_tk_var.get(), y_axis_tk_var.get()))
+                                                                               x_axis_tk_var.get(), y_axis_tk_var.get(),
+                                                                               subfigs, figure,
+                                                                               first_step_frequency_column))
     x_axis_label.pack(side=tk.LEFT)
     x_axis_option_selection.pack(side=tk.LEFT, padx=10)
     y_axis_label.pack(side=tk.LEFT)
     y_axis_option_selection.pack(side=tk.LEFT, padx=10)
+    chart_type.get_tk_widget().pack(expand='true', fill='both')
+    figure.canvas.draw()
+    figure.canvas.flush_events()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1984,7 +2035,7 @@ def only_integers(current_entered_parameter, previous_entered_parameters):
 
 # Adding constant and random values to LTSpice netlist file
 def run_simulation(variables_in_schematic, entered_number_of_simulation, asc_file_path,
-                   netlist_path, file_path_no_extension, schematic_analysis_window, tabs=None):
+                   netlist_path, file_path_no_extension, schematic_analysis_window, sobol_indices_frame, tabs=None):
     print('Running Simulation')
     variable_not_present = []
     # Check if all variables have been entered
@@ -2015,13 +2066,13 @@ def run_simulation(variables_in_schematic, entered_number_of_simulation, asc_fil
                                         vars=constant_component_parameters)
 
         # Run asc file to produce .raw file
-        # run_asc_file = runners.LTSpiceRunner()
-        # run_asc_file.run(file_to_run=asc_file_path)
+        run_asc_file = runners.LTSpiceRunner()
+        run_asc_file.run(file_to_run=netlist_path)
 
         # # Open raw file
         # open_raw_file()
 
-        add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation)
+        add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation, sobol_indices_frame)
 
     if variable_not_present:
         message = ''
@@ -2040,7 +2091,7 @@ def run_simulation(variables_in_schematic, entered_number_of_simulation, asc_fil
 
 # Setting the number of simulations
 def save_simulation_preferences(variables_in_schematic, number_of_simulations, asc_file_path, run_simulation_button,
-                                schematic_analysis_window, tabs=None):
+                                schematic_analysis_window, sobol_indices_frame, tabs=None):
     print('running simulation')
     MAXIMUM_SIMULATION_LIMIT = 200
     file_path_no_extension, ext = os.path.splitext(asc_file_path)
@@ -2055,6 +2106,7 @@ def save_simulation_preferences(variables_in_schematic, number_of_simulations, a
                                                                            netlist_path,
                                                                            file_path_no_extension,
                                                                            schematic_analysis_window,
+                                                                           sobol_indices_frame,
                                                                            tabs=tabs))
             run_simulation_button.pack(side=tk.LEFT)
         elif entered_number_of_simulation > MAXIMUM_SIMULATION_LIMIT:
@@ -2067,7 +2119,7 @@ def save_simulation_preferences(variables_in_schematic, number_of_simulations, a
 
 # Simulation preferences window
 def simulation_preferences(variables_in_schematic, schematic_analysis_window, netlist_path, run_simulation_button,
-                           tabs=None):
+                           sobol_indices_frame, tabs=None):
     global variable_component_parameters
     global run_simulation_window
 
@@ -2110,6 +2162,7 @@ def simulation_preferences(variables_in_schematic, schematic_analysis_window, ne
                                                                             netlist_path,
                                                                             run_simulation_button,
                                                                             schematic_analysis_window,
+                                                                            sobol_indices_frame,
                                                                             tabs=tabs))
     save_preferences_button.grid(row=4, column=2, padx=20, pady=15)
 
@@ -2648,6 +2701,7 @@ def open_enter_parameters_window(fpath,
                                  canvas,
                                  values_dictionary,
                                  symbol_type_dictionary,
+                                 sobol_indices_frame,
                                  tabs=None):
 
     """Event function used to open enter parameter window when enter parameters button has been clicked
@@ -2853,6 +2907,7 @@ def open_enter_parameters_window(fpath,
                                                                                                schematic_analysis,
                                                                                                fpath,
                                                                                                run_simulation_button,
+                                                                                               sobol_indices_frame,
                                                                                                tabs=tabs))
 
             # Drop down list for selecting prefixes

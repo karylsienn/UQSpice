@@ -157,7 +157,7 @@ class CustomToolbar(NavigationToolbar2Tk):
         subplot_number.configure(values='1')
         subplot_number.pack_forget()
 
-    def __init__(self, canvas_, parent_, axes, figure):
+    def __init__(self, canvas_, parent_, figure, axes=None):
         # delete_icon = pathlib.Path(r'toolbar images\trash_can')
         # print(type(delete_icon.name))
         # delete_icon_path =

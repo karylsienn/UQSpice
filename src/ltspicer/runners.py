@@ -20,11 +20,13 @@ class LTSpiceRunner:
 
     def run(self, file_to_run, ascii=False, timeout=20):
         dirname, basename = os.path.dirname(file_to_run), os.path.basename(file_to_run)
+        ltspice_path = '"' + self._ltspice_path + '"'
+        directory_name = '"' + dirname + '"'
         try:
             if self._ltspice_path is not None:
                 cmd =  self._cmd_separator.join([
-                    f"cd {dirname if len(dirname) > 0 else '.'}",
-                    f"{self._ltspice_path} {'-ascii' if ascii else ''} -b {basename}"])
+                    f"cd {directory_name if len(dirname) > 0 else '.'}",
+                    f"{ltspice_path} {'-ascii' if ascii else ''} -b {basename}"])
                 A = subprocess.run(cmd, 
                             shell=True, check=True,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)

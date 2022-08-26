@@ -89,11 +89,12 @@ tabControl = ttk.Notebook(schematic_analysis)
 schematic_params = tk.Frame(tabControl)
 spice_data = tk.Frame(tabControl, width=1100, height=700)
 graphs = tk.Frame(tabControl)
+sobol_indices_frame = tk.Frame(tabControl)
 
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(spice_data, text='LTSpice data')
 tabControl.add(graphs, text='Graphs')
-
+tabControl.add(sobol_indices_frame, text='Sobol Indices', state=tk.HIDDEN)
 component_parameters_frame = tk.Frame(schematic_params, width=340, height=100)
 component_parameters_frame_scroll = tkmod.ScrollableFrame(component_parameters_frame, width=340, height=100)
 
@@ -151,6 +152,7 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
                                                                   simulation_preferences_button,
                                                                   run_simulation_button,
                                                                   root,
+                                                                  sobol_indices_frame,
                                                                   tabControl)
                                           )
 
@@ -200,7 +202,7 @@ delete_icon_path = 'trash_can'
 
 ax[0].set_title('Empty Plot')
 ax[0].grid('on')
-toolbar = tkmod.CustomToolbar(chart_type, graphs, ax, figure)
+toolbar = tkmod.CustomToolbar(chart_type, graphs, figure, axes=ax)
 
 # Change colour of toolbar and it's elements
 # toolbar.config(background='red')
@@ -261,6 +263,7 @@ fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
                                                              simulation_preferences_button,
                                                              run_simulation_button,
                                                              root,
+                                                             sobol_indices_frame,
                                                              tabControl))
 
 schematic_analysis.bind_all("<Control-o>", lambda event: guievents.get_file_path(
@@ -274,6 +277,7 @@ schematic_analysis.bind_all("<Control-o>", lambda event: guievents.get_file_path
                                                              simulation_preferences_button,
                                                              run_simulation_button,
                                                              root,
+                                                             sobol_indices_frame,
                                                              tabControl))
 
 schematic_analysis.bind_all("<Control-O>", lambda event: guievents.get_file_path(
@@ -287,6 +291,7 @@ schematic_analysis.bind_all("<Control-O>", lambda event: guievents.get_file_path
                                                              simulation_preferences_button,
                                                              run_simulation_button,
                                                              root,
+                                                             sobol_indices_frame,
                                                              tabControl))
 
 fileMenu.add_command(label="Open a Raw File", font=FONT_SIZE,
