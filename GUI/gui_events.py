@@ -852,6 +852,7 @@ def sketch_graphs(data, grouped_data, frame_to_display,
 
         # User selected steps from plot preferences
         # selected_steps_to_show = [1, 2, 3, 5]
+        array_of_all_drawn_lines = []
         for steps in selected_steps_to_show:
             # Example for accessing a step
             # data.loc[grouped_data.groups[step], (x-axis, y-axis)]
@@ -866,17 +867,17 @@ def sketch_graphs(data, grouped_data, frame_to_display,
                                                                  plotting_data[column_headings[column2]],
                                                                  label=steps)
                 mplcursors.cursor(lines_array[plot_number], hover=mplcursors.HoverMode.Transient)
-        ax[plot_number].legend(fancybox=True, shadow=True)
+                array_of_all_drawn_lines.append(lines_array[plot_number])
+        legend = ax[plot_number].legend(fancybox=True, shadow=True)
 
         # Implementation of clicking on legend to hide line in progress
-        # if chart_type is not None:
-        #     lined = {}
-        #     lines = [lines_array[plot_number]]
-        #     for legline, origline in zip(ax[plot_number].get_lines(), lines):
-        #         legline.set_picker(True)  # Enable picking on the legend line.
-        #         lined[legline] = origline
-        #
-        #     chart_type.mpl_connect('pick_event', lambda arg: on_pick(arg, figure, lined))
+        if chart_type is not None:
+            lined = {}
+            for legline, origline in zip(legend.get_lines(), array_of_all_drawn_lines):
+                legline.set_picker(True)  # Enable picking on the legend line.
+                lined[legline] = origline
+
+            chart_type.mpl_connect('pick_event', lambda arg: on_pick(arg, figure, lined))
 
         # print(lines_array[plot_number])
         # lines_array[plot_number] = ax[plot_number].plot(data.iloc[:, column1], data.iloc[:, column2])
