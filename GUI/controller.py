@@ -89,11 +89,13 @@ tabControl = ttk.Notebook(schematic_analysis)
 schematic_params = tk.Frame(tabControl)
 spice_data = tk.Frame(tabControl, width=1100, height=700)
 graphs = tk.Frame(tabControl)
+stat_plots_frame = tk.Frame(tabControl)
 sobol_indices_frame = tk.Frame(tabControl)
 
 tabControl.add(schematic_params, text='Schematic and entering parameters')
 tabControl.add(spice_data, text='LTSpice data')
 tabControl.add(graphs, text='Graphs')
+tabControl.add(stat_plots_frame, text='StatPlots', state=tk.HIDDEN)
 tabControl.add(sobol_indices_frame, text='Sobol Indices', state=tk.HIDDEN)
 component_parameters_frame = tk.Frame(schematic_params, width=340, height=100)
 component_parameters_frame_scroll = tkmod.ScrollableFrame(component_parameters_frame, width=340, height=100)
@@ -153,6 +155,7 @@ openfile_button = customtkinter.CTkButton(schematic_analysis,
                                                                   run_simulation_button,
                                                                   root,
                                                                   sobol_indices_frame,
+                                                                  stat_plots_frame,
                                                                   tabControl)
                                           )
 
@@ -264,6 +267,7 @@ fileMenu.add_command(label="Open a Schematic", font=FONT_SIZE,
                                                              run_simulation_button,
                                                              root,
                                                              sobol_indices_frame,
+                                                             stat_plots_frame,
                                                              tabControl))
 
 schematic_analysis.bind_all("<Control-o>", lambda event: guievents.get_file_path(
@@ -278,6 +282,7 @@ schematic_analysis.bind_all("<Control-o>", lambda event: guievents.get_file_path
                                                              run_simulation_button,
                                                              root,
                                                              sobol_indices_frame,
+                                                             stat_plots_frame,
                                                              tabControl))
 
 schematic_analysis.bind_all("<Control-O>", lambda event: guievents.get_file_path(
@@ -292,6 +297,7 @@ schematic_analysis.bind_all("<Control-O>", lambda event: guievents.get_file_path
                                                              run_simulation_button,
                                                              root,
                                                              sobol_indices_frame,
+                                                             stat_plots_frame,
                                                              tabControl))
 
 fileMenu.add_command(label="Open a Raw File", font=FONT_SIZE,
@@ -429,7 +435,7 @@ exit_app_button.pack(pady=6, padx=30, anchor=tk.NE)
 root_frame.pack(expand=True, fill=tk.BOTH)
 # open file button and tab control in schematic_analysis window
 tabControl.pack(expand=True, fill=tk.BOTH)
-chart_type.get_tk_widget().pack(side='top', fill='both')
+
 # schematic params frame children
 component_parameters_frame_scroll.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 component_parameters_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
@@ -455,4 +461,4 @@ column_to_plot_1.pack(side=tk.LEFT, padx=10)
 y_axis.pack(side=tk.LEFT)
 column_to_plot_2.pack(side=tk.LEFT, padx=10)
 new_subplot.pack(side=tk.LEFT, padx=10)
-
+chart_type.get_tk_widget().pack(expand=True, fill=tk.BOTH)

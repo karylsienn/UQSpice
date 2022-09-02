@@ -1352,6 +1352,7 @@ def get_file_path(component_parameters_frame,
                   run_simulation_button,
                   root,
                   sobol_indices_frame,
+                  stat_plots_frame,
                   tabs):
     """Obtains the file path selected from a dialog box, Event function for Open a schematic button.
 
@@ -1439,6 +1440,7 @@ def get_file_path(component_parameters_frame,
                                                 root,
                                                 encoding,
                                                 sobol_indices_frame,
+                                                stat_plots_frame,
                                                 tabs)).start(),
 
                          threading.Thread(target=sweepers.NetlistCreator.create,
@@ -1473,6 +1475,7 @@ def sketch_schematic_asc(fpath,
                          root,
                          encoding,
                          sobol_indices_frame,
+                         stat_plots_frame,
                          tabs):
     """
     Sketches the LTSpice schematic provided from a given file path.
@@ -1502,9 +1505,15 @@ def sketch_schematic_asc(fpath,
         labels.destroy()
     # Clear all previous component parameters
     variable_component_parameters.clear()
-    variable_component_parameters.clear()
+    constant_component_parameters.clear()
     flag_error = ''
+    tabs.forget(stat_plots_frame)
+    tabs.forget(sobol_indices_frame)
+    for widgets in sobol_indices_frame.winfo_children():
+        widgets.forget()
 
+    for widgets in stat_plots_frame.winfo_children():
+        widgets.forget()
     # Clear all previous drawn wires, components, power flags, voltage sources, etc.
     wires = ''
     components = ''
@@ -1677,6 +1686,7 @@ def sketch_schematic_asc(fpath,
                                                                        components_name_and_values_dictionary,
                                                                        symbols_and_name_dictionary,
                                                                        sobol_indices_frame,
+                                                                       stat_plots_frame,
                                                                        tabs=tabs))
         # Store all component names in a list after removing new lines
         components = components.split('\n')
@@ -1934,25 +1944,29 @@ def sketch_sobol_indices(variable_values_for_simulation, output_samples,
                          subfigs, figure, frequency_column):
     print('sketching sobol indices', y_axis_selection)
     random_vars_pc = pcarchitects.PCArchitect(variable_component_parameters)
-    print(f'Input samples:\n {variable_values_for_simulation}\n,'
-          f'\noutput samples:\n{output_samples[[y_axis_selection]]}\n')
+    # print(f'Input samples:\n {variable_values_for_simulation}\n,'
+    #       f'\noutput samples:\n{output_samples[[y_axis_selection]]}\n')
     if isinstance(output_samples[y_axis_selection].iloc[1], complex):
         data_samples = read.complex_to_re_im(output_samples[y_axis_selection])
     else:
         data_samples = output_samples[[y_axis_selection]]
     data_samples[x_axis_selection] = output_samples[[x_axis_selection]]
     print(data_samples)
+    print(variable_values_for_simulation)
     sobol_parameters = random_vars_pc.compute_pc_expansion(variable_values_for_simulation, data_samples)
     total_sobol_indices = random_vars_pc.get_total_sobol_indices(sobol_parameters)
+
+    # Adding frequency to all columns of variables
     for keys, values in total_sobol_indices.items():
         total_sobol_indices[keys] = pandas.concat([total_sobol_indices[keys], frequency_column], axis='columns')
 
     # add to dict
     sobol_indices_keys = tuple(total_sobol_indices.keys())
-    print(f'total sobol indices:\n {total_sobol_indices}')
-    figure.clear()
-    subfigs = figure.subfigures(2, 1, hspace=0.2)
+    # print(f'total sobol indices:\n {total_sobol_indices}')
+    subfigs[0].clear()
+    subfigs[1].clear()
     for k in range(len(subfigs)):
+        print(k)
         pc = plot_sobol(data=total_sobol_indices[sobol_indices_keys[k]],
                         subfig=subfigs[k],
                         data_key=sobol_indices_keys[k],
@@ -1964,9 +1978,9 @@ def sketch_sobol_indices(variable_values_for_simulation, output_samples,
     figure.canvas.flush_events()
 
 
-def add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation, sobol_indices_frame):
-    output_raw_data = read.RawReader(file_path_no_extension + '.raw')
-    output_samples = output_raw_data.get_pandas()
+def add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation, sobol_indices_frame,
+                          output_samples):
+
     tabs.add(sobol_indices_frame, text='Sobol indices')
     figure = plt.figure(figsize=(7, 4))
     subfigs = figure.subfigures(2, 1, hspace=0.2)
@@ -2002,8 +2016,9 @@ def add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simu
                                           text_color='black',
                                           width=15)
 
-    first_step_frequency_column = output_samples.loc[output_samples.groupby('step').groups[1], 'frequency']
-    print(first_step_frequency_column)
+    first_step_frequency_column = output_samples.loc[output_samples.groupby('step').groups[1],
+                                                     frequency_or_time_columns[0]]
+
     y_axis_option_selection = customtkinter.CTkOptionMenu(master=sobol_indices_plot_toolbar,
                                                           variable=y_axis_tk_var,
                                                           values=y_axis_selection_values,
@@ -2014,6 +2029,177 @@ def add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simu
                                                                                x_axis_tk_var.get(), y_axis_tk_var.get(),
                                                                                subfigs, figure,
                                                                                first_step_frequency_column))
+    x_axis_label.pack(side=tk.LEFT)
+    x_axis_option_selection.pack(side=tk.LEFT, padx=10)
+    y_axis_label.pack(side=tk.LEFT)
+    y_axis_option_selection.pack(side=tk.LEFT, padx=10)
+    chart_type.get_tk_widget().pack(expand='true', fill='both')
+    figure.canvas.draw()
+    figure.canvas.flush_events()
+
+
+def sketch_stat_plots(variable_values_for_simulation, output_samples, random_vars,
+                      x_axis_selection, y_axis_selection, subfigs, figure,
+                      grouped_data, toolbar, chart_type=None, clear_line_array=False
+                      ):
+
+        if isinstance(output_samples[y_axis_selection].iloc[1], complex):
+            data_samples = read.complex_to_re_im(output_samples[y_axis_selection])
+        else:
+            data_samples = output_samples[[y_axis_selection]]
+        # adding frequency or time column to data samples
+        data_samples[x_axis_selection] = output_samples[[x_axis_selection]]
+        print(data_samples)
+        print(variable_values_for_simulation, data_samples)
+        stat_plot_parameters = random_vars.compute_pc_expansion(input_samples=variable_values_for_simulation,
+                                                                output_samples=data_samples)
+        mean_of_variables = random_vars.get_mean(pc_expansion=stat_plot_parameters)
+        confidence_intervals = random_vars.get_confidence_interval(pc_expansion=stat_plot_parameters)
+
+        print(f'\nmean: \n{mean_of_variables}')
+        print(f'\nconfidence_intervals: \n{confidence_intervals["lower"].values}')
+        print(mean_of_variables.iloc[:, 1])
+        real_imaginary_mean = mean_of_variables.columns
+        print(real_imaginary_mean)
+        subfigs[0].clear()
+        subfigs[1].clear()
+        axs = subfigs[1].subplots(nrows=2, ncols=1, sharex=True, sharey=True)
+        for i, ax in enumerate(axs):
+            print(i, ax)
+            lines_array, = ax.plot(grouped_data, mean_of_variables.iloc[:, i], label='PC mean')
+            mean_line_colour = lines_array.get_color()
+            lower_confidence_interval_data = [j[i] for j in confidence_intervals["lower"].values]
+            lower_confidence_interval = ax.plot(grouped_data, lower_confidence_interval_data,
+                                                linestyle='dashed', color=mean_line_colour)
+            upper_confidence_interval_data = [j[i] for j in confidence_intervals["upper"].values]
+            upper_confidence_interval = ax.plot(grouped_data, upper_confidence_interval_data,
+                                                linestyle='dashed', color=mean_line_colour)
+            ax.fill_between(grouped_data, upper_confidence_interval_data, lower_confidence_interval_data, alpha=0.2,
+                            label='95% CI')
+
+            ax.set(xlabel=str(x_axis_selection), ylabel=str(real_imaginary_mean[i]))
+        legend = axs[0].legend(fancybox=True, shadow=True)
+        legend = axs[1].legend(fancybox=True, shadow=True)
+        subfigs[1].suptitle(f"Stat plots for: {y_axis_selection}")
+        figure.tight_layout()
+        figure.canvas.draw()
+        figure.canvas.flush_events()
+        toolbar.update()
+        # if clear_line_array:
+        #     lines_array = [None]
+        #     plot_number = int(plot_index.get()) - 1
+        #     ax[plot_number].clear()
+        #     print(column1)
+        #
+        #     previous_drawn_columns[plot_number] = [column1, column2]
+        #     print(previous_drawn_columns)
+        #     # Example of plotting:
+        #     # Plot number is used when there are multiple subplots, plot number is selected by the user to select which
+        #     # subplot.
+        #     # grouped data is the pandas data frame which has been grouped according to number of steps present
+        #     # ax is just which axis or which graph to plot on selected according to plot number
+        #     # lines_array[plot_number] = grouped_data[['V(n001)']].plot(ax=ax[plot_number])
+        #
+        #     legend_array = [None]
+        #
+        #     for label, df in grouped_data:
+        #         legend_array.insert(-1, label)
+        #     print(legend_array)
+        #     legend_array.remove(None)
+        #
+        #     # User selected steps from plot preferences
+        #     # selected_steps_to_show = [1, 2, 3, 5]
+        #     array_of_all_drawn_lines = []
+        #     for steps in selected_steps_to_show:
+        #         # Example for accessing a step
+        #         # data.loc[grouped_data.groups[step], (x-axis, y-axis)]
+        #         # grouped_data.groups[] calls a group from groups, group name is inserted in brackets, NOT group index.
+        #         # step is any value from available steps for example like 1 or 2
+        #         if steps in grouped_data.groups:
+        #             plotting_data = data.loc[
+        #                 grouped_data.groups[steps], (column_headings[previous_drawn_columns[plot_number][0]],
+        #                                              column_headings[previous_drawn_columns[plot_number][1]])]
+        #             # plotting data is 3 columns:
+        #             # column 1 is row numbers, x-axis is column 2, y-axis is column 3.
+        #             lines_array[plot_number], = ax[plot_number].plot(plotting_data[column_headings[column1]],
+        #                                                              plotting_data[column_headings[column2]],
+        #                                                              label=steps)
+        #             mplcursors.cursor(lines_array[plot_number], hover=mplcursors.HoverMode.Transient)
+        #             array_of_all_drawn_lines.append(lines_array[plot_number])
+        #     legend = ax[plot_number].legend(fancybox=True, shadow=True)
+        #
+        #     # Implementation of clicking on legend to hide line in progress
+        #     if chart_type is not None:
+        #         lined = {}
+        #         for legline, origline in zip(legend.get_lines(), array_of_all_drawn_lines):
+        #             legline.set_picker(True)  # Enable picking on the legend line.
+        #             lined[legline] = origline
+        #
+        #         chart_type.mpl_connect('pick_event', lambda arg: on_pick(arg, figure, lined))
+        #
+        #     # print(lines_array[plot_number])
+        #     # lines_array[plot_number] = ax[plot_number].plot(data.iloc[:, column1], data.iloc[:, column2])
+        #
+        #     ax[plot_number].set_title(str(column_headings[column1]) + ' against ' + str(column_headings[column2]))
+        #     ax[plot_number].set(xlabel=str(column_headings[column1]), ylabel=str(column_headings[column2]))
+        #     ax[plot_number].grid('on')
+        #     figure.canvas.draw()
+        #     figure.canvas.flush_events()
+        #     toolbar.update()
+
+
+def add_stat_plots_tab(tabs, file_path_no_extension, variable_values_for_simulation, stat_plots_frame, output_samples):
+    tabs.add(stat_plots_frame, text='StatPlots')
+    random_vars = pcarchitects.PCArchitect(variable_component_parameters)
+
+    figure = plt.figure(figsize=(7, 5))
+    subfigs = figure.subfigures(1, 2, wspace=0.2)
+    figure.tight_layout()
+    chart_type = FigureCanvasTkAgg(figure, master=stat_plots_frame)
+
+    stat_plots_plot_toolbar = tkmod.CustomToolbar(chart_type, stat_plots_frame, figure)
+    stat_plots_plot_toolbar.set_toolbar_colour('white')
+    stat_plots_plot_toolbar.update()
+    stat_plots_plot_toolbar.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=1)
+    # Drop down list for selecting prefixes
+
+    x_axis_label = customtkinter.CTkLabel(stat_plots_plot_toolbar,
+                                          text='  x axis:',
+                                          text_color='black',
+                                          width=15)
+
+    data_column_names = list(output_samples.columns.values)
+    frequency_or_time_columns = [data for data in data_column_names if data == 'frequency' or data == 'time']
+    y_axis_selection_values = data_column_names
+    x_axis_tk_var = tk.StringVar(stat_plots_frame)
+    x_axis_tk_var.set(frequency_or_time_columns[0])
+    y_axis_tk_var = tk.StringVar(stat_plots_frame)
+    y_axis_tk_var.set(y_axis_selection_values[0])
+    max_column_width = len(max(frequency_or_time_columns, key=len))
+    x_axis_option_selection = customtkinter.CTkOptionMenu(master=stat_plots_plot_toolbar,
+                                                          variable=x_axis_tk_var,
+                                                          values=frequency_or_time_columns,
+                                                          width=max_column_width)
+
+    y_axis_label = customtkinter.CTkLabel(stat_plots_plot_toolbar,
+                                          text='y axis:',
+                                          text_color='black',
+                                          width=15)
+
+    first_step_frequency_column = output_samples.loc[output_samples.groupby('step').groups[1],
+                                                     frequency_or_time_columns[0]]
+
+    y_axis_option_selection = customtkinter.CTkOptionMenu(master=stat_plots_plot_toolbar,
+                                                          variable=y_axis_tk_var,
+                                                          values=y_axis_selection_values,
+                                                          width=max_column_width,
+                                                          command=lambda arg:
+                                                          sketch_stat_plots(variable_values_for_simulation,
+                                                                            output_samples, random_vars,
+                                                                            x_axis_tk_var.get(), y_axis_tk_var.get(),
+                                                                            subfigs, figure,
+                                                                            first_step_frequency_column,
+                                                                            stat_plots_plot_toolbar))
     x_axis_label.pack(side=tk.LEFT)
     x_axis_option_selection.pack(side=tk.LEFT, padx=10)
     y_axis_label.pack(side=tk.LEFT)
@@ -2034,10 +2220,46 @@ def only_integers(current_entered_parameter, previous_entered_parameters):
         return False
 
 
+def add_sweep_to_netlist(netlist_path, entered_number_of_simulation):
+    if variable_component_parameters:
+        simulation_object = pcarchitects.ExperimentalDesigner(variable_component_parameters)
+        variable_values_for_simulation = \
+            simulation_object.get_lhs_design_pandas(entered_number_of_simulation)
+        print(variable_values_for_simulation)
+        perform_sweep = sweepers.Sweeper()
+        # Clean the sweeps if there are any inside
+        perform_sweep.clean(netlist_path=netlist_path)
+        perform_sweep.add_sweep(netlist_path=netlist_path,
+                                input_samples=variable_values_for_simulation)
+
+    if constant_component_parameters:
+        add_constants = sweepers.ConstAdd()
+        # Clean the constants if there are any
+        add_constants.clean(netlist_path=netlist_path)
+        add_constants.add_constants(netlist_path=netlist_path,
+                                    vars=constant_component_parameters)
+
+    return variable_values_for_simulation
+
+
+def run_ltspice_file(netlist_path):
+    # Run asc file to produce .raw file
+    run_asc_file = runners.LTSpiceRunner()
+    run_asc_file.run(file_to_run=netlist_path)
+
+
 # Adding constant and random values to LTSpice netlist file
 def run_simulation(variables_in_schematic, entered_number_of_simulation, asc_file_path,
-                   netlist_path, file_path_no_extension, schematic_analysis_window, sobol_indices_frame, tabs=None):
+                   netlist_path, file_path_no_extension, schematic_analysis_window, sobol_indices_frame,
+                   stat_plots_frame, tabs=None):
     print('Running Simulation')
+
+    for widgets in sobol_indices_frame.winfo_children():
+        widgets.forget()
+
+    for widgets in stat_plots_frame.winfo_children():
+        widgets.forget()
+
     variable_not_present = []
     # Check if all variables have been entered
     for variables in variables_in_schematic:
@@ -2048,32 +2270,26 @@ def run_simulation(variables_in_schematic, entered_number_of_simulation, asc_fil
     # If all variables have been entered
     if not variable_not_present:
         print('here')
-        if variable_component_parameters:
-            simulation_object = pcarchitects.ExperimentalDesigner(variable_component_parameters)
-            variable_values_for_simulation = \
-                simulation_object.get_lhs_design_pandas(entered_number_of_simulation)
-            print(variable_values_for_simulation)
-            perform_sweep = sweepers.Sweeper()
-            # Clean the sweeps if there are any inside
-            perform_sweep.clean(netlist_path=netlist_path)
-            perform_sweep.add_sweep(netlist_path=netlist_path,
-                                    input_samples=variable_values_for_simulation)
+        # functions_to_run = [threading.Thread(target=add_sweep_to_netlist,
+        #                                      args=(netlist_path, entered_number_of_simulation)).start(),
+        #                     threading.Thread(target=run_ltspice_file,
+        #                                      args=netlist_path).start()]
 
-        if constant_component_parameters:
-            add_constants = sweepers.ConstAdd()
-            # Clean the constants if there are any
-            add_constants.clean(netlist_path=netlist_path)
-            add_constants.add_constants(netlist_path=netlist_path,
-                                        vars=constant_component_parameters)
+        variable_values_for_simulation = add_sweep_to_netlist(netlist_path, entered_number_of_simulation)
 
-        # Run asc file to produce .raw file
-        run_asc_file = runners.LTSpiceRunner()
-        run_asc_file.run(file_to_run=netlist_path)
+        run_ltspice_file(netlist_path)
 
         # # Open raw file
         # open_raw_file()
 
-        add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation, sobol_indices_frame)
+        output_raw_data = read.RawReader(file_path_no_extension + '.raw')
+        output_samples = output_raw_data.get_pandas()
+
+        add_stat_plots_tab(tabs, file_path_no_extension, variable_values_for_simulation, stat_plots_frame,
+                           output_samples)
+
+        add_sobol_indices_tab(tabs, file_path_no_extension, variable_values_for_simulation, sobol_indices_frame,
+                              output_samples)
 
     if variable_not_present:
         message = ''
@@ -2092,12 +2308,11 @@ def run_simulation(variables_in_schematic, entered_number_of_simulation, asc_fil
 
 # Setting the number of simulations
 def save_simulation_preferences(variables_in_schematic, number_of_simulations, asc_file_path, run_simulation_button,
-                                schematic_analysis_window, sobol_indices_frame, tabs=None):
+                                schematic_analysis_window, sobol_indices_frame, stat_plots_frame, tabs=None):
     print('running simulation')
     MAXIMUM_SIMULATION_LIMIT = 200
     file_path_no_extension, ext = os.path.splitext(asc_file_path)
     netlist_path = file_path_no_extension + '.net'
-
     entered_number_of_simulation = int(number_of_simulations.get())
     try:
         if entered_number_of_simulation <= MAXIMUM_SIMULATION_LIMIT:
@@ -2108,19 +2323,20 @@ def save_simulation_preferences(variables_in_schematic, number_of_simulations, a
                                                                            file_path_no_extension,
                                                                            schematic_analysis_window,
                                                                            sobol_indices_frame,
+                                                                           stat_plots_frame,
                                                                            tabs=tabs))
             run_simulation_button.pack(side=tk.LEFT)
         elif entered_number_of_simulation > MAXIMUM_SIMULATION_LIMIT:
             raise ValueError
     except ValueError:
         messagebox.showerror(parent=run_simulation_window,
-                             title='Maximum simulation number exceeded',
+                             title='Simulation number exceeded',
                              message='The maximum number of allowed simulations is ' + str(MAXIMUM_SIMULATION_LIMIT))
 
 
 # Simulation preferences window
 def simulation_preferences(variables_in_schematic, schematic_analysis_window, netlist_path, run_simulation_button,
-                           sobol_indices_frame, tabs=None):
+                           sobol_indices_frame, stat_plots_frame, tabs=None):
     global variable_component_parameters
     global run_simulation_window
 
@@ -2164,6 +2380,7 @@ def simulation_preferences(variables_in_schematic, schematic_analysis_window, ne
                                                                             run_simulation_button,
                                                                             schematic_analysis_window,
                                                                             sobol_indices_frame,
+                                                                            stat_plots_frame,
                                                                             tabs=tabs))
     save_preferences_button.grid(row=4, column=2, padx=20, pady=15)
 
@@ -2703,6 +2920,7 @@ def open_enter_parameters_window(fpath,
                                  values_dictionary,
                                  symbol_type_dictionary,
                                  sobol_indices_frame,
+                                 stat_plots_frame,
                                  tabs=None):
 
     """Event function used to open enter parameter window when enter parameters button has been clicked
@@ -2909,6 +3127,7 @@ def open_enter_parameters_window(fpath,
                                                                                                fpath,
                                                                                                run_simulation_button,
                                                                                                sobol_indices_frame,
+                                                                                               stat_plots_frame,
                                                                                                tabs=tabs))
 
             # Drop down list for selecting prefixes

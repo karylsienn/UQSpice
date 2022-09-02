@@ -73,12 +73,13 @@ class PCArchitect:
             raise ValueError("There is not Polynomial Chaos Expansion to compute the mean.")
         elif pc_expansion:
             # Use the provided list of PC expansions to provide the means.
-            means = [pc.getCoefficients()[0] for pc in pc_expansion]
-            description = pc_expansion[0].getMetaModel().getDescription()
+            means = [np.asarray(pc.getCoefficients()[0]) for pc in pc_expansion]
+            description = pc_expansion[0].getMetaModel().getOutputDescription()
         else:
             # Use the last created PC expansion
-            means = [pc.getCoefficients()[0] for pc in self.pc_expansion]
-            description = self.pc_expansion[0].getMetaModel().getDescription()
+            means = [np.asarray(pc.getCoefficients()[0]) for pc in self.pc_expansion]
+            description = self.pc_expansion[0].getMetaModel().getOutputDescription()
+
         means_pd = pd.DataFrame(means, columns=description)
         return means_pd
 
@@ -102,14 +103,15 @@ class PCArchitect:
             scaling = 2
         else:
             scaling = 3
-        means = [pc.getCoefficients()[0] for pc in pc_expansion]
-        sds = [np.sqrt(np.sum(pc[1:] ** 2)) for pc in pc_expansion]
+        means = [np.asarray(pc.getCoefficients()[0]) for pc in pc_expansion]
+        sds = [np.sqrt(np.sum(np.asarray(pc.getCoefficients()[1:])**2)) for pc in pc_expansion]
         metamodel = pc_expansion[0].getMetaModel()
         output_description = [metamodel.getOutputDescription().at(i) for i in range(metamodel.getOutputDimension())]
         lower = pd.DataFrame(np.asarray([mu - scaling * sd for mu, sd in zip(means, sds)]),
                              columns=output_description)
         upper = pd.DataFrame(np.asarray([mu + scaling * sd for mu, sd in zip(means, sds)]),
                              columns=output_description)
+
         return {
             "lower": lower, "upper": upper
         }
