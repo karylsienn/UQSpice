@@ -1,9 +1,10 @@
 
 # UQSpice
 ![Python](https://img.shields.io/badge/python-v3.7+-blue.svg)
-
-
-A GUI application for EMC
+Uncertainty Quantification toolbox based on openturns and LTspice.
+UQSpice is an open-source GUI created using python which uses a LTSpice schematic containing variable names starting with UQ_.
+The UQSpice tool uses polynomial chaos and Sobol indices to help identify which of the variables has the most dominant effect on the output of the circuit,
+so that later on this component can be shielded from Electromagnetic radiation.
 
 
 ## Table of content
